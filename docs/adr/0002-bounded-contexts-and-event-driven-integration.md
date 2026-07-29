@@ -10,12 +10,14 @@ The domain (see [`CONTEXT-MAP.md`](../../CONTEXT-MAP.md)) spans rule interpretat
 
 ## Decision
 
-Nine bounded contexts, strategically classified:
+Ten bounded contexts, strategically classified:
 
 - **Core:** Rulesets, Entries & Registration, Judging & Results.
-- **Supporting:** Show Organisation, Catalogue & Publishing, Titles.
+- **Supporting:** Show Organisation, Catalogue & Publishing, Titles, Platform Administration.
 - **Generic:** Payments, Identity & Access.
 - **Fog (deferred):** Membership.
+
+**Platform Administration** is the platform operator's cross-club back office: it onboards Clubs (tenants) and curates the `Ruleset Catalog` (which rulesets/versions are installed and available to Shows). It is upstream to Show Organisation and Rulesets; its principal role is the `Platform Administrator`.
 
 **Integration is via domain events + reference-by-ID.** Contexts do not share mutable entities or reach into each other's databases; they publish facts (`ShowOpened`, `EntriesClosed`, `EntryPaid`, `ClassJudged`, `AwardGranted`, `TitleConfirmed`) and hold only foreign ids.
 

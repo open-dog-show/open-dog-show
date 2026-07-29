@@ -14,6 +14,7 @@ The domain of the open-source conformation dog-show platform, split into bounded
 | **Titles** | Supporting | Accumulates Award facts across many Shows; evaluates and confirms Titles (NCO / FCI authority). |
 | **Payments** | Generic | Entry-fee collection. Behind an anticorruption layer to an external payment provider. |
 | **Identity & Access** | Generic | User accounts, login, permissions. Behind an anticorruption layer to an external identity provider. |
+| **Platform Administration** | Supporting | Platform operator's back office: club/tenant onboarding, the `Ruleset Catalog` (installed rulesets + versions), and global config. Upstream to Show Organisation and Rulesets. |
 | **Membership** | *(Fog)* | Parked add-on; not required to enter. No model yet. |
 
 ## Relationships
@@ -27,7 +28,9 @@ Integration is via **domain events + reference-by-ID** — contexts never share 
 - **Judging & Results → Catalogue & Publishing**: ring results drive results publication. Emits `ClassJudged`, `AwardGranted`; Catalogue publishes live or post-show.
 - **Entries & Registration → Catalogue & Publishing**: closed entries drive catalogue generation (ruleset-timed publication).
 - **Judging & Results → Titles**: Titles consumes `AwardGranted` across Shows to evaluate Titles; emits `TitleConfirmed`.
-- **Identity & Access → (Show Organisation, Entries, Judging)**: **ACL.** Provides authenticated `User`s and permissions; domain roles (Show Secretary, Exhibitor, Judge, admins) map onto Users.
+- **Identity & Access → (Show Organisation, Entries, Judging, Platform Administration)**: **ACL.** Provides authenticated `User`s and permissions; domain roles (Show Secretary, Exhibitor, Judge, Club Administrator, Platform Administrator) map onto Users.
+- **Platform Administration → Show Organisation**: onboards/provisions Clubs (tenants). Emits `ClubOnboarded`.
+- **Platform Administration → Rulesets**: curates the `Ruleset Catalog` (which rulesets/versions are available); Rulesets draws on it when resolving a Show's `Effective Ruleset`.
 
 ```mermaid
 flowchart TD
@@ -39,7 +42,11 @@ flowchart TD
   TI[Titles<br/>supporting]
   CP[Catalogue & Publishing<br/>supporting]
   PAY[Payments<br/>generic / ACL]
+  PA[Platform Administration<br/>supporting]
 
+  PA --> SO
+  PA --> RS
+  IAM --> PA
   RS --> SO
   RS --> EN
   RS --> JR

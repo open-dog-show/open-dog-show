@@ -66,6 +66,10 @@ _Avoid_: Society (acceptable synonym), Organiser
 The Club officer who administers a Show — configures its classes and rings, manages entries, generates the Catalogue, and records results.
 _Avoid_: Show Organiser (acceptable synonym), Secretary (unqualified)
 
+**Club Administrator**:
+A User who manages a single Club — its members and the roles granted to them. Distinct from the platform-wide Platform Administrator.
+_Avoid_: Admin (unqualified)
+
 **Ring**:
 A physical judging space at a Show where a Judge officiates, with an assigned running order.
 _Avoid_: Arena
@@ -183,8 +187,20 @@ _Avoid_: Transaction, Charge
 Owns platform accounts and permissions; a generic context behind an anticorruption layer to an external identity provider.
 
 **User**:
-An authenticated platform account. Domain roles (Exhibitor, Show Secretary, Judge, platform/club administrators) are granted to Users as permissions; one person may hold several roles.
+An authenticated platform account. Domain roles (Exhibitor, Show Secretary, Club Administrator, Judge, Platform Administrator) are granted to Users as permissions; one person may hold several roles.
 _Avoid_: Account (acceptable synonym), Login
+
+## Platform Administration
+
+The platform operator's back office — cross-club responsibilities no single Club owns. Upstream to Show Organisation (provisions Clubs) and Rulesets (curates the available rulesets).
+
+**Platform Administrator**:
+The operator of the platform instance. Onboards Clubs, curates the Ruleset Catalog, and manages global configuration and cross-club user administration. The highest-privilege User role.
+_Avoid_: Superuser, Root, Sysadmin
+
+**Ruleset Catalog**:
+The curated set of Rulesets and versions installed on the platform and made available for Shows to adopt. Maintained by the Platform Administrator; drawn on by Rulesets when resolving a Show's Effective Ruleset.
+_Avoid_: Ruleset Registry, Ruleset Store
 
 ## Membership
 
