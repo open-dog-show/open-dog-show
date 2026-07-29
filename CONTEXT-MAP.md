@@ -27,7 +27,7 @@ Integration is via **domain events + reference-by-ID** — contexts never share 
 - **Judging & Results → Catalogue & Publishing**: ring results drive results publication. Emits `ClassJudged`, `AwardGranted`; Catalogue publishes live or post-show.
 - **Entries & Registration → Catalogue & Publishing**: closed entries drive catalogue generation (ruleset-timed publication).
 - **Titles are not a context** — a `Title` is owner-asserted data on the Dog (Entries & Registration); the platform never computes or confirms Titles (authoritative confirmation is external, NCO/FCI).
-- **Identity & Access → (Show Organisation, Entries, Judging, Platform Administration)**: **ACL.** Provides authenticated `User`s and permissions; domain roles (Show Secretary, Exhibitor, Judge, Club Administrator, Platform Administrator) map onto Users.
+- **Identity & Access → (Show Organisation, Entries, Judging, Platform Administration)**: **ACL.** Provides authenticated `User`s and permissions; domain roles (Show Secretary, Exhibitor, Judge, Platform Administrator) map onto Users.
 - **Platform Administration → Show Organisation**: onboards/provisions Clubs (tenants). Emits `ClubOnboarded`.
 - **Platform Administration → Rulesets**: curates the `Ruleset Catalog` (which rulesets/versions are available); Rulesets draws on it when resolving a Show's `Effective Ruleset`.
 

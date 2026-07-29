@@ -66,10 +66,6 @@ _Avoid_: Society (acceptable synonym), Organiser
 The Club officer who administers a Show — configures its classes and rings, manages entries, generates the Catalogue, and records results.
 _Avoid_: Show Organiser (acceptable synonym), Secretary (unqualified)
 
-**Club Administrator**:
-A User who manages a single Club — its members and the roles granted to them. Distinct from the platform-wide Platform Administrator.
-_Avoid_: Admin (unqualified)
-
 **Ring**:
 A physical judging space at a Show where a Judge officiates, with an assigned running order.
 _Avoid_: Arena
@@ -183,7 +179,7 @@ _Avoid_: Transaction, Charge
 Owns platform accounts and permissions; a generic context behind an anticorruption layer to an external identity provider.
 
 **User**:
-An authenticated platform account. Domain roles (Exhibitor, Show Secretary, Club Administrator, Judge, Platform Administrator) are granted to Users as permissions; one person may hold several roles.
+An authenticated platform account. Domain roles (Exhibitor, Show Secretary, Judge, Platform Administrator) are granted to Users as permissions; one person may hold several roles.
 _Avoid_: Account (acceptable synonym), Login
 
 ## Platform Administration
