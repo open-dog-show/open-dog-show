@@ -4,6 +4,8 @@ status: accepted
 
 # Kennel-club rulesets are data-first composable policies, not core code
 
+> **Amended 2026-07-29:** Titles are owner-asserted data on the Dog, not computed — `TitlePolicy` removed, so the abstraction has **two** policy ports (`ClassEligibilityPolicy`, `AwardPolicy`). See ADR-0002.
+
 ## Context
 
 The platform must serve many kennel clubs (FCI, the Belgian member SRSH/KMSH first, later AKC/KC) whose show rules differ along ~10 axes (class list and eligibility, breed/group/variety taxonomy, grade scale, award vocabulary and conditions, title-earning economics, propose-vs-confirm workflow, reserve-upgrade logic, show taxonomy, breed-recognition gates, judge-competency). The core domain (Show, Entry, Dog, Judge, Placement) must stay **kennel-club-agnostic** and must never name a specific club. See the research on the `research/fci-ruleset` and `research/belgium-ruleset` branches.
@@ -13,10 +15,11 @@ The platform must serve many kennel clubs (FCI, the Belgian member SRSH/KMSH fir
 A **Ruleset** is a **data-first hybrid**:
 
 - **Declarative domain data** for the enumerable/parametric axes: `ClassDefinition` (+ eligibility parameters), breed/`Variety`/`Group` taxonomy, `GradeScale`, `AwardType`, `TitleType`, `ShowType`.
-- **Three deep domain policy ports** for the irreducibly algorithmic axes, owned by the domain core:
-  - `ClassEligibilityPolicy` — is a Dog eligible for a Class at a Show/date?
+- **Two deep domain policy ports** for the irreducibly algorithmic axes, owned by the domain core:
+  - `ClassEligibilityPolicy` — is a Dog eligible for a Class at a Show/date? (reads the Dog's owner-asserted Titles where a Class requires one)
   - `AwardPolicy` — which Awards are *eligible* from a judging unit's grades/placements, and are the judge's *actual* (discretionary) award choices valid? Award grant is a judge decision (input), not a pure computation (output).
-  - `TitlePolicy` — given a Dog's Award history, which Titles are now earned?
+
+  **Titles are not computed.** A Title is owner-asserted data on the Dog (see [`CONTEXT-MAP.md`](../../CONTEXT-MAP.md) / ADR-0002); the platform never derives or confirms Titles, so there is no title policy. The ruleset still owns the *set* of Title types (`TitleType`) as the vocabulary an owner selects from.
 
 **Composition:** Rulesets compose. A Show references a resolved **`Effective Ruleset`** — a single snapshot the domain operates on — composed from a national base layer (SRSH) plus **show-type-selected layers** (e.g. FCI-CACIB only for CACIB shows). Merge semantics are additive with explicit override; each policy port is bound exactly once.
 
@@ -33,6 +36,6 @@ A **Ruleset** is a **data-first hybrid**:
 ## Consequences
 
 - Adding a **new club that resembles an existing one** is mostly data authoring; a genuinely different scoring model needs only new policy implementations, not core changes.
-- **AKC/KC sanity check (passes):** AKC's 7 groups, its class list, and its show types slot in as data; its **points/majors** system and **15-points-incl-two-majors** championship are absorbed by `AwardPolicy` + `TitlePolicy` implementations — with **no FCI-CACIB layer** composed (AKC is a standalone base). This actually *validates* why award-derivation and title-earning must be code ports rather than data.
+- **AKC/KC sanity check (passes):** AKC's 7 groups, its class list, and its show types slot in as data; its **points/majors** are computed by an `AwardPolicy` implementation, with **no FCI-CACIB layer** composed (AKC is a standalone base). The **championship title** itself is owner-asserted (not computed), consistent with the titles-are-owner-asserted decision (ADR-0002).
 - The domain core has zero references to any club; ruleset modules are independently testable in isolation.
 - Cost: a small amount of composition/resolution machinery, and a versioning/snapshot mechanism on Shows.

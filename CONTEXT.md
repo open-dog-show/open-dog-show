@@ -4,14 +4,14 @@ Ubiquitous language for an open-source **conformation** ("beauty") dog-show plat
 
 The domain splits into bounded contexts — see [`CONTEXT-MAP.md`](./CONTEXT-MAP.md). Terms below are grouped by their **owning context**; each term is owned by exactly one context. When code lands, each context's terms will move to `src/<context>/CONTEXT.md`.
 
-Note on shared vocabulary: **Rulesets** owns the *type/definition* of `Class`, `Grade`, `Award`, `Title`, the breed taxonomy and `Show Type`; other contexts own the *occurrences* (a Grade given, an Award won, a Title earned).
+Note on shared vocabulary: **Rulesets** owns the *type/definition* of `Class`, `Grade`, `Award`, the breed taxonomy, `Show Type`, and the set of `Title` types; other contexts own the *occurrences* (a Grade given, an Award won). A `Title` is **owner-asserted** data on a Dog (Entries & Registration) — never computed or confirmed by the platform.
 
 ## Rulesets
 
 The upstream **Published Language**: it defines the rule vocabulary every other context conforms to.
 
 **Ruleset**:
-The named, pluggable bundle of kennel-club rules the core depends on — Classes and their eligibility, breed/group/variety taxonomy, Grade scale, Award types and conditions, and Title rules. Each Show runs under exactly one effective Ruleset. Rulesets **compose**: a national member's Ruleset (SRSH/KMSH) layers its national rules on top of the FCI base Ruleset.
+The named, pluggable bundle of kennel-club rules the core depends on — Classes and their eligibility, breed/group/variety taxonomy, Grade scale, Award types and conditions, and the set of Title types. Each Show runs under exactly one effective Ruleset. Rulesets **compose**: a national member's Ruleset (SRSH/KMSH) layers its national rules on top of the FCI base Ruleset.
 _Avoid_: Rulebook, Policy (too generic), Regulation
 
 **Effective Ruleset**:
@@ -98,6 +98,10 @@ _Avoid_: Registry (when the specific book is meant)
 The registered breeder's name (affix) that forms part of a Dog's registered name; the basis for Breeders' Group eligibility.
 _Avoid_: Affix (acceptable synonym, but prefer Kennel Name), Prefix
 
+**Title**:
+An **owner-asserted** status recorded on a Dog (e.g. Belgian Champion, International Beauty Champion / C.I.B.), maintained by the Owner in their dog administration with supporting evidence. The platform stores Titles but does **not** compute or confirm them; authoritative confirmation is external (NCO / FCI). The set of possible Title types is ruleset-owned vocabulary.
+_Avoid_: Championship (when the show type is meant)
+
 **Ownership**:
 The single owner or owner-partnership responsible for a Dog at a Show. Every Entry belongs to exactly one Ownership (the "one ownership per entry" rule).
 _Avoid_: Owner (when a partnership may be meant)
@@ -149,14 +153,6 @@ _Avoid_: Rank, Position
 **Award**:
 A discrete honour won at a single Show — e.g. CAC, Reserve CAC, CACIB, Reserve CACIB, CACIB-J/-V, Best of Breed, Best of Opposite Sex, Best in Group, Best in Show. The set of Award types is ruleset-owned. Some Awards require a specific Grade/Placement (e.g. Excellent-1st).
 _Avoid_: Prize, Certificate (when a Title certificate is meant)
-
-## Titles
-
-Owns the accumulation and confirmation of Titles across many Shows.
-
-**Title**:
-An accumulated status a Dog earns over time by collecting Awards under ruleset conditions (e.g. Belgian Champion, International Beauty Champion / C.I.B.). Distinct from any single Award. Confirmed by the owning authority (NCO nationally, FCI internationally).
-_Avoid_: Championship (when the show type is meant)
 
 ## Catalogue & Publishing
 

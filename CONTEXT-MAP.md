@@ -6,12 +6,11 @@ The domain of the open-source conformation dog-show platform, split into bounded
 
 | Context | Class | Responsibility |
 | --- | --- | --- |
-| **Rulesets** | Core | Owns the rule vocabulary and the `Effective Ruleset` (data + the three policy ports from ADR-0001 + catalogue-publication rules). The upstream Published Language. |
-| **Entries & Registration** | Core | Dog identity, exhibitor-side people, and the online-entry loop (entry, open/close, extras). |
+| **Rulesets** | Core | Owns the rule vocabulary and the `Effective Ruleset` (data + the policy ports from ADR-0001 + catalogue-publication rules). The upstream Published Language. |
+| **Entries & Registration** | Core | Dog identity (incl. owner-asserted `Title`s), exhibitor-side people, and the online-entry loop (entry, open/close, extras). |
 | **Judging & Results** | Core | Per-Show ring outcomes: grades, placements, awards. |
 | **Show Organisation** | Supporting | Club + Show Secretary set up Shows, classes, and rings. Upstream to Entries, Judging, and Catalogue. |
 | **Catalogue & Publishing** | Supporting | Catalogue (produced after entries close, published under ruleset timing rules) and results publication (live or post-show). |
-| **Titles** | Supporting | Accumulates Award facts across many Shows; evaluates and confirms Titles (NCO / FCI authority). |
 | **Payments** | Generic | Entry-fee collection. Behind an anticorruption layer to an external payment provider. |
 | **Identity & Access** | Generic | User accounts, login, permissions. Behind an anticorruption layer to an external identity provider. |
 | **Platform Administration** | Supporting | Platform operator's back office: club/tenant onboarding, the `Ruleset Catalog` (installed rulesets + versions), and global config. Upstream to Show Organisation and Rulesets. |
@@ -27,7 +26,7 @@ Integration is via **domain events + reference-by-ID** — contexts never share 
 - **Entries & Registration → Judging & Results**: closed entries become the judging schedule. Emits `EntriesClosed`; Judging consumes it.
 - **Judging & Results → Catalogue & Publishing**: ring results drive results publication. Emits `ClassJudged`, `AwardGranted`; Catalogue publishes live or post-show.
 - **Entries & Registration → Catalogue & Publishing**: closed entries drive catalogue generation (ruleset-timed publication).
-- **Judging & Results → Titles**: Titles consumes `AwardGranted` across Shows to evaluate Titles; emits `TitleConfirmed`.
+- **Titles are not a context** — a `Title` is owner-asserted data on the Dog (Entries & Registration); the platform never computes or confirms Titles (authoritative confirmation is external, NCO/FCI).
 - **Identity & Access → (Show Organisation, Entries, Judging, Platform Administration)**: **ACL.** Provides authenticated `User`s and permissions; domain roles (Show Secretary, Exhibitor, Judge, Club Administrator, Platform Administrator) map onto Users.
 - **Platform Administration → Show Organisation**: onboards/provisions Clubs (tenants). Emits `ClubOnboarded`.
 - **Platform Administration → Rulesets**: curates the `Ruleset Catalog` (which rulesets/versions are available); Rulesets draws on it when resolving a Show's `Effective Ruleset`.
@@ -39,7 +38,6 @@ flowchart TD
   SO[Show Organisation<br/>supporting]
   EN[Entries & Registration<br/>core]
   JR[Judging & Results<br/>core]
-  TI[Titles<br/>supporting]
   CP[Catalogue & Publishing<br/>supporting]
   PAY[Payments<br/>generic / ACL]
   PA[Platform Administration<br/>supporting]
@@ -51,7 +49,6 @@ flowchart TD
   RS --> EN
   RS --> JR
   RS --> CP
-  RS --> TI
   IAM --> SO
   IAM --> EN
   IAM --> JR
@@ -62,5 +59,4 @@ flowchart TD
   EN --> JR
   EN --> CP
   JR --> CP
-  JR --> TI
 ```
