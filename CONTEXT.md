@@ -114,6 +114,14 @@ _Avoid_: Rulebook, Policy (too generic), Regulation
 The kennel club governing a jurisdiction and owning its national Ruleset layer (e.g. SRSH/KMSH for Belgium). Authorises Judges and confirms national Awards and Titles.
 _Avoid_: Kennel Club (when the generic body is meant), Federation
 
+**Show Type**:
+A ruleset-owned classification of a Show (e.g. CAC-only, CAC-CACIB, Open, Breed Special, Young & Veterans Day) that selects which Ruleset layers and Award types are in scope for that Show.
+_Avoid_: Show Category, Show Class
+
+**Effective Ruleset**:
+The resolved, versioned snapshot of the composed Ruleset layers that a Show is judged under, pinned onto the Show at setup so results are immune to later Ruleset edits. The domain core operates only on the Effective Ruleset.
+_Avoid_: Resolved Ruleset (acceptable synonym), Merged Ruleset
+
 ### Registration & publication
 
 **Pedigree**:
