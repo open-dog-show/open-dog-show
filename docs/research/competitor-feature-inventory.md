@@ -2,7 +2,7 @@
 
 Read-only competitive inventory of existing online dog-show entry/administration platforms. Facts are described in neutral, original wording; no UI text, marketing copy, or database content is reproduced. Purpose: identify differentiators for an open-source alternative and understand the online-entry/payment loop — not to clone any product.
 
-Scope note: The named target `onlinedogshows.org` could not be captured (see Confidence & gaps). Two working UK peers were inventoried in depth: **Fosse Data** and **Higham Press**. Both are established bureaux that combine software with a print/administration service.
+Scope note: The **primary competitor** target could not be captured (see Confidence & gaps). Two working UK peers were inventoried in depth: **Fosse Data** and **Higham Press**. Both are established bureaux that combine software with a print/administration service.
 
 ---
 
@@ -75,9 +75,9 @@ Operator: Higham Press Ltd, a family-run business established 1945, Derbyshire, 
 
 ---
 
-## Platform: onlinedogshows.org (target — not captured)
+## Platform: primary competitor (target — not captured)
 
-The named primary target could not be inventoried: every page attempt (`/`, `/how-it-works`, `/about`, `/clubs`, `/shows`, `/faq`, http and https, with/without `www`) returned no extractable content, consistent with a client-side-rendered single-page application that the fetch tool cannot render. No factual claims are recorded for this platform to avoid guessing. See Confidence & gaps for suggested follow-up. [9]
+The named primary target could not be inventoried: every page attempt (multiple paths, http and https, with/without `www`) returned no extractable content, consistent with a client-side-rendered single-page application that the fetch tool cannot render. No factual claims are recorded for this platform to avoid guessing. See Confidence & gaps for suggested follow-up. [9]
 
 ---
 
@@ -117,12 +117,12 @@ Net: the cost pain for small clubs concentrates in (a) print-led bundled service
 6. Fosse Data — shows to enter: https://www.fossedata.co.uk/shows/Shows-To-Enter.aspx
 7. Higham Press — Frequently Asked Questions (entry flow, accounts, dogs, extras, payment): https://www.highampress.co.uk/page/frequently-asked-questions
 8. Higham Press — postal/DogBiz migration notes (within FAQ above): https://www.highampress.co.uk/page/frequently-asked-questions
-9. onlinedogshows.org — attempted but not extractable (SPA): https://www.onlinedogshows.org/
+9. Primary competitor — attempted but not extractable (SPA).
 
 ## Confidence & gaps
 - **High confidence:** Fosse Data and Higham Press exhibitor entry flow (browse → account → select dog/classes → add extras → confirm & pay online → passes/ring numbers), club-side service bundles, and publishing (schedules, catalogues, results). Sourced directly from each operator's own pages. [1][2][3][5][7]
 - **Low/no confidence — pricing specifics:** Neither operator publishes per-entry fees, subscription rates, or the club-vs-exhibitor cost split. Statements about where cost pain concentrates are labelled inference and should be confirmed by contacting the operators or reviewing a sample club's schedule (schedules often list entry fees and any booking fee).
-- **Gap — onlinedogshows.org (the named target):** could not be captured; the site behaves like a JavaScript SPA that the fetch tool cannot render. Follow-up options: open it in the integrated browser to read the rendered DOM, retrieve it via an archive snapshot, or inspect its public JSON/API endpoints. Until then, no facts about this platform are asserted.
+- **Gap — the primary competitor (the named target):** could not be captured; the site behaves like a JavaScript SPA that the fetch tool cannot render. Follow-up options: open it in the integrated browser to read the rendered DOM, retrieve it via an archive snapshot, or inspect its public JSON/API endpoints. Until then, no facts about this platform are asserted.
 - **Gap — additional peers:** attempts to capture a national/US entry system with published pricing (e.g. showmanager.com, dogbiz.co.uk, showentriesonline.co.uk) also failed to extract, so a third data point with transparent pricing is still missing and would strengthen the cost-pain analysis.
 - **Anti-copy note:** all descriptions are paraphrased capability facts; no interface text, screenshots, or catalogue/database content were copied. This inventory is intended to inform differentiation and a licensing/anti-copy decision.
 
