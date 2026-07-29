@@ -18,7 +18,7 @@ This adds a `Signed-off-by: Your Name <you@example.com>` line, by which you cert
 
 ## Anti-copy / clean-room policy
 
-This project is a **clean-room** implementation. It is derived from **real kennel-club regulations** (FCI, SRSH/KMSH, and other national bodies) and original work — **never** from the product of `onlinedogshows.org` or any other competitor.
+This project is a **clean-room** implementation. It is derived from **real kennel-club regulations** (FCI, SRSH/KMSH, and other national bodies) and original work — **never** from any competitor's product.
 
 By signing off your commits you also certify that your contribution:
 

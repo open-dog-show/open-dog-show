@@ -6,7 +6,7 @@ status: accepted
 
 ## Context
 
-The project's purpose is an **open, community-owned** alternative to closed, print-led show-entry bureaux (see the competitor inventory on `research/competitor-inventory`). Two risks threaten that mission: (1) the code being taken and run as a **closed proprietary SaaS** — the incumbent model — giving nothing back; and (2) inadvertently **copying the expression** of an existing product (notably `onlinedogshows.org`), creating legal exposure. The originating concern for this whole effort was explicitly "make sure I don't copy anything from them."
+The project's purpose is an **open, community-owned** alternative to closed, print-led show-entry bureaux (see the competitor inventory on `research/competitor-inventory`). Two risks threaten that mission: (1) the code being taken and run as a **closed proprietary SaaS** — the incumbent model — giving nothing back; and (2) inadvertently **copying the expression** of an existing competitor product, creating legal exposure. The originating concern for this whole effort was explicitly "make sure I don't copy anything from them."
 
 ## Decision
 
