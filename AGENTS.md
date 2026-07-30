@@ -2,7 +2,7 @@
 
 ### Issue tracker
 
-Issues live in GitHub Issues (`pslits/name-to-be-determined`). See `docs/agents/issue-tracker.md`.
+Issues live in GitHub Issues (`pslits/open-dog-show`). See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
