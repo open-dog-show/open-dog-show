@@ -1,6 +1,6 @@
-# Dog Show Platform — Ubiquitous Language
+# OpenDogShow — Ubiquitous Language
 
-Ubiquitous language for an open-source **conformation** ("beauty") dog-show platform. The domain core is **kennel-club-agnostic**; kennel-club-specific rules (FCI, and the Belgian member SRSH/KMSH first) plug in as **rulesets**. Terms are grounded in the FCI Regulations for Dog Shows and the SRSH/KMSH regulations — see `docs/research/` on the `research/*` branches.
+Ubiquitous language for **OpenDogShow**, an open-source **conformation** ("beauty") dog-show platform. The domain core is **kennel-club-agnostic**; kennel-club-specific rules (FCI, and the Belgian member SRSH/KMSH first) plug in as **rulesets**. Terms are grounded in the FCI Regulations for Dog Shows and the SRSH/KMSH regulations — see `docs/research/` on the `research/*` branches.
 
 The domain splits into bounded contexts — see [`CONTEXT-MAP.md`](./CONTEXT-MAP.md). Terms below are grouped by their **owning context**; each term is owned by exactly one context. When code lands, each context's terms will move to `src/<context>/CONTEXT.md`.
 
