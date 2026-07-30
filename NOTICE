@@ -1,0 +1,38 @@
+OpenDogShow
+Copyright (C) 2026 the OpenDogShow contributors
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License, version 3, as published by
+the Free Software Foundation. See the LICENSE file for the full text.
+
+------------------------------------------------------------------------------
+Provenance / clean-room statement
+------------------------------------------------------------------------------
+
+OpenDogShow is an independent, clean-room implementation.
+
+- Its domain model, terminology, rules, and interfaces are derived from
+  PRIMARY kennel-club regulations (notably the FCI Regulations for Dog Shows
+  and the regulations of the Belgian FCI member, the Société Royale
+  Saint-Hubert / Koninklijke Maatschappij Sint-Hubertus), and from original
+  work. Research is cited to its primary sources and preserved on the
+  `research/*` branches under `docs/research/`.
+
+- No source code, user-interface text, screenshots, page layouts, database
+  contents, or other copyrightable EXPRESSION of any competing product has
+  been copied, reproduced, or reverse-engineered in the creation of this
+  project. Any resemblance in features or functionality reflects the shared,
+  factual real-world domain (running conformation dog shows), which is not
+  subject to copyright.
+
+- Facts, ideas, and functionality are not owned; a competitor's specific
+  expression is. Contributors attest to respecting this distinction via the
+  Developer Certificate of Origin and the anti-copy policy in CONTRIBUTING.md.
+
+------------------------------------------------------------------------------
+Third-party notices
+------------------------------------------------------------------------------
+
+Third-party components and their licences will be listed here as they are
+added. At the time of writing, this repository contains specification and
+documentation only.

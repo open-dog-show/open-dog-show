@@ -28,6 +28,20 @@ By signing off your commits you also certify that your contribution:
 
 Ideas, features, and facts are not copyrightable — modelling the same real-world domain is fine — but a competitor's *expression* is protected. When in doubt, describe capability in your own words and cite the primary regulation, not a competitor's page.
 
+## Legal hygiene checklist
+
+Before opening a pull request, confirm:
+
+- [ ] I did **not** copy code, text, screenshots, layouts, wording, or data from any competing product.
+- [ ] Any domain rules I encoded are cited to **primary sources** (official kennel-club regulations/standards), not to a competitor's site.
+- [ ] I did **not** scrape a competitor's website or otherwise breach its terms of service to obtain data.
+- [ ] I did **not** reverse-engineer or decompile any competing product.
+- [ ] Any third-party dependency I added is licence-compatible with **AGPL-3.0**, and is recorded in `NOTICE`.
+- [ ] My commits are **signed off** (`git commit -s`) — DCO + anti-copy attestation.
+- [ ] If I'm unsure whether something crosses a line, I **flagged it in the PR** rather than guessing.
+
+This keeps the project a defensible clean-room implementation (see `NOTICE`).
+
 ## Domain model first
 
 Before changing behaviour, consult [`CONTEXT.md`](./CONTEXT.md) (ubiquitous language), [`CONTEXT-MAP.md`](./CONTEXT-MAP.md) (bounded contexts), [`docs/domain-invariants.md`](./docs/domain-invariants.md), and the ADRs in [`docs/adr/`](./docs/adr/). Keep the domain core free of framework/infrastructure concerns.
