@@ -42,6 +42,19 @@ Before opening a pull request, confirm:
 
 This keeps the project a defensible clean-room implementation (see `NOTICE`).
 
+## File headers
+
+Every source file (`.ts`, `.js`) must open with a two-line SPDX header:
+
+```
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+```
+
+Update the year to the current year when you create the file. The copyright
+holder is always `the OpenDogShow contributors` — never an individual name —
+consistent with the `NOTICE` file.
+
 ## Domain model first
 
 Before changing behaviour, consult [`CONTEXT.md`](./CONTEXT.md) (ubiquitous language), [`CONTEXT-MAP.md`](./CONTEXT-MAP.md) (bounded contexts), [`docs/domain-invariants.md`](./docs/domain-invariants.md), and the ADRs in [`docs/adr/`](./docs/adr/). Keep the domain core free of framework/infrastructure concerns.
