@@ -1,0 +1,646 @@
+<!--
+PROTOTYPE — throwaway code, do not merge to main.
+Answers: "What should the OpenDogShow logo look like?"
+
+To view:
+  Open this file directly in any browser (File → Open…), or run:
+    python -m http.server --directory docs/prototype/logo 8080
+  then visit http://localhost:8080
+
+Switch variants with ← → arrow keys or the bottom bar.
+
+SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+SPDX-License-Identifier: AGPL-3.0-only
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PROTOTYPE — OpenDogShow Logo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      min-height: 100vh;
+      padding-bottom: 96px;
+    }
+
+    .variant { display: none; }
+    .variant.active { display: block; }
+
+    /* ── page header ────────────────────────────────── */
+    .page-header {
+      padding: 24px 40px;
+      background: white;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 100px;
+      background: #f1f5f9;
+      color: #64748b;
+    }
+    .page-header h2 { font-size: 20px; font-weight: 700; }
+    .page-header p  { font-size: 13px; color: #64748b; margin-left: auto; }
+
+    /* ── sections ───────────────────────────────────── */
+    .section {
+      padding: 40px;
+      border-bottom: 1px solid #e2e8f0;
+      background: white;
+    }
+    .section-dark {
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+    }
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 32px;
+    }
+    .section-dark .section-label { color: #334155; }
+
+    .logo-grid {
+      display: flex;
+      align-items: flex-end;
+      gap: 40px;
+      flex-wrap: wrap;
+    }
+    .logo-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .caption      { font-size: 11px; color: #94a3b8; text-align: center; }
+    .section-dark .caption { color: #475569; }
+
+    /* ── palette ────────────────────────────────────── */
+    .palette { display: flex; gap: 16px; flex-wrap: wrap; }
+    .swatch  { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .swatch-color {
+      width: 52px; height: 52px;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.08);
+    }
+    .swatch-hex  { font-size: 10px; color: #94a3b8; font-family: monospace; }
+    .swatch-name { font-size: 10px; color: #64748b; }
+
+    /* ── floating switcher ──────────────────────────── */
+    #switcher {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      background: #0f172a;
+      color: white;
+      border-radius: 100px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06);
+      z-index: 9999;
+      overflow: hidden;
+      font-size: 13px;
+      font-weight: 500;
+      user-select: none;
+    }
+    #switcher button {
+      background: none; border: none;
+      color: rgba(255,255,255,0.6);
+      cursor: pointer;
+      padding: 13px 18px;
+      font-size: 18px;
+      line-height: 1;
+      transition: color 0.1s;
+    }
+    #switcher button:hover { color: white; }
+    #switcher .sw-label {
+      padding: 0 6px;
+      min-width: 172px;
+      text-align: center;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+  VARIANT A  "Beacon"  —  Geometric · Modern
+  Navy #1e3a5f + Amber #f59e0b
+  A bold dog-face mark that reads clearly at 32 px.
+═══════════════════════════════════════════════════════════ -->
+<div class="variant" id="variant-A">
+  <div class="page-header">
+    <span class="badge">Variant A</span>
+    <h2>Beacon — Geometric &amp; Modern</h2>
+    <p>Bold, strong at 32 px · navy + amber</p>
+  </div>
+
+  <!-- Light -->
+  <div class="section">
+    <div class="section-label">Mark &amp; lockups · light background</div>
+    <div class="logo-grid">
+
+      <!-- Large mark -->
+      <div class="logo-item">
+        <svg width="200" height="200" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="22,51 36,7 47,51"  fill="#f59e0b"/><!-- left ear  -->
+          <polygon points="53,51 64,7 78,51"  fill="#f59e0b"/><!-- right ear -->
+          <circle  cx="50" cy="63" r="32"     fill="#1e3a5f"/><!-- head       -->
+          <circle  cx="38" cy="57" r="6.5"    fill="white"/>  <!-- L eye bg   -->
+          <circle  cx="62" cy="57" r="6.5"    fill="white"/>  <!-- R eye bg   -->
+          <circle  cx="39.5" cy="57" r="3"    fill="#1e3a5f"/><!-- L pupil    -->
+          <circle  cx="63.5" cy="57" r="3"    fill="#1e3a5f"/><!-- R pupil    -->
+          <ellipse cx="50" cy="72" rx="9" ry="6" fill="#f59e0b"/><!-- nose    -->
+        </svg>
+        <span class="caption">Mark · 200 px</span>
+      </div>
+
+      <!-- Horizontal lockup -->
+      <div class="logo-item">
+        <div style="display:flex;align-items:center;gap:14px;padding:20px 24px;background:#f1f5f9;border-radius:16px;">
+          <svg width="56" height="56" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="22,51 36,7 47,51"  fill="#f59e0b"/>
+            <polygon points="53,51 64,7 78,51"  fill="#f59e0b"/>
+            <circle  cx="50" cy="63" r="32"     fill="#1e3a5f"/>
+            <circle  cx="38" cy="57" r="6.5"    fill="white"/>
+            <circle  cx="62" cy="57" r="6.5"    fill="white"/>
+            <circle  cx="39.5" cy="57" r="3"    fill="#1e3a5f"/>
+            <circle  cx="63.5" cy="57" r="3"    fill="#1e3a5f"/>
+            <ellipse cx="50" cy="72" rx="9" ry="6" fill="#f59e0b"/>
+          </svg>
+          <div>
+            <div style="font-size:26px;font-weight:900;color:#1e3a5f;letter-spacing:-0.04em;line-height:1;">OpenDogShow</div>
+            <div style="font-size:10px;font-weight:700;color:#f59e0b;letter-spacing:0.18em;text-transform:uppercase;margin-top:3px;">Show management · Free forever</div>
+          </div>
+        </div>
+        <span class="caption">Horizontal lockup</span>
+      </div>
+
+      <!-- 64 px GitHub avatar -->
+      <div class="logo-item">
+        <svg width="64" height="64" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="22,51 36,7 47,51"  fill="#f59e0b"/>
+          <polygon points="53,51 64,7 78,51"  fill="#f59e0b"/>
+          <circle  cx="50" cy="63" r="32"     fill="#1e3a5f"/>
+          <circle  cx="38" cy="57" r="6.5"    fill="white"/>
+          <circle  cx="62" cy="57" r="6.5"    fill="white"/>
+          <circle  cx="39.5" cy="57" r="3"    fill="#1e3a5f"/>
+          <circle  cx="63.5" cy="57" r="3"    fill="#1e3a5f"/>
+          <ellipse cx="50" cy="72" rx="9" ry="6" fill="#f59e0b"/>
+        </svg>
+        <span class="caption">GitHub avatar · 64 px</span>
+      </div>
+
+      <!-- 32 px favicon -->
+      <div class="logo-item">
+        <div style="background:#e2e8f0;padding:8px;border-radius:6px;display:inline-block;">
+          <svg width="32" height="32" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="22,51 36,7 47,51"  fill="#f59e0b"/>
+            <polygon points="53,51 64,7 78,51"  fill="#f59e0b"/>
+            <circle  cx="50" cy="63" r="32"     fill="#1e3a5f"/>
+            <circle  cx="38" cy="57" r="6.5"    fill="white"/>
+            <circle  cx="62" cy="57" r="6.5"    fill="white"/>
+            <circle  cx="39.5" cy="57" r="3"    fill="#1e3a5f"/>
+            <circle  cx="63.5" cy="57" r="3"    fill="#1e3a5f"/>
+            <ellipse cx="50" cy="72" rx="9" ry="6" fill="#f59e0b"/>
+          </svg>
+        </div>
+        <span class="caption">Favicon · 32 px</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dark -->
+  <div class="section section-dark">
+    <div class="section-label">Mark &amp; lockups · dark background (GitHub dark mode)</div>
+    <div class="logo-grid">
+      <div class="logo-item">
+        <svg width="120" height="120" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="22,51 36,7 47,51"  fill="#f59e0b"/>
+          <polygon points="53,51 64,7 78,51"  fill="#f59e0b"/>
+          <circle  cx="50" cy="63" r="32"     fill="#e2e8f0"/>
+          <circle  cx="38" cy="57" r="6.5"    fill="#1e3a5f"/>
+          <circle  cx="62" cy="57" r="6.5"    fill="#1e3a5f"/>
+          <circle  cx="39.5" cy="57" r="3"    fill="#e2e8f0"/>
+          <circle  cx="63.5" cy="57" r="3"    fill="#e2e8f0"/>
+          <ellipse cx="50" cy="72" rx="9" ry="6" fill="#f59e0b"/>
+        </svg>
+        <span class="caption">Mark on dark</span>
+      </div>
+      <div class="logo-item">
+        <div style="display:flex;align-items:center;gap:14px;padding:20px 24px;background:#1e293b;border-radius:16px;">
+          <svg width="48" height="48" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="22,51 36,7 47,51"  fill="#f59e0b"/>
+            <polygon points="53,51 64,7 78,51"  fill="#f59e0b"/>
+            <circle  cx="50" cy="63" r="32"     fill="#e2e8f0"/>
+            <circle  cx="38" cy="57" r="6.5"    fill="#1e3a5f"/>
+            <circle  cx="62" cy="57" r="6.5"    fill="#1e3a5f"/>
+            <circle  cx="39.5" cy="57" r="3"    fill="#e2e8f0"/>
+            <circle  cx="63.5" cy="57" r="3"    fill="#e2e8f0"/>
+            <ellipse cx="50" cy="72" rx="9" ry="6" fill="#f59e0b"/>
+          </svg>
+          <div>
+            <div style="font-size:22px;font-weight:900;color:white;letter-spacing:-0.04em;line-height:1;">OpenDogShow</div>
+            <div style="font-size:10px;font-weight:700;color:#f59e0b;letter-spacing:0.18em;text-transform:uppercase;margin-top:3px;">Show management · Free forever</div>
+          </div>
+        </div>
+        <span class="caption">Horizontal lockup on dark</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Palette -->
+  <div class="section">
+    <div class="section-label">Colour palette</div>
+    <div class="palette">
+      <div class="swatch"><div class="swatch-color" style="background:#1e3a5f;"></div><span class="swatch-hex">#1e3a5f</span><span class="swatch-name">Navy</span></div>
+      <div class="swatch"><div class="swatch-color" style="background:#f59e0b;"></div><span class="swatch-hex">#f59e0b</span><span class="swatch-name">Amber</span></div>
+      <div class="swatch"><div class="swatch-color" style="background:#ffffff;border-color:#e2e8f0;"></div><span class="swatch-hex">#ffffff</span><span class="swatch-name">White</span></div>
+      <div class="swatch"><div class="swatch-color" style="background:#0f172a;"></div><span class="swatch-hex">#0f172a</span><span class="swatch-name">Ink</span></div>
+    </div>
+  </div>
+</div><!-- /variant-A -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+  VARIANT B  "Paw"  —  Minimal · Open Source
+  Emerald #10b981 + Slate #1e293b
+  A clean paw-print mark; developer-native, GitHub-native feel.
+  "open" light weight + "dogshow" heavy — signals open-source.
+═══════════════════════════════════════════════════════════ -->
+<div class="variant" id="variant-B">
+  <div class="page-header">
+    <span class="badge">Variant B</span>
+    <h2>Paw — Minimal &amp; Open Source</h2>
+    <p>Instantly recognisable · developer-native · emerald + slate</p>
+  </div>
+
+  <!-- Light -->
+  <div class="section">
+    <div class="section-label">Mark &amp; lockups · light background</div>
+    <div class="logo-grid">
+
+      <div class="logo-item">
+        <svg width="200" height="200" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <!-- four toe pads -->
+          <ellipse cx="29" cy="34" rx="9" ry="11" fill="#10b981" transform="rotate(-15,29,34)"/>
+          <ellipse cx="44" cy="26" rx="9" ry="11" fill="#10b981" transform="rotate(-5,44,26)"/>
+          <ellipse cx="60" cy="26" rx="9" ry="11" fill="#10b981" transform="rotate(5,60,26)"/>
+          <ellipse cx="74" cy="34" rx="9" ry="11" fill="#10b981" transform="rotate(15,74,34)"/>
+          <!-- main pad -->
+          <path d="M28,54 Q26,43 39,39 Q50,35 62,39 Q74,43 72,54 Q70,68 50,77 Q30,68 28,54 Z" fill="#10b981"/>
+        </svg>
+        <span class="caption">Mark · 200 px</span>
+      </div>
+
+      <div class="logo-item">
+        <div style="display:flex;align-items:center;gap:16px;padding:20px 24px;background:#f1f5f9;border-radius:16px;">
+          <svg width="56" height="56" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="29" cy="34" rx="9" ry="11" fill="#10b981" transform="rotate(-15,29,34)"/>
+            <ellipse cx="44" cy="26" rx="9" ry="11" fill="#10b981" transform="rotate(-5,44,26)"/>
+            <ellipse cx="60" cy="26" rx="9" ry="11" fill="#10b981" transform="rotate(5,60,26)"/>
+            <ellipse cx="74" cy="34" rx="9" ry="11" fill="#10b981" transform="rotate(15,74,34)"/>
+            <path d="M28,54 Q26,43 39,39 Q50,35 62,39 Q74,43 72,54 Q70,68 50,77 Q30,68 28,54 Z" fill="#10b981"/>
+          </svg>
+          <div>
+            <div style="line-height:1;">
+              <span style="font-size:26px;font-weight:300;color:#64748b;letter-spacing:-0.01em;">open</span><span style="font-size:26px;font-weight:900;color:#1e293b;letter-spacing:-0.04em;">dogshow</span>
+            </div>
+            <div style="font-size:10px;font-weight:700;color:#10b981;letter-spacing:0.16em;text-transform:uppercase;margin-top:4px;">free · fair · open source</div>
+          </div>
+        </div>
+        <span class="caption">Horizontal lockup</span>
+      </div>
+
+      <div class="logo-item">
+        <svg width="64" height="64" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="29" cy="34" rx="9" ry="11" fill="#10b981" transform="rotate(-15,29,34)"/>
+          <ellipse cx="44" cy="26" rx="9" ry="11" fill="#10b981" transform="rotate(-5,44,26)"/>
+          <ellipse cx="60" cy="26" rx="9" ry="11" fill="#10b981" transform="rotate(5,60,26)"/>
+          <ellipse cx="74" cy="34" rx="9" ry="11" fill="#10b981" transform="rotate(15,74,34)"/>
+          <path d="M28,54 Q26,43 39,39 Q50,35 62,39 Q74,43 72,54 Q70,68 50,77 Q30,68 28,54 Z" fill="#10b981"/>
+        </svg>
+        <span class="caption">GitHub avatar · 64 px</span>
+      </div>
+
+      <div class="logo-item">
+        <div style="background:#e2e8f0;padding:8px;border-radius:6px;display:inline-block;">
+          <svg width="32" height="32" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="29" cy="34" rx="9" ry="11" fill="#10b981" transform="rotate(-15,29,34)"/>
+            <ellipse cx="44" cy="26" rx="9" ry="11" fill="#10b981" transform="rotate(-5,44,26)"/>
+            <ellipse cx="60" cy="26" rx="9" ry="11" fill="#10b981" transform="rotate(5,60,26)"/>
+            <ellipse cx="74" cy="34" rx="9" ry="11" fill="#10b981" transform="rotate(15,74,34)"/>
+            <path d="M28,54 Q26,43 39,39 Q50,35 62,39 Q74,43 72,54 Q70,68 50,77 Q30,68 28,54 Z" fill="#10b981"/>
+          </svg>
+        </div>
+        <span class="caption">Favicon · 32 px</span>
+      </div>
+
+      <!-- Stacked lockup bonus -->
+      <div class="logo-item">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px;background:#f1f5f9;border-radius:16px;">
+          <svg width="72" height="72" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="29" cy="34" rx="9" ry="11" fill="#10b981" transform="rotate(-15,29,34)"/>
+            <ellipse cx="44" cy="26" rx="9" ry="11" fill="#10b981" transform="rotate(-5,44,26)"/>
+            <ellipse cx="60" cy="26" rx="9" ry="11" fill="#10b981" transform="rotate(5,60,26)"/>
+            <ellipse cx="74" cy="34" rx="9" ry="11" fill="#10b981" transform="rotate(15,74,34)"/>
+            <path d="M28,54 Q26,43 39,39 Q50,35 62,39 Q74,43 72,54 Q70,68 50,77 Q30,68 28,54 Z" fill="#10b981"/>
+          </svg>
+          <div style="text-align:center;line-height:1.1;">
+            <span style="font-size:18px;font-weight:300;color:#64748b;">open</span><span style="font-size:18px;font-weight:900;color:#1e293b;">dogshow</span>
+          </div>
+        </div>
+        <span class="caption">Stacked lockup</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dark -->
+  <div class="section section-dark">
+    <div class="section-label">Mark &amp; lockups · dark background</div>
+    <div class="logo-grid">
+      <div class="logo-item">
+        <svg width="120" height="120" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="29" cy="34" rx="9" ry="11" fill="#34d399" transform="rotate(-15,29,34)"/>
+          <ellipse cx="44" cy="26" rx="9" ry="11" fill="#34d399" transform="rotate(-5,44,26)"/>
+          <ellipse cx="60" cy="26" rx="9" ry="11" fill="#34d399" transform="rotate(5,60,26)"/>
+          <ellipse cx="74" cy="34" rx="9" ry="11" fill="#34d399" transform="rotate(15,74,34)"/>
+          <path d="M28,54 Q26,43 39,39 Q50,35 62,39 Q74,43 72,54 Q70,68 50,77 Q30,68 28,54 Z" fill="#34d399"/>
+        </svg>
+        <span class="caption">Mark on dark</span>
+      </div>
+      <div class="logo-item">
+        <div style="display:flex;align-items:center;gap:16px;padding:20px 24px;background:#1e293b;border-radius:16px;">
+          <svg width="48" height="48" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="29" cy="34" rx="9" ry="11" fill="#34d399" transform="rotate(-15,29,34)"/>
+            <ellipse cx="44" cy="26" rx="9" ry="11" fill="#34d399" transform="rotate(-5,44,26)"/>
+            <ellipse cx="60" cy="26" rx="9" ry="11" fill="#34d399" transform="rotate(5,60,26)"/>
+            <ellipse cx="74" cy="34" rx="9" ry="11" fill="#34d399" transform="rotate(15,74,34)"/>
+            <path d="M28,54 Q26,43 39,39 Q50,35 62,39 Q74,43 72,54 Q70,68 50,77 Q30,68 28,54 Z" fill="#34d399"/>
+          </svg>
+          <div>
+            <div style="line-height:1;">
+              <span style="font-size:22px;font-weight:300;color:#64748b;letter-spacing:-0.01em;">open</span><span style="font-size:22px;font-weight:900;color:white;letter-spacing:-0.04em;">dogshow</span>
+            </div>
+            <div style="font-size:10px;font-weight:700;color:#34d399;letter-spacing:0.16em;text-transform:uppercase;margin-top:4px;">free · fair · open source</div>
+          </div>
+        </div>
+        <span class="caption">Horizontal lockup on dark</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Palette -->
+  <div class="section">
+    <div class="section-label">Colour palette</div>
+    <div class="palette">
+      <div class="swatch"><div class="swatch-color" style="background:#1e293b;"></div><span class="swatch-hex">#1e293b</span><span class="swatch-name">Slate</span></div>
+      <div class="swatch"><div class="swatch-color" style="background:#10b981;"></div><span class="swatch-hex">#10b981</span><span class="swatch-name">Emerald</span></div>
+      <div class="swatch"><div class="swatch-color" style="background:#34d399;"></div><span class="swatch-hex">#34d399</span><span class="swatch-name">Mint (dark bg)</span></div>
+      <div class="swatch"><div class="swatch-color" style="background:#f8fafc;border-color:#e2e8f0;"></div><span class="swatch-hex">#f8fafc</span><span class="swatch-name">Cloud</span></div>
+    </div>
+  </div>
+</div><!-- /variant-B -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+  VARIANT C  "Rosette"  —  Show Ribbon · Heritage
+  Royal Blue #1d4ed8 + Orange #f97316
+  A six-petal show-ribbon rosette with "ODS" centre.
+  Celebrates the dog-show tradition; vibrant community energy.
+═══════════════════════════════════════════════════════════ -->
+<div class="variant" id="variant-C">
+  <div class="page-header">
+    <span class="badge">Variant C</span>
+    <h2>Rosette — Show Ribbon &amp; Heritage</h2>
+    <p>Celebrates the tradition · community energy · blue + orange</p>
+  </div>
+
+  <!-- Light -->
+  <div class="section">
+    <div class="section-label">Mark &amp; lockups · light background</div>
+    <div class="logo-grid">
+
+      <div class="logo-item">
+        <svg width="200" height="200" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <!-- 6 rosette petals, alternating blue / orange -->
+          <ellipse cx="50" cy="22" rx="13" ry="28" fill="#1d4ed8"/>
+          <g transform="rotate(60,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#f97316"/></g>
+          <g transform="rotate(120,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#1d4ed8"/></g>
+          <g transform="rotate(180,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#f97316"/></g>
+          <g transform="rotate(240,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#1d4ed8"/></g>
+          <g transform="rotate(300,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#f97316"/></g>
+          <!-- centre ring + fill -->
+          <circle cx="50" cy="50" r="22" fill="white"/>
+          <circle cx="50" cy="50" r="18" fill="#1d4ed8"/>
+          <text x="50" y="55" font-family="-apple-system,BlinkMacSystemFont,system-ui,sans-serif"
+                font-weight="900" font-size="13" fill="white" text-anchor="middle">ODS</text>
+        </svg>
+        <span class="caption">Mark · 200 px</span>
+      </div>
+
+      <!-- Horizontal lockup -->
+      <div class="logo-item">
+        <div style="display:flex;align-items:center;gap:16px;padding:20px 24px;background:#f1f5f9;border-radius:16px;">
+          <svg width="64" height="64" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="50" cy="22" rx="13" ry="28" fill="#1d4ed8"/>
+            <g transform="rotate(60,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#f97316"/></g>
+            <g transform="rotate(120,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#1d4ed8"/></g>
+            <g transform="rotate(180,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#f97316"/></g>
+            <g transform="rotate(240,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#1d4ed8"/></g>
+            <g transform="rotate(300,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#f97316"/></g>
+            <circle cx="50" cy="50" r="22" fill="white"/>
+            <circle cx="50" cy="50" r="18" fill="#1d4ed8"/>
+            <text x="50" y="55" font-family="-apple-system,BlinkMacSystemFont,system-ui,sans-serif"
+                  font-weight="900" font-size="13" fill="white" text-anchor="middle">ODS</text>
+          </svg>
+          <div>
+            <div style="font-size:26px;font-weight:900;color:#1d4ed8;letter-spacing:-0.04em;line-height:1;">OpenDogShow</div>
+            <div style="font-size:10px;font-weight:700;color:#f97316;letter-spacing:0.14em;text-transform:uppercase;margin-top:4px;">The open platform for conformation shows</div>
+          </div>
+        </div>
+        <span class="caption">Horizontal lockup</span>
+      </div>
+
+      <!-- 64 px -->
+      <div class="logo-item">
+        <svg width="64" height="64" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="50" cy="22" rx="13" ry="28" fill="#1d4ed8"/>
+          <g transform="rotate(60,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#f97316"/></g>
+          <g transform="rotate(120,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#1d4ed8"/></g>
+          <g transform="rotate(180,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#f97316"/></g>
+          <g transform="rotate(240,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#1d4ed8"/></g>
+          <g transform="rotate(300,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#f97316"/></g>
+          <circle cx="50" cy="50" r="22" fill="white"/>
+          <circle cx="50" cy="50" r="18" fill="#1d4ed8"/>
+          <text x="50" y="55" font-family="-apple-system,BlinkMacSystemFont,system-ui,sans-serif"
+                font-weight="900" font-size="13" fill="white" text-anchor="middle">ODS</text>
+        </svg>
+        <span class="caption">GitHub avatar · 64 px</span>
+      </div>
+
+      <!-- 32 px -->
+      <div class="logo-item">
+        <div style="background:#e2e8f0;padding:8px;border-radius:6px;display:inline-block;">
+          <svg width="32" height="32" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="50" cy="22" rx="13" ry="28" fill="#1d4ed8"/>
+            <g transform="rotate(60,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#f97316"/></g>
+            <g transform="rotate(120,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#1d4ed8"/></g>
+            <g transform="rotate(180,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#f97316"/></g>
+            <g transform="rotate(240,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#1d4ed8"/></g>
+            <g transform="rotate(300,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#f97316"/></g>
+            <circle cx="50" cy="50" r="22" fill="white"/>
+            <circle cx="50" cy="50" r="18" fill="#1d4ed8"/>
+            <text x="50" y="55" font-family="-apple-system,BlinkMacSystemFont,system-ui,sans-serif"
+                  font-weight="900" font-size="13" fill="white" text-anchor="middle">ODS</text>
+          </svg>
+        </div>
+        <span class="caption">Favicon · 32 px</span>
+      </div>
+
+      <!-- Stacked -->
+      <div class="logo-item">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:24px;background:#f1f5f9;border-radius:16px;">
+          <svg width="80" height="80" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="50" cy="22" rx="13" ry="28" fill="#1d4ed8"/>
+            <g transform="rotate(60,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#f97316"/></g>
+            <g transform="rotate(120,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#1d4ed8"/></g>
+            <g transform="rotate(180,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#f97316"/></g>
+            <g transform="rotate(240,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#1d4ed8"/></g>
+            <g transform="rotate(300,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#f97316"/></g>
+            <circle cx="50" cy="50" r="22" fill="white"/>
+            <circle cx="50" cy="50" r="18" fill="#1d4ed8"/>
+            <text x="50" y="55" font-family="-apple-system,BlinkMacSystemFont,system-ui,sans-serif"
+                  font-weight="900" font-size="13" fill="white" text-anchor="middle">ODS</text>
+          </svg>
+          <div style="font-size:18px;font-weight:900;color:#1d4ed8;letter-spacing:-0.03em;text-align:center;line-height:1;">OpenDogShow</div>
+        </div>
+        <span class="caption">Stacked lockup</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dark -->
+  <div class="section section-dark">
+    <div class="section-label">Mark &amp; lockups · dark background</div>
+    <div class="logo-grid">
+      <div class="logo-item">
+        <svg width="120" height="120" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="50" cy="22" rx="13" ry="28" fill="#3b82f6"/>
+          <g transform="rotate(60,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#fb923c"/></g>
+          <g transform="rotate(120,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#3b82f6"/></g>
+          <g transform="rotate(180,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#fb923c"/></g>
+          <g transform="rotate(240,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#3b82f6"/></g>
+          <g transform="rotate(300,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#fb923c"/></g>
+          <circle cx="50" cy="50" r="22" fill="#0f172a"/>
+          <circle cx="50" cy="50" r="18" fill="#3b82f6"/>
+          <text x="50" y="55" font-family="-apple-system,BlinkMacSystemFont,system-ui,sans-serif"
+                font-weight="900" font-size="13" fill="white" text-anchor="middle">ODS</text>
+        </svg>
+        <span class="caption">Mark on dark</span>
+      </div>
+      <div class="logo-item">
+        <div style="display:flex;align-items:center;gap:16px;padding:20px 24px;background:#1e293b;border-radius:16px;">
+          <svg width="52" height="52" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="50" cy="22" rx="13" ry="28" fill="#3b82f6"/>
+            <g transform="rotate(60,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#fb923c"/></g>
+            <g transform="rotate(120,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#3b82f6"/></g>
+            <g transform="rotate(180,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#fb923c"/></g>
+            <g transform="rotate(240,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#3b82f6"/></g>
+            <g transform="rotate(300,50,50)"><ellipse cx="50" cy="22" rx="13" ry="28" fill="#fb923c"/></g>
+            <circle cx="50" cy="50" r="22" fill="#0f172a"/>
+            <circle cx="50" cy="50" r="18" fill="#3b82f6"/>
+            <text x="50" y="55" font-family="-apple-system,BlinkMacSystemFont,system-ui,sans-serif"
+                  font-weight="900" font-size="13" fill="white" text-anchor="middle">ODS</text>
+          </svg>
+          <div>
+            <div style="font-size:22px;font-weight:900;color:white;letter-spacing:-0.04em;line-height:1;">OpenDogShow</div>
+            <div style="font-size:10px;font-weight:700;color:#fb923c;letter-spacing:0.14em;text-transform:uppercase;margin-top:4px;">The open platform for conformation shows</div>
+          </div>
+        </div>
+        <span class="caption">Horizontal lockup on dark</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Palette -->
+  <div class="section">
+    <div class="section-label">Colour palette</div>
+    <div class="palette">
+      <div class="swatch"><div class="swatch-color" style="background:#1d4ed8;"></div><span class="swatch-hex">#1d4ed8</span><span class="swatch-name">Royal Blue</span></div>
+      <div class="swatch"><div class="swatch-color" style="background:#f97316;"></div><span class="swatch-hex">#f97316</span><span class="swatch-name">Orange</span></div>
+      <div class="swatch"><div class="swatch-color" style="background:#3b82f6;"></div><span class="swatch-hex">#3b82f6</span><span class="swatch-name">Blue (dark bg)</span></div>
+      <div class="swatch"><div class="swatch-color" style="background:#fb923c;"></div><span class="swatch-hex">#fb923c</span><span class="swatch-name">Orange (dark bg)</span></div>
+    </div>
+  </div>
+</div><!-- /variant-C -->
+
+
+<!-- ═══════════════════════════
+  FLOATING SWITCHER BAR
+═══════════════════════════ -->
+<div id="switcher">
+  <button id="btn-prev" aria-label="Previous variant">&#8592;</button>
+  <span id="sw-label" class="sw-label">A — Beacon</span>
+  <button id="btn-next" aria-label="Next variant">&#8594;</button>
+</div>
+
+<script>
+  const VARIANTS = [
+    { key: 'A', label: 'A \u2014 Beacon' },
+    { key: 'B', label: 'B \u2014 Paw' },
+    { key: 'C', label: 'C \u2014 Rosette' },
+  ];
+
+  function currentKey() {
+    return new URLSearchParams(window.location.search).get('variant') ?? 'A';
+  }
+
+  function setVariant(key) {
+    const match = VARIANTS.find(v => v.key === key) ?? VARIANTS[0];
+    const url = new URL(window.location.href);
+    url.searchParams.set('variant', match.key);
+    history.replaceState(null, '', url.toString());
+    VARIANTS.forEach(v => {
+      const el = document.getElementById('variant-' + v.key);
+      if (el) el.classList.toggle('active', v.key === match.key);
+    });
+    document.getElementById('sw-label').textContent = match.label;
+  }
+
+  function step(delta) {
+    const idx = VARIANTS.findIndex(v => v.key === currentKey());
+    const next = VARIANTS[(idx + delta + VARIANTS.length) % VARIANTS.length];
+    setVariant(next.key);
+  }
+
+  document.getElementById('btn-prev').addEventListener('click', () => step(-1));
+  document.getElementById('btn-next').addEventListener('click', () => step( 1));
+
+  document.addEventListener('keydown', e => {
+    const tag = document.activeElement?.tagName ?? '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return;
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); step(-1); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); step( 1); }
+  });
+
+  setVariant(currentKey());
+</script>
+</body>
+</html>
