@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+# SPDX-License-Identifier: AGPL-3.0-only
+
+version = 1
+
+# Files that cannot carry inline SPDX comments:
+# JSON, lock files, Markdown, bare licence/notice files, and dotfiles.
+[[annotations]]
+path = [
+  "**/*.json",
+  ".prettierrc",
+  "pnpm-lock.yaml",
+  "**/*.md",
+  "LICENSE",
+  "NOTICE",
+  ".gitignore",
+  ".github/.gitignore",
+  ".prettierignore",
+]
+SPDX-FileCopyrightText = "2026 the OpenDogShow contributors"
+SPDX-License-Identifier = "AGPL-3.0-only"

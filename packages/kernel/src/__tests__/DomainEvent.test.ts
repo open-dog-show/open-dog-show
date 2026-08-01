@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from 'vitest';
 import { createDomainEvent } from '../domain/DomainEvent.js';

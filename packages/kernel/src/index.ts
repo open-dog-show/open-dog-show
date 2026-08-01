@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
 
 export type { DomainEvent, EventScope, CreateDomainEventParams } from './domain/DomainEvent.js';
 export { createDomainEvent } from './domain/DomainEvent.js';
