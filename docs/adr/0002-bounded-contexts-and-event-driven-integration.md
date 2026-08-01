@@ -24,6 +24,7 @@ Nine bounded contexts, strategically classified:
 **Integration is via domain events + reference-by-ID.** Contexts do not share mutable entities or reach into each other's databases; they publish facts (`ShowOpened`, `EntriesClosed`, `EntryPaid`, `ClassJudged`, `AwardGranted`, `TitleConfirmed`) and hold only foreign ids.
 
 **Specific relationship patterns:**
+
 - **Rulesets is an upstream Published Language**; all other contexts are **Conformist** to the `Effective Ruleset` shapes and policy-port interfaces (ADR-0001). Rulesets depends on no consumer.
 - **Payments** and **Identity & Access** are generic and sit behind **anticorruption layers** to an external payment provider and identity provider respectively.
 - **Show Organisation** is upstream to Entries, Judging, and Catalogue (a Show must exist first).

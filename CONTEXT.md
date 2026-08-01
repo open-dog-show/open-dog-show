@@ -4,7 +4,7 @@ Ubiquitous language for **OpenDogShow**, an open-source **conformation** ("beaut
 
 The domain splits into bounded contexts — see [`CONTEXT-MAP.md`](./CONTEXT-MAP.md). Terms below are grouped by their **owning context**; each term is owned by exactly one context. When code lands, each context's terms will move to `src/<context>/CONTEXT.md`.
 
-Note on shared vocabulary: **Rulesets** owns the *type/definition* of `Class`, `Grade`, `Award`, the breed taxonomy, `Show Type`, and the set of `Title` types; other contexts own the *occurrences* (a Grade given, an Award won). A `Title` is **owner-asserted** data on a Dog (Entries & Registration) — never computed or confirmed by the platform.
+Note on shared vocabulary: **Rulesets** owns the _type/definition_ of `Class`, `Grade`, `Award`, the breed taxonomy, `Show Type`, and the set of `Title` types; other contexts own the _occurrences_ (a Grade given, an Award won). A `Title` is **owner-asserted** data on a Dog (Entries & Registration) — never computed or confirmed by the platform.
 
 ## Rulesets
 
@@ -119,7 +119,7 @@ The record of entering one Dog into one Show in exactly one compulsory Class, op
 _Avoid_: Registration, Booking
 
 **Collective Competition**:
-An optional competition judged on a *group* of related dogs rather than a single dog. Types: **Brace/Couple** (one dog + one bitch, same breed & variety, same owner), **Breeders' Group** (3–5 dogs of the same breed/variety bred under the same kennel name), **Progeny Group** (a sire or dam with 3–5 first-generation offspring). Each participating Dog must also be individually entered in a compulsory Class at the same Show.
+An optional competition judged on a _group_ of related dogs rather than a single dog. Types: **Brace/Couple** (one dog + one bitch, same breed & variety, same owner), **Breeders' Group** (3–5 dogs of the same breed/variety bred under the same kennel name), **Progeny Group** (a sire or dam with 3–5 first-generation offspring). Each participating Dog must also be individually entered in a compulsory Class at the same Show.
 _Avoid_: Group class (clashes with FCI Group), Team class
 
 **Team**:
@@ -200,4 +200,4 @@ _Avoid_: Ruleset Registry, Ruleset Store
 
 ## Membership
 
-*(Fog — parked add-on. Not required to enter a Show; no terms defined yet.)*
+_(Fog — parked add-on. Not required to enter a Show; no terms defined yet.)_

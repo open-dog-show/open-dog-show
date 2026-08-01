@@ -4,7 +4,7 @@ status: accepted
 
 # Data-ownership scopes and row-level-security keys
 
-> Refines [ADR-0004](0004-tech-stack-typescript-modular-monolith-postgres.md), whose "row-level `tenant_id` + RLS on every table" is an oversimplification. Grounded in the research note *Data-ownership / isolation scoping regimes* (branch `research/data-ownership-scopes`, `docs/research/2026-08-01-data-ownership-scopes.md`).
+> Refines [ADR-0004](0004-tech-stack-typescript-modular-monolith-postgres.md), whose "row-level `tenant_id` + RLS on every table" is an oversimplification. Grounded in the research note _Data-ownership / isolation scoping regimes_ (branch `research/data-ownership-scopes`, `docs/research/2026-08-01-data-ownership-scopes.md`).
 
 ## Context
 
@@ -36,7 +36,7 @@ USING (tenant_id = current_setting('app.tenant_id')::uuid
    OR  account_id = current_setting('app.account_id')::uuid)
 ```
 
-**Two distinct concepts, not one.** *Who a fact belongs to* (the event's `EventScope` — `{ tenant | exhibitor | platform }` on the domain event / outbox row) is **not** the same as *who may read a row* (the RLS predicate). Hybrid rows carry a single ownership scope but a wider read predicate.
+**Two distinct concepts, not one.** _Who a fact belongs to_ (the event's `EventScope` — `{ tenant | exhibitor | platform }` on the domain event / outbox row) is **not** the same as _who may read a row_ (the RLS predicate). Hybrid rows carry a single ownership scope but a wider read predicate.
 
 **Mechanism.** The request identity reaches RLS through session variables (`SET LOCAL app.tenant_id`, `SET LOCAL app.account_id`) set once per transaction in the shared `withTransaction(scope, fn)` unit-of-work; policies read them via `current_setting(..., true)`. The runtime application connects as a **non-owner Postgres role with RLS enforced** — never as a superuser or table owner, for whom RLS is bypassed. `platform` tables are RLS-exempt (or role-gated). The `Catalogue`'s time-gated public-read predicate is authored by Catalogue & Publishing, not the shared scaffold.
 

@@ -16,7 +16,19 @@ Domain-model-first, DDD + clean architecture, framework-agnostic ("don't marry t
 
 ## Status
 
-Domain-model spec complete; build phase next.
+Domain-model spec complete. Build phase in progress — monorepo scaffold is live
+(T1); bounded-context packages, Postgres outbox, and the context generator are
+coming next.
+
+## Getting started
+
+```sh
+# Prerequisites: Node.js ≥ 22, pnpm ≥ 9
+pnpm install       # set up the workspace
+pnpm lint          # ESLint + Prettier check
+pnpm test          # Vitest unit tests
+pnpm typecheck     # TypeScript type check (no emit)
+```
 
 ## Licence & contributing
 
