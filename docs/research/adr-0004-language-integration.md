@@ -1,6 +1,16 @@
 # Research: language & website-integration options for ADR-0004
 
-**Issue:** #10 · **Status:** research note (input to ADR-0004) · **Date:** 2026-08-01
+**Issue:** #10 · **Status:** resolved — outcome recorded below · **Date:** 2026-08-01
+
+## Outcome (decided 2026-08-01)
+
+The grilling session accepted this note's recommendation with one refinement:
+
+- **Integration shape: Model A + thin WordPress connector plugin (the hybrid), "Shape 1".** The plugin is a pure adapter (shortcode/block/embed) that talks to a **separately-running app instance**; it holds no domain logic. A single-club offering is just the same app deployed **single-tenant**, fronted by that thin plugin. The full in-process WordPress plugin ("Shape 2" / Model B) is rejected.
+- **Deployment: multi-tenant hosted instance is the primary channel; single-tenant deployment is a supported option** (self-hosted or hosted-by-us) for a club that wants its own instance.
+- **Language: TypeScript/Node**, per the reasoning below. ADR-0001 (pure core) and ADR-0002 (multi-tenant) remain intact.
+
+These choices are ratified formally in **ADR-0004**. This note is the evidence base.
 
 ## Intro
 
