@@ -2,7 +2,7 @@
 
 The rules that must always hold, per bounded context. Grounded in the FCI Regulations for Dog Shows and the SRSH/KMSH regulations (see `docs/research/` on the `research/*` branches) and the decisions in [ADR-0001](./adr/0001-kennel-club-rulesets-as-data-first-policies.md) and [ADR-0002](./adr/0002-bounded-contexts-and-event-driven-integration.md). Vocabulary is defined in [`CONTEXT.md`](../CONTEXT.md).
 
-**Enforced vs advisory.** Some rules are *hard invariants* the system enforces; others are *advisory* — recorded but not machine-enforced, because the platform cannot see reliable data (e.g. a dog's full ownership or award history elsewhere). Advisory rules are marked **(advisory)**.
+**Enforced vs advisory.** Some rules are _hard invariants_ the system enforces; others are _advisory_ — recorded but not machine-enforced, because the platform cannot see reliable data (e.g. a dog's full ownership or award history elsewhere). Advisory rules are marked **(advisory)**.
 
 ## Show Organisation
 

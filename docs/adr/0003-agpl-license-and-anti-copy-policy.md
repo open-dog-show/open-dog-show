@@ -10,7 +10,7 @@ The project's purpose is an **open, community-owned** alternative to closed, pri
 
 ## Decision
 
-- **Licence: GNU AGPL-3.0.** Network copyleft ensures that anyone offering a modified version *as a network service* must publish their source, keeping the platform and its improvements open even when hosted. Small clubs self-hosting or using a hosted instance are unaffected.
+- **Licence: GNU AGPL-3.0.** Network copyleft ensures that anyone offering a modified version _as a network service_ must publish their source, keeping the platform and its improvements open even when hosted. Small clubs self-hosting or using a hosted instance are unaffected.
 - **Clean-room anti-copy policy.** The domain model, terminology, and UI are derived from **real kennel-club regulations and original work**, never from a competitor's text, screens, database, or wording. Facts/features aren't copyrightable; expression is.
 - **Contributor attestation via DCO** (`Signed-off-by`), not a CLA — lightweight, and it also carries the anti-copy attestation (see `CONTRIBUTING.md`).
 

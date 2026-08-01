@@ -8,7 +8,7 @@ status: accepted
 
 ## Context
 
-ADRs 0001–0003 fixed the *shape* of the system (data-first composable rulesets, nine event-integrated bounded contexts, AGPL-3.0) but left the technology stack open, under one standing constraint — **framework-agnostic, "don't marry the framework"** — plus the product goal of **keeping the cost of running a show low for small clubs** (README) and a later-added goal of **integrating with a club's existing website / CMS**.
+ADRs 0001–0003 fixed the _shape_ of the system (data-first composable rulesets, nine event-integrated bounded contexts, AGPL-3.0) but left the technology stack open, under one standing constraint — **framework-agnostic, "don't marry the framework"** — plus the product goal of **keeping the cost of running a show low for small clubs** (README) and a later-added goal of **integrating with a club's existing website / CMS**.
 
 The choice was worked through in a grilling session backed by a research note (issue #10, branch `research/adr-0004-language-integration`, `docs/research/adr-0004-language-integration.md`). Four coupled decisions had to be made together: language/runtime, repository topology, the event backbone, and persistence.
 
@@ -17,7 +17,7 @@ The choice was worked through in a grilling session backed by a research note (i
 **1. Language & product shape — TypeScript/Node, API-first ("Model A"), with a thin WordPress connector ("Shape 1").**
 
 - The platform is a **standalone application** exposing an **HTTP/JSON API** plus **embeddable JavaScript widgets** and **iframe/oEmbed** for website integration. It is **not** shipped as an in-process CMS plugin.
-- Website/CMS integration is delivered by a **thin WordPress connector plugin** that is a *pure adapter* — a shortcode/block/embed that calls the API and holds **no domain logic**.
+- Website/CMS integration is delivered by a **thin WordPress connector plugin** that is a _pure adapter_ — a shortcode/block/embed that calls the API and holds **no domain logic**.
 - **TypeScript/Node** is the language for the app and API. The deciding factor: in Model A the front end is JavaScript regardless of backend, and TypeScript uniquely lets **one set of type contracts be shared across the browser widgets and the API**, keeping the ADR-0001 pure core in the same language as the UI.
 - **Deployment:** the **multi-tenant hosted instance is the primary channel**; **single-tenant** deployment (self-hosted, or hosted-by-us for one club) is a first-class supported mode — the same code run as one tenant, fronted by the same thin connector. This preserves ADR-0001 (pure core) and ADR-0002 (multi-tenant).
 
@@ -40,7 +40,7 @@ The choice was worked through in a grilling session backed by a research note (i
 ## Considered options
 
 - **Language:** .NET/C# (strong runner-up — best DDD tooling, but forces a cross-language contract boundary for the JS widgets) and PHP/Symfony (only justified by an in-process WordPress plugin, i.e. "Shape 2 / Model B", which conflicts with ADR-0001/0002) were both rejected. See the research note for the full comparison.
-- **Integration shape:** shipping the product *as* a WordPress plugin (Model B) was rejected — it marries the framework (against ADR-0001), is inherently single-site (against ADR-0002's multi-tenancy), and reaches only WordPress (~59% of CMS sites, a minority of all sites). The thin-connector hybrid recovers most of its one-click convenience without the concessions.
+- **Integration shape:** shipping the product _as_ a WordPress plugin (Model B) was rejected — it marries the framework (against ADR-0001), is inherently single-site (against ADR-0002's multi-tenancy), and reaches only WordPress (~59% of CMS sites, a minority of all sites). The thin-connector hybrid recovers most of its one-click convenience without the concessions.
 - **Repo topology:** multi-repo was rejected — it kills the shared-types advantage that justified TypeScript and raises contributor onboarding cost.
 - **Event backbone:** microservices-with-a-broker from day one was rejected — it forces a broker into every deployment, including volunteer-run self-hosted instances, for load a dog-show platform will not see.
 - **Persistence engine:** MySQL/MariaDB (no native RLS; weaker `jsonb`) and SQLite (no RLS, single-writer, and would force a second engine for self-host) were rejected. The WordPress connector's MySQL is irrelevant because the connector talks HTTP, not SQL.
@@ -49,7 +49,7 @@ The choice was worked through in a grilling session backed by a research note (i
 ## Consequences
 
 - The API-first design covers any club website (WordPress, SaaS builders, hand-rolled) via widgets/iframe/oEmbed, with the WordPress connector adding one-click convenience for the largest platform.
-- Choosing PostgreSQL is only possible *because* Shape 1 decouples our persistence from the club's hosting — the club keeps its WordPress/MySQL untouched; the two databases never meet.
+- Choosing PostgreSQL is only possible _because_ Shape 1 decouples our persistence from the club's hosting — the club keeps its WordPress/MySQL untouched; the two databases never meet.
 - The modular monolith keeps the self-host footprint to roughly "one app container + one Postgres," with a clean, pre-designed extraction path (outbox → NATS JetStream) if a context must scale out.
 - Boundaries in the monorepo are enforced by tooling (lint rules), not physical walls, so that discipline must be maintained in CI.
-- **Open risk:** whether any club or National Canine Organisation will *require* self-hosting / on-prem data is unquantified (research Q4). The supported single-tenant deployment mode is the mitigation; a hard, widespread requirement could reopen the hosted-first emphasis.
+- **Open risk:** whether any club or National Canine Organisation will _require_ self-hosting / on-prem data is unquantified (research Q4). The supported single-tenant deployment mode is the mitigation; a hard, widespread requirement could reopen the hosted-first emphasis.

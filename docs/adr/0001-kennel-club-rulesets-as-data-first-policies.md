@@ -17,13 +17,13 @@ A **Ruleset** is a **data-first hybrid**:
 - **Declarative domain data** for the enumerable/parametric axes: `ClassDefinition` (+ eligibility parameters), breed/`Variety`/`Group` taxonomy, `GradeScale`, `AwardType`, `TitleType`, `ShowType`.
 - **Two deep domain policy ports** for the irreducibly algorithmic axes, owned by the domain core:
   - `ClassEligibilityPolicy` — is a Dog eligible for a Class at a Show/date? (reads the Dog's owner-asserted Titles where a Class requires one)
-  - `AwardPolicy` — which Awards are *eligible* from a judging unit's grades/placements, and are the judge's *actual* (discretionary) award choices valid? Award grant is a judge decision (input), not a pure computation (output).
+  - `AwardPolicy` — which Awards are _eligible_ from a judging unit's grades/placements, and are the judge's _actual_ (discretionary) award choices valid? Award grant is a judge decision (input), not a pure computation (output).
 
-  **Titles are not computed.** A Title is owner-asserted data on the Dog (see [`CONTEXT-MAP.md`](../../CONTEXT-MAP.md) / ADR-0002); the platform never derives or confirms Titles, so there is no title policy. The ruleset still owns the *set* of Title types (`TitleType`) as the vocabulary an owner selects from.
+  **Titles are not computed.** A Title is owner-asserted data on the Dog (see [`CONTEXT-MAP.md`](../../CONTEXT-MAP.md) / ADR-0002); the platform never derives or confirms Titles, so there is no title policy. The ruleset still owns the _set_ of Title types (`TitleType`) as the vocabulary an owner selects from.
 
 **Composition:** Rulesets compose. A Show references a resolved **`Effective Ruleset`** — a single snapshot the domain operates on — composed from a national base layer (SRSH) plus **show-type-selected layers** (e.g. FCI-CACIB only for CACIB shows). Merge semantics are additive with explicit override; each policy port is bound exactly once.
 
-**Layering & placement (clean architecture):** the ports and data shapes live in the **domain layer**; concrete rulesets (FCI, SRSH, later AKC/KC) are **pure domain modules** in their own package that depend only on the domain core (dependency inversion — the core never references them). Infrastructure only *loads* the declarative data and *wires* the policy implementations.
+**Layering & placement (clean architecture):** the ports and data shapes live in the **domain layer**; concrete rulesets (FCI, SRSH, later AKC/KC) are **pure domain modules** in their own package that depend only on the domain core (dependency inversion — the core never references them). Infrastructure only _loads_ the declarative data and _wires_ the policy implementations.
 
 **Versioning:** the `Effective Ruleset` is snapshotted and **versioned onto each Show at setup**, so a Show is judged under the rules in force on its date and is immune to later ruleset edits (e.g. the SRSH title-rule change of 2025-10-01).
 

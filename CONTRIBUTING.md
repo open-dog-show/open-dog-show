@@ -26,7 +26,7 @@ By signing off your commits you also certify that your contribution:
 - is your original work, or is derived from **public primary sources** (official kennel-club regulations, standards, and public specifications) that you cite;
 - does not import proprietary or non-AGPL-compatible material.
 
-Ideas, features, and facts are not copyrightable — modelling the same real-world domain is fine — but a competitor's *expression* is protected. When in doubt, describe capability in your own words and cite the primary regulation, not a competitor's page.
+Ideas, features, and facts are not copyrightable — modelling the same real-world domain is fine — but a competitor's _expression_ is protected. When in doubt, describe capability in your own words and cite the primary regulation, not a competitor's page.
 
 ## Legal hygiene checklist
 
@@ -41,6 +41,19 @@ Before opening a pull request, confirm:
 - [ ] If I'm unsure whether something crosses a line, I **flagged it in the PR** rather than guessing.
 
 This keeps the project a defensible clean-room implementation (see `NOTICE`).
+
+## File headers
+
+Every source file (`.ts`, `.js`) must open with a two-line SPDX header:
+
+```
+// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+```
+
+Update the year to the current year when you create the file. The copyright
+holder is always `the OpenDogShow contributors` — never an individual name —
+consistent with the `NOTICE` file.
 
 ## Domain model first
 

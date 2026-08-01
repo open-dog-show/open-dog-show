@@ -4,7 +4,7 @@ status: accepted
 
 # Monorepo scaffolding and shared-kernel foundation
 
-> Implements the foundation from [ADR-0004](0004-tech-stack-typescript-modular-monolith-postgres.md) (issue #13). Records the *architectural* scaffolding decisions and the shared-kernel shape; ordinary tooling picks (lint/test libraries) are noted but not treated as lock-in.
+> Implements the foundation from [ADR-0004](0004-tech-stack-typescript-modular-monolith-postgres.md) (issue #13). Records the _architectural_ scaffolding decisions and the shared-kernel shape; ordinary tooling picks (lint/test libraries) are noted but not treated as lock-in.
 
 ## Context
 
@@ -12,7 +12,7 @@ ADR-0004 fixed the stack (pnpm monorepo, modular monolith, transactional outbox,
 
 ## Decision
 
-**Two-axis package structure.** Bounded contexts are the *vertical* axis (packages); clean-architecture layers are the *horizontal* axis (folders **inside** each context). Neither is enough alone.
+**Two-axis package structure.** Bounded contexts are the _vertical_ axis (packages); clean-architecture layers are the _horizontal_ axis (folders **inside** each context). Neither is enough alone.
 
 ```
 packages/
@@ -30,9 +30,10 @@ apps/
 
 Dependencies point **inward** (`infrastructure → application → domain`); Drizzle is importable only under `infrastructure/`, keeping the ADR-0001 core ORM-free. Contexts never import each other; `apps/api` composes them.
 
-**Boundaries are lint-enforced on both axes** (`eslint-plugin-boundaries`, ESLint flat config): a *layer* taxonomy (inward-only) and a *context-zone* taxonomy (only `@ods/kernel` and `@ods/rulesets` importable by all; `payments`/`identity` reachable only through an ACL adapter in the consumer's `infrastructure/`). The ADR-0002 relationships thus become CI-checked rules, not prose.
+**Boundaries are lint-enforced on both axes** (`eslint-plugin-boundaries`, ESLint flat config): a _layer_ taxonomy (inward-only) and a _context-zone_ taxonomy (only `@ods/kernel` and `@ods/rulesets` importable by all; `payments`/`identity` reachable only through an ACL adapter in the consumer's `infrastructure/`). The ADR-0002 relationships thus become CI-checked rules, not prose.
 
 **Shared kernel (`@ods/kernel`, domain layer).**
+
 - **Identifiers:** **UUIDv4** in native Postgres `uuid` columns, wrapped in **per-entity branded types** (`ShowId`, `DogId`, `TenantId`, `ExhibitorId`, …) so reference-by-ID across contexts is type-checked. UUIDv4 (not v7/ULID) is chosen to avoid the creation-timestamp leak a time-ordered id embeds in externally-visible identifiers.
 - **`DomainEvent` envelope:** `{ eventId, type, occurredAt, scope, aggregateId, payload }`. `type` is a context-prefixed string (`entries.EntrySubmitted`) that doubles as the schema-version key. `scope` is an extensible `EventScope` union (see ADR-0005). No correlation/causation metadata until a consumer needs it.
 - **Ports:** `Clock` and `IdGenerator` interfaces, so the core has no ambient `Date.now()`/`randomUUID()` and stays deterministically testable; real implementations are injected by `apps/api`.
@@ -43,13 +44,13 @@ Dependencies point **inward** (`infrastructure → application → domain`); Dri
 
 **Repository ports** are thin, per-aggregate, hand-written interfaces in each context's `domain/` (e.g. `EntryRepository { load; save }`); no generic `Repository<T>` base and no unit-of-work/dirty-tracking (ADR-0004 rejected that ORM style).
 
-**Context generator.** `plop` (`pnpm new:context <name>`) stamps a context package that *boots* — its generated Testcontainers integration test proves the migration applies and the outbox round-trips, satisfying the "new context boots against dev Postgres" acceptance criterion. `turbo gen` was avoided because ADR-0004 defers Turborepo.
+**Context generator.** `plop` (`pnpm new:context <name>`) stamps a context package that _boots_ — its generated Testcontainers integration test proves the migration applies and the outbox round-trips, satisfying the "new context boots against dev Postgres" acceptance criterion. `turbo gen` was avoided because ADR-0004 defers Turborepo.
 
 **Tooling (easily swappable, recorded for orientation, not lock-in):** ESLint + Prettier, Vitest, Testcontainers, GitHub Actions, ESM-only with live-source internal packages and `tsup` building only `apps/api`.
 
 ## Considered options
 
-- **Contexts as packages *or* layers as packages** — rejected: each alone under-constrains; the two-axis structure makes both ADR-0001 (layers) and ADR-0002 (contexts) structural.
+- **Contexts as packages _or_ layers as packages** — rejected: each alone under-constrains; the two-axis structure makes both ADR-0001 (layers) and ADR-0002 (contexts) structural.
 - **Generic `Repository<T>` base** — rejected: leaks a CRUD shape into the domain, against ADR-0001's deep-narrow ports.
 - **`LISTEN/NOTIFY`-first dispatcher** — rejected for the skeleton: notifications aren't durable, so a polling fallback is needed anyway; polling alone is the correct baseline.
 - **TypeScript project references / compiled `dist` graph** — deferred: live-source internal packages keep "add a context, it boots" friction-free; project references can be added if typecheck times bite.

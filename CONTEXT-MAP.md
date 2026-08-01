@@ -4,17 +4,17 @@ The domain of the open-source conformation dog-show platform, split into bounded
 
 ## Contexts
 
-| Context | Class | Responsibility |
-| --- | --- | --- |
-| **Rulesets** | Core | Owns the rule vocabulary and the `Effective Ruleset` (data + the policy ports from ADR-0001 + catalogue-publication rules). The upstream Published Language. |
-| **Entries & Registration** | Core | Dog identity (incl. owner-asserted `Title`s), exhibitor-side people, and the online-entry loop (entry, open/close, extras). |
-| **Judging & Results** | Core | Per-Show ring outcomes: grades, placements, awards. |
-| **Show Organisation** | Supporting | Club + Show Secretary set up Shows, classes, and rings. Upstream to Entries, Judging, and Catalogue. |
-| **Catalogue & Publishing** | Supporting | Catalogue (produced after entries close, published under ruleset timing rules) and results publication (live or post-show). |
-| **Payments** | Generic | Entry-fee collection. Behind an anticorruption layer to an external payment provider. |
-| **Identity & Access** | Generic | User accounts, login, permissions. Behind an anticorruption layer to an external identity provider. |
+| Context                     | Class      | Responsibility                                                                                                                                                                 |
+| --------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Rulesets**                | Core       | Owns the rule vocabulary and the `Effective Ruleset` (data + the policy ports from ADR-0001 + catalogue-publication rules). The upstream Published Language.                   |
+| **Entries & Registration**  | Core       | Dog identity (incl. owner-asserted `Title`s), exhibitor-side people, and the online-entry loop (entry, open/close, extras).                                                    |
+| **Judging & Results**       | Core       | Per-Show ring outcomes: grades, placements, awards.                                                                                                                            |
+| **Show Organisation**       | Supporting | Club + Show Secretary set up Shows, classes, and rings. Upstream to Entries, Judging, and Catalogue.                                                                           |
+| **Catalogue & Publishing**  | Supporting | Catalogue (produced after entries close, published under ruleset timing rules) and results publication (live or post-show).                                                    |
+| **Payments**                | Generic    | Entry-fee collection. Behind an anticorruption layer to an external payment provider.                                                                                          |
+| **Identity & Access**       | Generic    | User accounts, login, permissions. Behind an anticorruption layer to an external identity provider.                                                                            |
 | **Platform Administration** | Supporting | Platform operator's back office: club/tenant onboarding, the `Ruleset Catalog` (installed rulesets + versions), and global config. Upstream to Show Organisation and Rulesets. |
-| **Membership** | *(Fog)* | Parked add-on; not required to enter. No model yet. |
+| **Membership**              | _(Fog)_    | Parked add-on; not required to enter. No model yet.                                                                                                                            |
 
 ## Relationships
 
