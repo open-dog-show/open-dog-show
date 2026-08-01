@@ -190,6 +190,10 @@ The platform operator's back office — cross-club responsibilities no single Cl
 The operator of the platform instance. Onboards Clubs, curates the Ruleset Catalog, and manages global configuration and cross-club user administration. The highest-privilege User role.
 _Avoid_: Superuser, Root, Sysadmin
 
+**Tenant**:
+The unit of data isolation on the hosted platform — **one per Club**. A Club's own data (its Shows, rings, classes, catalogues, ring results) is tenant-scoped, isolated by `tenant_id`. Not all data is tenant-scoped: a Dog's owner-asserted administration (`Dog`, `Ownership`, `Title`) is **exhibitor-scoped** and reused across Clubs, and reference/operator data (`Ruleset`, `Ruleset Catalog`, `User`) is **platform-global**. See ADR-0005.
+_Avoid_: Account, Organisation (when the isolation unit is meant)
+
 **Ruleset Catalog**:
 The curated set of Rulesets and versions installed on the platform and made available for Shows to adopt. Maintained by the Platform Administrator; drawn on by Rulesets when resolving a Show's Effective Ruleset.
 _Avoid_: Ruleset Registry, Ruleset Store

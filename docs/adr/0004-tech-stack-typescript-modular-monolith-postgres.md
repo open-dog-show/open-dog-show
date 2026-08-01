@@ -4,6 +4,8 @@ status: accepted
 
 # Tech stack: TypeScript modular monolith, API-first with a WordPress connector, on PostgreSQL
 
+> **Amended 2026-08-01:** The persistence decision's "row-level `tenant_id` + RLS applied inside each context schema" is refined by [ADR-0005](0005-data-ownership-scopes-and-rls-keys.md): isolation is **scope-per-table** (tenant / exhibitor / global), not a uniform `tenant_id` on every table. The concrete scaffolding is recorded in [ADR-0006](0006-monorepo-scaffolding-and-shared-kernel.md).
+
 ## Context
 
 ADRs 0001–0003 fixed the *shape* of the system (data-first composable rulesets, nine event-integrated bounded contexts, AGPL-3.0) but left the technology stack open, under one standing constraint — **framework-agnostic, "don't marry the framework"** — plus the product goal of **keeping the cost of running a show low for small clubs** (README) and a later-added goal of **integrating with a club's existing website / CMS**.
