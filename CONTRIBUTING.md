@@ -44,16 +44,35 @@ This keeps the project a defensible clean-room implementation (see `NOTICE`).
 
 ## File headers
 
-Every source file (`.ts`, `.js`) must open with a two-line SPDX header:
+This project follows [FSFE REUSE 3.3](https://reuse.software/spec-3.3/) for
+licence and copyright declarations. The copyright line always comes **first**.
+
+### Files that can carry inline comments (`.ts`, `.js`, `.yaml`, `.yml`, `.toml`)
+
+Open every such file with the two-line SPDX header, copyright line first:
 
 ```
-// SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+```
+
+Use `#` for YAML/shell files:
+
+```
+# SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+# SPDX-License-Identifier: AGPL-3.0-only
 ```
 
 Update the year to the current year when you create the file. The copyright
 holder is always `the OpenDogShow contributors` — never an individual name —
 consistent with the `NOTICE` file.
+
+### Files that cannot carry inline comments (JSON, lock files, Markdown, etc.)
+
+Do **not** add an inline SPDX header to these files. Instead, add a glob entry
+to `REUSE.toml` at the repo root. That file is the single source of truth for
+all comment-hostile files. Having both an inline header and a `REUSE.toml`
+entry for the same file is an error.
 
 ## Domain model first
 

@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
 
 declare const __brand: unique symbol;
 type Brand<T, B> = T & { readonly [__brand]: B };
