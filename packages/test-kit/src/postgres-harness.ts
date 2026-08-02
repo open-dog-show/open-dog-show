@@ -19,7 +19,7 @@ export class PostgresHarness {
         if (this.container === undefined) {
             throw new Error('PostgresHarness: call start() before accessing connectionUrl');
         }
-        return this.container.getConnectionUri();
+        return this.container.getConnectionUri().replace(/^postgres:\/\//, 'postgresql://');
     }
 
     async start(): Promise<void> {
