@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { IdGenerator } from '../domain/ports.js';
+import type { IdGenerator } from '../domain/domain-ports.js';
 
 export class FakeIdGenerator implements IdGenerator {
   private counter: number;

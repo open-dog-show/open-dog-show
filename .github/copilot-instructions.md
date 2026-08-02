@@ -19,6 +19,12 @@ Use `#` comments for YAML files. Files that cannot carry comments (JSON, lock
 files) are covered by `REUSE.toml` bulk declarations — do not invent a
 workaround.
 
+## File naming
+
+- **kebab-case only** — every `.ts` source file uses kebab-case. `eslint-plugin-unicorn` (`unicorn/filename-case`) enforces this at lint time.
+- **Names must reflect domain language** — the subject of the file must be visible in its name. Prefer `domain-event-codec.ts` over `codec.ts`, `domain-ids.ts` over `ids.ts`, etc. A reader scanning a directory should be able to infer the domain concept without opening the file.
+- Directory names are not in scope for this rule (`checkDirectories: false`).
+
 ## TypeScript rules
 
 - **ESM-only** — `"type": "module"` in every `package.json`.
