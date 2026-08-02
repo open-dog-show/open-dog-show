@@ -20,9 +20,7 @@ export interface DomainEventJson {
  * The `occurredAt` Date is converted to an ISO-8601 string; everything else
  * is left as-is (branded string ids are plain strings at runtime).
  */
-export function encodeDomainEvent<TPayload>(
-  event: DomainEvent<TPayload>,
-): DomainEventJson {
+export function encodeDomainEvent<TPayload>(event: DomainEvent<TPayload>): DomainEventJson {
   return {
     eventId: event.eventId,
     type: event.type,
@@ -38,9 +36,7 @@ export function encodeDomainEvent<TPayload>(
  *
  * The `occurredAt` ISO-8601 string is restored to a `Date`.
  */
-export function decodeDomainEvent<TPayload>(
-  json: DomainEventJson,
-): DomainEvent<TPayload> {
+export function decodeDomainEvent<TPayload>(json: DomainEventJson): DomainEvent<TPayload> {
   return {
     eventId: json.eventId,
     type: json.type,
