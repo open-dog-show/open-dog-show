@@ -5,7 +5,7 @@ import type { Clock } from '../domain/domain-ports.js';
 
 /** Production {@link Clock} backed by `Date.now()`. */
 export class SystemClock implements Clock {
-  now(): Date {
-    return new Date();
-  }
+    now(): Date {
+        return new Date();
+    }
 }

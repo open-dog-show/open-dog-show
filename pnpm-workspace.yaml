@@ -2,7 +2,10 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 packages:
-  - 'packages/*'
-  - 'apps/*'
+    - 'packages/*'
+    - 'apps/*'
 allowBuilds:
-  esbuild: false
+    cpu-features: false
+    esbuild: false
+    protobufjs: true
+    ssh2: true
