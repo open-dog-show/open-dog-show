@@ -67,6 +67,15 @@ async function bootstrapRole(client: pg.Client): Promise<void> {
 
     // Grant the role to the current user so SET ROLE succeeds.
     await client.query(`GRANT migration_owner TO CURRENT_USER`);
+
+    // Grant CREATE on the current database so migration_owner can create schemas.
+    await client.query(`
+    DO $$
+    BEGIN
+      EXECUTE format('GRANT CREATE ON DATABASE %I TO migration_owner', current_database());
+    END
+    $$;
+  `);
 }
 
 async function applyContext(client: pg.Client, context: MigrationContext): Promise<void> {
