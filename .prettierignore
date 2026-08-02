@@ -3,4 +3,6 @@ dist/
 pnpm-lock.yaml
 *.tsbuildinfo
 .github/skills/
+# Prettier has no built-in SQL parser; exclude until prettier-plugin-sql is adopted
+**/*.sql
 

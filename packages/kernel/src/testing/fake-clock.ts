@@ -4,17 +4,17 @@
 import type { Clock } from '../domain/domain-ports.js';
 
 export class FakeClock implements Clock {
-  private current: number;
+    private current: number;
 
-  constructor(start: Date = new Date(0)) {
-    this.current = start.getTime();
-  }
+    constructor(start: Date = new Date(0)) {
+        this.current = start.getTime();
+    }
 
-  now(): Date {
-    return new Date(this.current);
-  }
+    now(): Date {
+        return new Date(this.current);
+    }
 
-  tick(ms: number): void {
-    this.current += ms;
-  }
+    tick(ms: number): void {
+        this.current += ms;
+    }
 }

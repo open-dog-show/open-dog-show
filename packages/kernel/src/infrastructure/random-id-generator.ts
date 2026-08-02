@@ -6,7 +6,7 @@ import type { IdGenerator } from '../domain/domain-ports.js';
 
 /** Production {@link IdGenerator} backed by `crypto.randomUUID()`. */
 export class RandomIdGenerator implements IdGenerator {
-  generate(): string {
-    return randomUUID();
-  }
+    generate(): string {
+        return randomUUID();
+    }
 }
