@@ -85,3 +85,27 @@ CREATE POLICY entries_hybrid ON sample.entries
   );
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON sample.entries TO app_user;
+
+-- ---------------------------------------------------------------------------
+-- Outbox table — infrastructure (no RLS: the dispatcher is a platform-level
+-- background process that reads all pending rows regardless of tenant).
+-- app_user needs INSERT for atomic writes during transactions.
+-- ON CONFLICT DO NOTHING does not require UPDATE.
+-- The dispatcher connects as a privileged role and does not use app_user.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS sample.outbox (
+  seq           BIGSERIAL   NOT NULL PRIMARY KEY,
+  event_id      UUID        NOT NULL UNIQUE,
+  type          TEXT        NOT NULL,
+  occurred_at   TIMESTAMPTZ NOT NULL,
+  scope         TEXT        NOT NULL,
+  tenant_id     UUID,
+  account_id    UUID,
+  aggregate_id  TEXT        NOT NULL,
+  payload       JSONB       NOT NULL,
+  dispatched_at TIMESTAMPTZ
+);
+
+GRANT SELECT, INSERT, UPDATE ON sample.outbox TO app_user;
+GRANT USAGE ON SEQUENCE sample.outbox_seq_seq TO app_user;
