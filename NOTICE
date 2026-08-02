@@ -30,9 +30,65 @@ OpenDogShow is an independent, clean-room implementation.
   Developer Certificate of Origin and the anti-copy policy in CONTRIBUTING.md.
 
 ------------------------------------------------------------------------------
-Third-party notices
+Third-party notices — runtime
 ------------------------------------------------------------------------------
+
+(packages declared in `dependencies` of any workspace package)
+
+@testcontainers/postgresql — https://github.com/testcontainers/testcontainers-node
+Copyright (c) 2018 - 2025 Cristian Greco
+MIT — runtime, used in @ods/test-kit; also dev-only in open-dog-show (root)
+
+pg — https://github.com/brianc/node-postgres
+Copyright (c) 2010 - 2021 Brian Carlson
+MIT — runtime, used in @ods/test-kit; also dev-only in open-dog-show (root)
+
+testcontainers — https://github.com/testcontainers/testcontainers-node
+Copyright (c) 2018 - 2025 Cristian Greco
+MIT — runtime, used in @ods/test-kit; also dev-only in open-dog-show (root)
+
+------------------------------------------------------------------------------
+Third-party notices — development-time
+------------------------------------------------------------------------------
+
+(packages declared only in `devDependencies` — not distributed)
+
+@eslint/js — https://eslint.org
+Copyright OpenJS Foundation and other contributors, <www.openjsf.org>
+MIT — dev-only, used in open-dog-show (root)
+
+@types/node — https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/node
+Copyright (c) Microsoft Corporation.
+MIT — dev-only, used in open-dog-show (root)
+
+@types/pg — https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/pg
+Copyright (c) Microsoft Corporation.
+MIT — dev-only, used in @ods/test-kit, open-dog-show (root)
+
+eslint — https://eslint.org
+Copyright OpenJS Foundation and other contributors, <www.openjsf.org>
+MIT — dev-only, used in open-dog-show (root)
+
+eslint-config-prettier — https://github.com/prettier/eslint-config-prettier
+Copyright (c) 2017, 2018, 2019, 2020, 2021, 2022, 2023 Simon Lydell and contributors
+MIT — dev-only, used in open-dog-show (root)
 
 eslint-plugin-unicorn — https://github.com/sindresorhus/eslint-plugin-unicorn
 Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
-MIT Licence — used as a development-time linting tool only, not distributed.
+MIT — dev-only, used in open-dog-show (root)
+
+prettier — https://prettier.io
+Copyright © James Long and contributors
+MIT — dev-only, used in open-dog-show (root)
+
+typescript — https://www.typescriptlang.org/
+Copyright (c) Microsoft Corporation.
+Apache-2.0 — dev-only, used in open-dog-show (root)
+
+typescript-eslint — https://typescript-eslint.io/packages/typescript-eslint
+Copyright (c) 2019 typescript-eslint and other contributors
+MIT — dev-only, used in open-dog-show (root)
+
+vitest — https://github.com/vitest-dev/vitest
+Copyright (c) 2021-Present Vitest Team
+MIT — dev-only, used in open-dog-show (root)
