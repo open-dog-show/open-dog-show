@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from 'vitest';
-import { createDomainEvent } from '../domain/DomainEvent.js';
-import type { Clock, IdGenerator } from '../domain/ports.js';
+import { createDomainEvent } from '../domain/domain-event.js';
+import type { Clock, IdGenerator } from '../domain/domain-ports.js';
 
 describe('createDomainEvent', () => {
   const FIXED_DATE = new Date('2026-08-01T12:00:00.000Z');

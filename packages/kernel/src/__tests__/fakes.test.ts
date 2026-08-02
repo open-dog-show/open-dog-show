@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from 'vitest';
-import { FakeClock } from '../testing/FakeClock.js';
-import { FakeIdGenerator } from '../testing/FakeIdGenerator.js';
+import { FakeClock } from '../testing/fake-clock.js';
+import { FakeIdGenerator } from '../testing/fake-id-generator.js';
 
 describe('FakeClock', () => {
   it('returns the fixed date on every call', () => {

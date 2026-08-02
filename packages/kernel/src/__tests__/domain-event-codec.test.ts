@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from 'vitest';
-import { decodeDomainEvent, encodeDomainEvent } from '../domain/codec.js';
-import type { DomainEvent } from '../domain/DomainEvent.js';
+import { decodeDomainEvent, encodeDomainEvent } from '../domain/domain-event-codec.js';
+import type { DomainEvent } from '../domain/domain-event.js';
 
 interface OrderedPayload {
   dogId: string;

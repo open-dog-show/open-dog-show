@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { DomainEvent, EventScope } from './DomainEvent.js';
+import type { DomainEvent, EventScope } from './domain-event.js';
 
 /** The serialised (JSON-safe) form of a {@link DomainEvent}. */
 export interface DomainEventJson {

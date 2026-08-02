@@ -33,6 +33,6 @@ OpenDogShow is an independent, clean-room implementation.
 Third-party notices
 ------------------------------------------------------------------------------
 
-Third-party components and their licences will be listed here as they are
-added. At the time of writing, this repository contains specification and
-documentation only.
+eslint-plugin-unicorn — https://github.com/sindresorhus/eslint-plugin-unicorn
+Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
+MIT Licence — used as a development-time linting tool only, not distributed.

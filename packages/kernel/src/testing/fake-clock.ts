@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { Clock } from '../domain/ports.js';
+import type { Clock } from '../domain/domain-ports.js';
 
 export class FakeClock implements Clock {
   private current: number;

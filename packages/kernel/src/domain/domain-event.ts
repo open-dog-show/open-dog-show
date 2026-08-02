@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { Clock, IdGenerator } from './ports.js';
+import type { Clock, IdGenerator } from './domain-ports.js';
 
 export type EventScope = 'tenant' | 'exhibitor' | 'platform';
 
