@@ -1,0 +1,154 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import pg from 'pg';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { PostgresHarness, runMigrations } from '@ods/test-kit';
+import { withTransaction, asTenantId, asAccountId } from '@ods/kernel';
+import { DrizzleShowRepository } from '../infrastructure/drizzle-show-repository.js';
+import { DrizzleEntryRepository } from '../infrastructure/drizzle-entry-repository.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Fixed IDs for deterministic test data.
+const TENANT_A_ID = '00000000-0000-4000-8000-000000000001';
+const TENANT_B_ID = '00000000-0000-4000-8000-000000000002';
+const ACCOUNT_A_ID = '00000000-0000-4000-8000-000000000011';
+const ACCOUNT_B_ID = '00000000-0000-4000-8000-000000000012';
+const SHOW_A_ID = '00000000-0000-4000-8000-000000000021';
+const SHOW_B_ID = '00000000-0000-4000-8000-000000000022';
+const ENTRY_HYBRID_ID = '00000000-0000-4000-8000-000000000031';
+
+describe('RLS isolation — sample context', () => {
+    const harness = new PostgresHarness();
+    let appPool: pg.Pool;
+
+    beforeAll(async () => {
+        await harness.start();
+
+        await runMigrations(harness.connectionUrl, [
+            {
+                name: 'sample',
+                migrationsDir: resolve(__dirname, '../infrastructure/migrations'),
+            },
+        ]);
+
+        // Build the app_user connection URL by swapping credentials.
+        const appUserUrl = harness.connectionUrl.replace(
+            /\/\/[^:]+:[^@]+@/,
+            '//app_user:app_user@',
+        );
+        appPool = new pg.Pool({ connectionString: appUserUrl });
+
+        // Seed test data as superuser (bypasses RLS entirely).
+        const superClient = new pg.Client({ connectionString: harness.connectionUrl });
+        await superClient.connect();
+        try {
+            await superClient.query(
+                `INSERT INTO sample.shows (id, tenant_id, name) VALUES
+                   ($1, $2, 'Tenant A Show'),
+                   ($3, $4, 'Tenant B Show')`,
+                [SHOW_A_ID, TENANT_A_ID, SHOW_B_ID, TENANT_B_ID],
+            );
+            // Hybrid entry: owned by Tenant A, submitted by Account A.
+            await superClient.query(
+                `INSERT INTO sample.entries (id, tenant_id, account_id, show_id, dog_name) VALUES
+                   ($1, $2, $3, $4, 'Fido')`,
+                [ENTRY_HYBRID_ID, TENANT_A_ID, ACCOUNT_A_ID, SHOW_A_ID],
+            );
+        } finally {
+            await superClient.end();
+        }
+    }, 120_000);
+
+    afterAll(async () => {
+        await appPool?.end();
+        await harness.stop();
+    });
+
+    describe('tenant-scoped table isolation (shows)', () => {
+        it('tenant-A scope sees only Tenant A shows', async () => {
+            await withTransaction(
+                appPool,
+                {
+                    kind: 'tenant',
+                    tenantId: asTenantId(TENANT_A_ID),
+                    accountId: asAccountId(ACCOUNT_A_ID),
+                },
+                async (client) => {
+                    const repo = new DrizzleShowRepository(client);
+                    const shows = await repo.findAll();
+                    expect(shows).toHaveLength(1);
+                    expect(shows[0]?.name).toBe('Tenant A Show');
+                },
+            );
+        });
+
+        it('tenant-B scope sees only Tenant B shows, not Tenant A', async () => {
+            await withTransaction(
+                appPool,
+                {
+                    kind: 'tenant',
+                    tenantId: asTenantId(TENANT_B_ID),
+                    accountId: asAccountId(ACCOUNT_B_ID),
+                },
+                async (client) => {
+                    const repo = new DrizzleShowRepository(client);
+                    const shows = await repo.findAll();
+                    expect(shows).toHaveLength(1);
+                    expect(shows[0]?.name).toBe('Tenant B Show');
+                },
+            );
+        });
+    });
+
+    describe('hybrid table isolation (entries)', () => {
+        it('tenant-A scope sees the hybrid entry (matched by tenant_id)', async () => {
+            await withTransaction(
+                appPool,
+                {
+                    kind: 'tenant',
+                    tenantId: asTenantId(TENANT_A_ID),
+                    accountId: asAccountId(ACCOUNT_A_ID),
+                },
+                async (client) => {
+                    const repo = new DrizzleEntryRepository(client);
+                    const entries = await repo.findAll();
+                    expect(entries).toHaveLength(1);
+                    expect(entries[0]?.dogName).toBe('Fido');
+                },
+            );
+        });
+
+        it('exhibitor-A scope sees the hybrid entry (matched by account_id)', async () => {
+            await withTransaction(
+                appPool,
+                { kind: 'exhibitor', accountId: asAccountId(ACCOUNT_A_ID) },
+                async (client) => {
+                    const repo = new DrizzleEntryRepository(client);
+                    const entries = await repo.findAll();
+                    expect(entries).toHaveLength(1);
+                    expect(entries[0]?.dogName).toBe('Fido');
+                },
+            );
+        });
+
+        it('tenant-B scope cannot see the hybrid entry belonging to tenant-A', async () => {
+            await withTransaction(
+                appPool,
+                {
+                    kind: 'tenant',
+                    tenantId: asTenantId(TENANT_B_ID),
+                    accountId: asAccountId(ACCOUNT_B_ID),
+                },
+                async (client) => {
+                    const repo = new DrizzleEntryRepository(client);
+                    const entries = await repo.findAll();
+                    expect(entries).toHaveLength(0);
+                },
+            );
+        });
+    });
+});

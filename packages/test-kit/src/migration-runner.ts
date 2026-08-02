@@ -65,6 +65,21 @@ async function bootstrapRole(client: pg.Client): Promise<void> {
     $$;
   `);
 
+    // Create the runtime app role if it does not exist yet.
+    // This role is used by the application at runtime with RLS enforced
+    // (non-owner, non-superuser means RLS is always applied).
+    await client.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT FROM pg_catalog.pg_roles WHERE rolname = 'app_user'
+      ) THEN
+        CREATE ROLE app_user WITH LOGIN PASSWORD 'app_user' NOINHERIT;
+      END IF;
+    END
+    $$;
+  `);
+
     // Grant the role to the current user so SET ROLE succeeds.
     await client.query(`GRANT migration_owner TO CURRENT_USER`);
 

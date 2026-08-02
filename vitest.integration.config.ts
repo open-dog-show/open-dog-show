@@ -5,7 +5,10 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
     test: {
-        include: ['packages/*/src/**/*.integration.test.ts'],
+        include: [
+            'packages/*/src/**/*.integration.test.ts',
+            'packages/contexts/*/src/**/*.integration.test.ts',
+        ],
         testTimeout: 120_000,
     },
 });

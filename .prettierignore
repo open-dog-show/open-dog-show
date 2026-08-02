@@ -5,4 +5,6 @@ pnpm-lock.yaml
 .github/skills/
 # Prettier has no built-in SQL parser; exclude until prettier-plugin-sql is adopted
 **/*.sql
+# VS Code task runner regenerates this file in its own format
+.vscode/tasks.json
 

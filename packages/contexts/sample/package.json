@@ -1,5 +1,5 @@
 {
-    "name": "@ods/kernel",
+    "name": "@ods/sample",
     "version": "0.0.1",
     "private": true,
     "type": "module",
@@ -9,7 +9,13 @@
             "import": "./src/index.ts"
         }
     },
+    "dependencies": {
+        "@ods/kernel": "workspace:*",
+        "drizzle-orm": "^0.44.0",
+        "pg": "^8.16.3"
+    },
     "devDependencies": {
+        "@ods/test-kit": "workspace:*",
         "@types/pg": "^8.11.14"
     }
 }

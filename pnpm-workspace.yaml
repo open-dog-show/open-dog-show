@@ -3,6 +3,7 @@
 
 packages:
     - 'packages/*'
+    - 'packages/contexts/*'
     - 'apps/*'
 allowBuilds:
     cpu-features: false

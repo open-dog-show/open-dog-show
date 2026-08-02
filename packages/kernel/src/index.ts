@@ -10,5 +10,7 @@ export type { DomainEventJson } from './domain/domain-event-codec.js';
 export { encodeDomainEvent, decodeDomainEvent } from './domain/domain-event-codec.js';
 export { SystemClock } from './infrastructure/system-clock.js';
 export { RandomIdGenerator } from './infrastructure/random-id-generator.js';
+export { withTransaction } from './infrastructure/with-transaction.js';
+export type { TransactionScope } from './domain/transaction-scope.js';
 export { FakeClock } from './testing/fake-clock.js';
 export { FakeIdGenerator } from './testing/fake-id-generator.js';
