@@ -12,7 +12,7 @@ export type { OutboxAppender } from './domain/outbox-port.js';
 export type { OutboxWriter } from './infrastructure/outbox-writer.js';
 export { SystemClock } from './infrastructure/system-clock.js';
 export { RandomIdGenerator } from './infrastructure/random-id-generator.js';
-export { withTransaction } from './infrastructure/with-transaction.js';
+export { withTransaction, withOutboxTransaction } from './infrastructure/with-transaction.js';
 export { PgOutboxWriter } from './infrastructure/pg-outbox-writer.js';
 export { PgPollingDispatcher } from './infrastructure/pg-polling-dispatcher.js';
 export type { EventHandler } from './infrastructure/pg-polling-dispatcher.js';
