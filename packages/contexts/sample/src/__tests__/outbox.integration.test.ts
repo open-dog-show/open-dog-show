@@ -7,7 +7,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PostgresHarness, runMigrations } from '@ods/test-kit';
 import {
-    withTransaction,
+    withOutboxTransaction,
     asTenantId,
     asAccountId,
     createDomainEvent,
@@ -108,17 +108,12 @@ describe('Transactional outbox — sample context', () => {
     describe('same-transaction write', () => {
         it('rolls back both the entry and the outbox row when the transaction fails', async () => {
             await expect(
-                withTransaction(
-                    appPool,
-                    scope,
-                    async (client, outbox) => {
-                        const repo = new DrizzleEntryRepository(client);
-                        await repo.save(entry);
-                        outbox.append(makeEvent());
-                        throw new Error('simulated failure');
-                    },
-                    outboxWriter,
-                ),
+                withOutboxTransaction(appPool, scope, outboxWriter, async (client, outbox) => {
+                    const repo = new DrizzleEntryRepository(client);
+                    await repo.save(entry);
+                    outbox.append(makeEvent());
+                    throw new Error('simulated failure');
+                }),
             ).rejects.toThrow('simulated failure');
 
             const { rows: entryRows } = await superPool.query(
@@ -135,16 +130,11 @@ describe('Transactional outbox — sample context', () => {
         });
 
         it('writes both the entry and the outbox row when the transaction succeeds', async () => {
-            await withTransaction(
-                appPool,
-                scope,
-                async (client, outbox) => {
-                    const repo = new DrizzleEntryRepository(client);
-                    await repo.save(entry);
-                    outbox.append(makeEvent());
-                },
-                outboxWriter,
-            );
+            await withOutboxTransaction(appPool, scope, outboxWriter, async (client, outbox) => {
+                const repo = new DrizzleEntryRepository(client);
+                await repo.save(entry);
+                outbox.append(makeEvent());
+            });
 
             const { rows: entryRows } = await superPool.query(
                 `SELECT id FROM sample.entries WHERE id = $1`,
