@@ -17,6 +17,10 @@ import type { TransactionScope } from '../domain/transaction-scope.js';
  *
  * The `ON CONFLICT (event_id) DO NOTHING` guard makes writes idempotent so
  * retrying the same unit-of-work does not create duplicate outbox rows.
+ * **Important:** idempotency only holds when the **same `DomainEvent`
+ * object** (with its original `eventId`) is replayed.  A freshly
+ * constructed event carries a new `eventId`; the conflict guard offers
+ * no protection in that case.
  */
 export class PgOutboxWriter implements OutboxWriter {
     private readonly quotedSchema: string;
