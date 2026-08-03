@@ -10,15 +10,20 @@ import type { DomainEvent } from '../domain/domain-event.js';
 /**
  * Sets the RLS session variables from `scope` on the given client.
  *
- * Session variables set per transaction:
+ * **Must be called inside an explicit transaction** (after `BEGIN`):
+ * `set_config(setting, value, is_local = true)` is equivalent to `SET LOCAL`,
+ * so the settings are scoped to the current transaction and rolled back
+ * automatically on error.  Calling this outside a transaction would scope the
+ * settings to the current statement only, leaving subsequent queries unprotected.
+ *
+ * Variables set:
  *   - `app.tenant_id`  — UUID string, or empty string when not applicable.
  *   - `app.account_id` — UUID string, or empty string when not applicable.
  *
  * RLS policies read them via `nullif(current_setting('app.tenant_id', true), '')::uuid`
  * so an empty string safely evaluates to NULL (= no rows match the policy predicate).
  *
- * set_config(setting, value, is_local=true) is equivalent to SET LOCAL
- * and accepts parameterised values, preventing any injection.
+ * The parameterised query form prevents any SQL injection through scope values.
  */
 async function setRlsSessionVars(client: pg.PoolClient, scope: TransactionScope): Promise<void> {
     const tenantId = scope.kind === 'tenant' ? scope.tenantId : '';
