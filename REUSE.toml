@@ -5,6 +5,8 @@ version = 1
 
 # Files that cannot carry inline SPDX comments:
 # JSON, lock files, Markdown, bare licence/notice files, and dotfiles.
+# Handlebars template files (.hbs) cannot carry comments without risk of
+# interfering with template rendering.
 [[annotations]]
 path = [
   "**/*.json",
@@ -16,6 +18,7 @@ path = [
   ".gitignore",
   ".github/.gitignore",
   ".prettierignore",
+  "plop-templates/**/*.hbs",
 ]
 SPDX-FileCopyrightText = "2026 the OpenDogShow contributors"
 SPDX-License-Identifier = "AGPL-3.0-only"

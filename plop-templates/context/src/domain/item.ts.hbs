@@ -1,0 +1,15 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import type { TenantId } from '@ods/kernel';
+
+export interface Item {
+    readonly id: string;
+    readonly tenantId: TenantId;
+    readonly name: string;
+}
+
+export interface ItemRepository {
+    findAll(): Promise<Item[]>;
+    save(item: Item): Promise<void>;
+}

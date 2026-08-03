@@ -5,6 +5,8 @@ pnpm-lock.yaml
 .github/skills/
 # Prettier has no built-in SQL parser; exclude until prettier-plugin-sql is adopted
 **/*.sql
+# Handlebars template files: Prettier cannot parse TypeScript syntax inside .hbs
+plop-templates/
 # VS Code task runner regenerates this file in its own format
 .vscode/tasks.json
 

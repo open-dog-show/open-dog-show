@@ -1,0 +1,32 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type pg from 'pg';
+import { asTenantId } from '@ods/kernel';
+import { itemsTable } from './schema.js';
+import type { Item, ItemRepository } from '../domain/item.js';
+
+export class DrizzleItemRepository implements ItemRepository {
+    private readonly db;
+
+    constructor(client: pg.PoolClient) {
+        this.db = drizzle(client);
+    }
+
+    async findAll(): Promise<Item[]> {
+        const rows = await this.db.select().from(itemsTable);
+        return rows.map((row) => ({
+            id: row.id,
+            tenantId: asTenantId(row.tenantId),
+            name: row.name,
+        }));
+    }
+
+    async save(item: Item): Promise<void> {
+        await this.db
+            .insert(itemsTable)
+            .values({ id: item.id, tenantId: item.tenantId, name: item.name })
+            .onConflictDoUpdate({ target: itemsTable.id, set: { name: item.name } });
+    }
+}
