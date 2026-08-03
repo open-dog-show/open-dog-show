@@ -73,6 +73,14 @@ eslint-config-prettier — https://github.com/prettier/eslint-config-prettier
 Copyright (c) 2017, 2018, 2019, 2020, 2021, 2022, 2023 Simon Lydell and contributors
 MIT — dev-only, used in open-dog-show (root)
 
+eslint-import-resolver-typescript — https://github.com/import-js/eslint-import-resolver-typescript
+Copyright (c) Alex Gorbatchev <alex.gorbatchev@gmail.com>
+ISC — dev-only, used in open-dog-show (root)
+
+eslint-plugin-boundaries — https://github.com/javierbrea/eslint-plugin-boundaries
+Copyright (c) Javier Brea
+MIT — dev-only, used in open-dog-show (root)
+
 eslint-plugin-unicorn — https://github.com/sindresorhus/eslint-plugin-unicorn
 Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
 MIT — dev-only, used in open-dog-show (root)
