@@ -349,7 +349,10 @@ const writer = new PgOutboxWriter('entries');
 ```
 
 Writes are idempotent (`ON CONFLICT (event_id) DO NOTHING`), so retrying the
-same unit-of-work never creates duplicate outbox rows.
+same unit-of-work never creates duplicate outbox rows. This guarantee only
+holds when the **same `DomainEvent` object** (with its original `eventId`) is
+replayed — a freshly constructed event carries a new `eventId` and the
+conflict guard offers no protection.
 
 Expected outbox table columns:
 
@@ -456,7 +459,7 @@ import { FakeIdGenerator } from '@ods/kernel';
 const idGen = new FakeIdGenerator(1);  // seed = 1
 idGen.generate(); // → '00000000-0000-4000-8000-000000000001'
 idGen.generate(); // → '00000000-0000-4000-8000-000000000002'
-idGen.reset();    //   sequence returns to 1
+idGen.reset();    //   sequence returns to seed (1)
 ```
 
 ---
@@ -865,13 +868,13 @@ HTTP request / use-case call
        ├─ SET LOCAL app.account_id = '<uuid>'
        │
        ├─ repo.save(aggregate)                  ← INSERT/UPDATE (RLS filters)
-       ├─ outbox.append(event)                  ← accumulates in memory
+       └─ outbox.append(event)                  ← accumulates in memory
+     })                                         ← callback returns; framework takes over
        │
        ├─ writer.write(client, [event], scope)  ← INSERT INTO <schema>.outbox
-       └─ COMMIT                                 ← aggregate + outbox row atomic
-     })
-       │
-       │   ← process may crash here: outbox row is pending, will be redelivered
+       └─ COMMIT                                ← aggregate + outbox row atomic
+         │
+         │   ← process may crash here: outbox row is pending, will be redelivered
        │
 PgPollingDispatcher.poll()
   │
