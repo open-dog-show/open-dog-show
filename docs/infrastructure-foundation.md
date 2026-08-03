@@ -1,15 +1,70 @@
 # Infrastructure foundation
 
-Developer reference for the monorepo scaffold delivered in T1–T8. It covers
-every reusable primitive, the conventions all bounded contexts follow, and a
-step-by-step guide for adding a new context.
+Developer reference for the monorepo scaffold delivered in T1–T8.
 
 > **Related docs**
-> - ADR-0004 — tech stack
+> - ADR-0002 — bounded contexts and event-driven integration
+> - ADR-0004 — tech stack rationale
 > - ADR-0005 — data-ownership scopes and RLS
 > - ADR-0006 — monorepo scaffolding and shared kernel
 > - [`CONTEXT.md`](../CONTEXT.md) — ubiquitous language
 > - [`CONTEXT-MAP.md`](../CONTEXT-MAP.md) — bounded-context relationships
+
+---
+
+## What this foundation is for
+
+The platform is a **modular monolith** — nine bounded contexts deployed as one
+process sharing a single PostgreSQL database. Each context is a separate
+package with its own database schema; contexts never import each other's code;
+they communicate only by emitting and consuming domain events.
+
+This foundation exists to make three things true for every new context without
+repeating the same boilerplate:
+
+1. **Domain layer isolation.** Domain code (entities, value objects, repository
+   interfaces) has zero dependencies on ORMs, HTTP frameworks, or databases.
+   Infrastructure concerns live in a separate layer inside the same package.
+2. **Correct multi-tenancy.** Every database query is automatically scoped to
+   the acting party (Club, exhibitor, or platform operator) through PostgreSQL
+   Row-Level Security, set once per transaction before any business logic runs.
+3. **Durable event delivery.** Domain events are written to the database in the
+   _same transaction_ as the aggregate change, so an event is never lost and a
+   change is never unannounced — even if the process crashes mid-request.
+
+These three concerns interact: a unit of work that saves an entity and emits
+an event must set the RLS scope, run the domain logic, write the event to the
+outbox, and commit — all as one atomic step. The `withOutboxTransaction` seam
+is where they meet.
+
+---
+
+## Architecture: two axes
+
+Bounded contexts provide the _vertical_ axis. Clean architecture layers provide
+the _horizontal_ axis inside each context. Neither alone is sufficient: vertical
+slices without layers muddle domain rules with SQL; layers without vertical
+slices produce a monolithic "domain" shared by all contexts.
+
+```
+                     vertical axis (contexts)
+              ┌──────────────┬──────────────┬────────┐
+              │   entries    │    judging   │  ...   │
+horizontal    ├──────────────┼──────────────┼────────┤
+axis          │   domain/    │   domain/    │        │  ← pure TypeScript
+(layers)      ├──────────────┼──────────────┼────────┤
+              │ application/ │ application/ │        │  ← use-cases
+              ├──────────────┼──────────────┼────────┤
+              │infrastructure│infrastructure│        │  ← Drizzle, pg, migrations
+              └──────────────┴──────────────┴────────┘
+                                  ↑
+                              @ods/kernel
+                     (shared primitives; no infra)
+```
+
+Dependencies flow **inward**: `infrastructure → application → domain`. Nothing
+in the domain layer may import from infrastructure. The boundary lint rules
+enforce this statically at CI time.
 
 ---
 
@@ -26,38 +81,61 @@ apps/
   api/             @ods/api         composition root (not yet scaffolded)
 ```
 
-Internal packages have `"noEmit": true` and live-source each other via `exports`
-pointing directly at `.ts` files — no build step needed inside the monorepo.
+Internal packages use `"noEmit": true` and live-source each other via `exports`
+entries that point directly at `.ts` source files. There is **no build step**
+for internal packages — a new context is immediately importable by others after
+`pnpm install`. TypeScript resolves live source through `NodeNext` resolution
+and the `allowImportingTsExtensions` flag. Only `apps/api` (the deployable)
+needs to be compiled.
 
 ---
 
 ## `@ods/kernel`
 
+The kernel is the shared-language layer across all contexts. It defines
+primitives every domain uses, infrastructure helpers every context wires up
+the same way, and test doubles for the ports it defines.
+
+**Rule:** the kernel's `domain/` sub-folder must stay free of infrastructure
+imports. `pg`, `drizzle-orm`, and third-party libraries belong in
+`kernel/infrastructure/`. The split ensures domain code in _any_ context
+remains ORM-free even when it imports from the kernel.
+
 ### Domain primitives
 
 #### `DomainEvent<TPayload>`
 
-The canonical event shape every context emits.
+Every context communicates with others through domain events. A `DomainEvent`
+is a **fact** — something that happened in the past, immutable, with a payload
+that records the relevant state change. It is not a command.
 
 ```ts
 interface DomainEvent<TPayload> {
-  eventId:     string;      // UUID
-  type:        string;      // e.g. 'entries.EntrySubmitted'
+  eventId:     string;      // UUIDv4 — idempotency key for the dispatcher
+  type:        string;      // context-prefixed, e.g. 'entries.EntrySubmitted'
   occurredAt:  Date;
   scope:       EventScope;  // 'tenant' | 'exhibitor' | 'platform'
-  aggregateId: string;
+  aggregateId: string;      // the root entity that changed
   payload:     TPayload;
 }
 ```
 
-`EventScope` records **who owns the fact** — it determines which RLS columns
-(`tenant_id` / `account_id`) the outbox writer populates, and which columns
-the dispatcher can use to route the event to the right subscriber.
+`type` is a **context-prefixed dot-notation string** (`<context>.<EventName>`).
+This is the schema-version key: when a payload shape changes incompatibly,
+introduce a new type name rather than mutating the existing one.
 
-Create events with the factory, never with a literal:
+`scope` records **who owns the fact**. It is distinct from `TransactionScope`
+(who is _acting_) — see [TransactionScope](#transactionscope) and
+[Data ownership and RLS](#data-ownership-and-rls).
+
+`eventId` is UUIDv4, not UUIDv7 or ULID. ADR-0006 chose v4 deliberately: a
+time-ordered identifier embeds a creation timestamp in externally-visible IDs,
+which is an information leak. v4 is opaque.
+
+**Always create events with the factory**, never with an object literal:
 
 ```ts
-import { createDomainEvent, FakeClock, FakeIdGenerator } from '@ods/kernel';
+import { createDomainEvent } from '@ods/kernel';
 
 const event = createDomainEvent(
   {
@@ -66,65 +144,94 @@ const event = createDomainEvent(
     aggregateId: entryId,
     payload:     { dogName: 'Fido' },
   },
-  { clock, idGenerator },   // injected — use SystemClock/RandomIdGenerator in prod
+  { clock, idGenerator },
 );
 ```
 
-The factory fills `eventId` and `occurredAt` from the injected ports, so tests
-can use `FakeClock` / `FakeIdGenerator` and get deterministic, assertable events.
+The factory fills `eventId` and `occurredAt` from the injected ports. This is
+the reason those ports exist: without injection, `new Date()` and
+`randomUUID()` are ambient globals that make events non-deterministic in tests.
+With injection, a test using `FakeClock` and `FakeIdGenerator` gets
+predictable, assertable events — and can advance time explicitly to exercise
+time-dependent domain invariants.
 
 #### `DomainEventCodec` — `encodeDomainEvent` / `decodeDomainEvent`
 
-Converts between `DomainEvent<TPayload>` (runtime shape, `occurredAt` is a
-`Date`) and `DomainEventJson` (JSON-safe, `occurredAt` is an ISO-8601 string).
-Used by `PgOutboxWriter` and `PgPollingDispatcher` internally; also useful for
-any context that serialises events over HTTP or a message bus.
+`DomainEvent` carries an `occurredAt: Date`; JSON has no Date type. The codec
+converts between the runtime shape and `DomainEventJson`, where `occurredAt`
+is an ISO-8601 string. `PgOutboxWriter` and `PgPollingDispatcher` use it
+internally. Reach for it directly when serialising events over HTTP, writing
+snapshot tests that compare raw JSON, or deserialising events arriving from a
+future message broker.
 
 ```ts
 import { encodeDomainEvent, decodeDomainEvent } from '@ods/kernel';
 
-const json = encodeDomainEvent(event);     // → DomainEventJson
+const json = encodeDomainEvent(event);           // → DomainEventJson
 const back = decodeDomainEvent<MyPayload>(json); // → DomainEvent<MyPayload>
 ```
 
 #### Branded domain IDs
 
-Thin compile-time brands over `string` — the type system blocks you from
-accidentally passing a `ShowId` where a `DogId` is required, while the runtime
-value stays a plain UUID string.
+IDs cross context boundaries as UUID strings. Without extra typing, nothing
+stops application code from passing a `ShowId` where a `DogId` is expected —
+both are `string` at runtime, so the mistake compiles and fails silently at the
+database level.
+
+Branded types add a compile-time tag enforced by the type checker:
+
+```ts
+declare const __brand: unique symbol;
+type Brand<T, B> = T & { readonly [__brand]: B };
+
+export type ShowId = Brand<string, 'ShowId'>;
+export const asShowId = (id: string): ShowId => id as ShowId;
+```
+
+At runtime a `ShowId` is still a plain string (zero overhead). The `as` cast
+is only safe through the explicit constructor, which is the intended
+boundary-crossing point — you cast an incoming raw string to a branded ID once
+at the system edge, and the rest of the code is type-safe.
 
 ```ts
 import { asShowId, asTenantId, type ShowId, type TenantId } from '@ods/kernel';
 
-const showId: ShowId   = asShowId('00000000-…');
+const showId: ShowId     = asShowId('00000000-…');
 const tenantId: TenantId = asTenantId('00000000-…');
 ```
 
-Available IDs: `ShowId`, `DogId`, `TenantId`, `ExhibitorId`, `AccountId`.
-Contexts add their own branded IDs in `src/domain/domain-ids.ts` (local to
-that context) using the same `Brand<T, B>` pattern — copy it from the kernel
-source rather than depending on the kernel for every new ID type.
+The kernel exports the cross-context IDs: `ShowId`, `DogId`, `TenantId`,
+`ExhibitorId`, `AccountId`. Contexts define their own local IDs (e.g.
+`EntryId`, `RingId`) in `src/domain/domain-ids.ts` using the same
+`Brand<T, B>` pattern — copy it from the kernel source rather than adding
+every new ID type to the kernel itself.
 
 #### `Clock` and `IdGenerator` ports
 
-Infrastructure ports defined in the domain layer so business logic never
-touches `new Date()` or `randomUUID()` directly.
+Two minimal infrastructure ports, defined in the domain layer:
 
 ```ts
 interface Clock       { now():      Date   }
 interface IdGenerator { generate(): string }
 ```
 
-| Scenario    | Implementation           |
-|-------------|--------------------------|
-| Production  | `SystemClock`, `RandomIdGenerator` (both from `@ods/kernel`) |
-| Unit tests  | `FakeClock`, `FakeIdGenerator` (both from `@ods/kernel`) |
+This is ports-and-adapters applied at the smallest useful granularity. Without
+injection, `new Date()` and `crypto.randomUUID()` are ambient globals that make
+domain logic non-deterministic: different runs produce different timestamps and
+different IDs, so tests become order-dependent and assertions become
+cumbersome. With injection, replace both with test doubles and the entire
+domain test suite runs hermetically — no system-clock or PRNG state can leak in.
+
+| Scenario    | Implementation                               | Where wired |
+|-------------|----------------------------------------------|-------------|
+| Production  | `SystemClock`, `RandomIdGenerator`           | `apps/api` composition root |
+| Unit tests  | `FakeClock`, `FakeIdGenerator`               | each test file |
 
 #### `TransactionScope`
 
-Describes **who is acting** so the transaction helper can set the correct RLS
-session variables. Distinct from `EventScope` — see ADR-0005 §"Two distinct
-concepts".
+`TransactionScope` describes **who is acting** in a unit of work, so that the
+transaction helper can set the correct PostgreSQL RLS session variables before
+any SQL runs. It is a discriminated union with three variants:
 
 ```ts
 type TransactionScope =
@@ -133,11 +240,27 @@ type TransactionScope =
   | { kind: 'platform' };
 ```
 
-| Kind        | `app.tenant_id` | `app.account_id` | Who uses it |
-|-------------|-----------------|------------------|-------------|
-| `tenant`    | Club UUID       | User UUID        | Club admins, Show Secretaries |
-| `exhibitor` | _(empty)_       | User UUID        | Dog owners entering cross-tenant |
-| `platform`  | _(empty)_       | _(empty)_        | Platform administrators, background jobs |
+| Kind        | `app.tenant_id` | `app.account_id` | Typical caller |
+|-------------|-----------------|------------------|----------------|
+| `tenant`    | Club UUID       | User UUID        | Show Secretary managing a show |
+| `exhibitor` | _(empty)_       | User UUID        | Dog owner entering a show |
+| `platform`  | _(empty)_       | _(empty)_        | Platform admin, background jobs |
+
+`TransactionScope` is **not** the same as `EventScope` on a domain event. They
+solve different problems:
+
+- `TransactionScope` is an input — it controls which database rows the
+  transaction may read or write (the RLS predicate at query time).
+- `EventScope` is an output — it records the ownership classification of a
+  fact that already happened, so downstream contexts can route it correctly.
+
+A concrete example: an Exhibitor submits an Entry
+(`TransactionScope.kind = 'exhibitor'`), but the Entry belongs to the Club's
+show, so the domain event carries `scope: 'tenant'`. The RLS predicate during
+that transaction must grant the exhibitor _write_ access to the `entries` table
+(hybrid policy); the event's scope tells the dispatcher that this is Club-owned
+data when routing. See [Data ownership and RLS](#data-ownership-and-rls) for
+the full picture.
 
 #### `OutboxAppender`
 
@@ -154,10 +277,29 @@ interface OutboxAppender {
 
 ### Infrastructure helpers
 
-#### `withTransaction`
+#### Why the transaction helpers exist
 
-Opens a connection, calls `BEGIN`, sets RLS session variables, runs the
-callback, then `COMMIT`s (or `ROLLBACK`s on error).
+A naive approach to RLS would be: open a connection, run `SET app.tenant_id =
+…`, then execute queries. This has two problems:
+
+1. `SET` without `LOCAL` is session-scoped. On a pooled connection the setting
+   survives to the next request — a Club A query can inherit Club B's
+   `tenant_id` if the connection is reused without resetting.
+2. The RLS variable and the outbox write are not coordinated with `COMMIT`. A
+   crash between the aggregate write and the event write leaves the database
+   inconsistent: either a change with no corresponding event, or an event for a
+   change that was rolled back.
+
+`withTransaction` and `withOutboxTransaction` solve both problems:
+
+- They use `set_config(name, value, is_local := true)` — equivalent to
+  `SET LOCAL` — so the RLS variables are **transaction-scoped** and vanish
+  automatically on `COMMIT` or `ROLLBACK`. Connection reuse is safe.
+- `withOutboxTransaction` writes events to the outbox table _inside the same
+  database transaction_, so the aggregate change and the event are atomic.
+  Either both land or neither does.
+
+#### `withTransaction`
 
 Use for units of work that **do not emit domain events**.
 
@@ -165,22 +307,23 @@ Use for units of work that **do not emit domain events**.
 import { withTransaction } from '@ods/kernel';
 
 const shows = await withTransaction(pool, scope, async (client) => {
-  const repo = new DrizzleShowRepository(client);
-  return repo.findAll();
+  return new DrizzleShowRepository(client).findAll();
 });
 ```
 
-The `client` is a `pg.PoolClient` scoped to this transaction. Pass it directly
-to Drizzle or raw `client.query()` calls — do not create a second connection.
+The callback receives a `pg.PoolClient` that is already inside an open
+transaction with the correct RLS variables set. Pass it directly to Drizzle or
+`client.query()` calls — do not open a second connection or begin a nested
+transaction.
 
 #### `withOutboxTransaction`
 
-The outbox-aware variant. The callback receives both a `pg.PoolClient` _and_
-an `OutboxAppender`. Any events appended during the callback are written to
-the context's outbox table inside the **same transaction**, immediately before
-`COMMIT`. A rollback cancels both the aggregate change and the outbox rows.
-
-Use for units of work that **emit domain events**.
+The outbox-aware variant. Use for writes that **emit domain events**. The
+callback receives both the `pg.PoolClient` and an `OutboxAppender`. Events
+appended during the callback are written to `<schema>.outbox` immediately
+before `COMMIT`. If anything throws — including inside the event write itself
+— the transaction rolls back and neither the aggregate row nor the outbox rows
+reach the database.
 
 ```ts
 import { withOutboxTransaction, PgOutboxWriter } from '@ods/kernel';
@@ -228,8 +371,19 @@ creates this table.
 
 #### `PgPollingDispatcher`
 
-Reads pending outbox rows and delivers them to an `EventHandler`. Constructed
-with the pool, schema name, and handler function.
+**Why polling and not `LISTEN/NOTIFY`?** PostgreSQL's `LISTEN/NOTIFY` is
+lower-latency but notifications are **not durable** — they are lost if the
+listener is disconnected when the `NOTIFY` fires. Because a reliable fallback
+(polling) is always needed anyway, polling is the correct baseline. ADR-0006
+explicitly defers `LISTEN/NOTIFY` as a future latency optimisation.
+
+**`FOR UPDATE SKIP LOCKED`** is PostgreSQL's advisory lock for queue patterns:
+multiple dispatcher instances running concurrently will never pick the same
+row, but they also do not block each other. Each row is processed in its own
+short transaction, so a handler failure rolls back only that row — previously
+dispatched rows in the same batch are unaffected.
+
+Construct with the pool, schema name, and handler:
 
 ```ts
 import { PgPollingDispatcher } from '@ods/kernel';
@@ -245,13 +399,19 @@ const dispatched = await dispatcher.poll(10);  // batchSize = 10
 
 Delivery semantics:
 
-- **At-least-once** — a crash after the handler succeeds but before
-  `dispatched_at` is committed causes redelivery. Handlers must be idempotent
-  on `event.eventId`.
+- **At-least-once.** If the process crashes after the handler returns but
+  before `dispatched_at` is committed, the row is redelivered on the next poll
+  cycle. All handlers must be **idempotent on `event.eventId`** — processing
+  the same event twice must produce the same outcome as processing it once.
+  Typical patterns: `INSERT … ON CONFLICT (event_id) DO NOTHING`, or an upsert
+  on the aggregate projection keyed by the event ID.
 - **`FOR UPDATE SKIP LOCKED`** — concurrent dispatcher instances never process
   the same row.
-- Each row is processed in its own transaction — a handler failure rolls back
-  only that row; previously dispatched rows in the same batch are unaffected.
+- **Per-row transactions** — each row is committed or rolled back independently.
+  A handler failure for row N does not affect rows 1..N−1 already dispatched.
+- **Ordering** — rows are dispatched in `seq` (insertion) order within a
+  context. There is no global ordering across contexts — a deliberate
+  trade-off of the modular-monolith design.
 
 #### `SystemClock` and `RandomIdGenerator`
 
@@ -268,21 +428,27 @@ import { SystemClock, RandomIdGenerator } from '@ods/kernel';
 
 #### `FakeClock`
 
-Deterministic `Clock` for unit tests. Starts at a given `Date` (default Unix
-epoch); advance with `tick(ms)`.
+A controllable `Clock` for unit and integration tests. Starts at a given
+timestamp (default: Unix epoch) and advances only when `tick()` is called.
+This removes all ambient wall-clock non-determinism: two runs of the same test
+always see the same timestamps, regardless of machine speed or time zone.
 
 ```ts
 import { FakeClock } from '@ods/kernel';
 
 const clock = new FakeClock(new Date('2026-08-01T12:00:00Z'));
-clock.tick(5_000); // advance 5 seconds
+// ... domain logic runs, assert timestamps ...
+clock.tick(5_000); // advance 5 s for the next phase
 ```
 
 #### `FakeIdGenerator`
 
-Deterministic `IdGenerator`. Returns valid UUID v4-shaped strings with an
-incrementing suffix (`00000000-0000-4000-8000-000000000001`, …). `reset()`
-restarts from the seed.
+A deterministic `IdGenerator` that produces valid UUID-shaped strings with an
+incrementing numeric suffix. Useful when a test must assert on specific IDs or
+verify that the correct ID was stored. The generated strings satisfy UUID
+validation (`4` and `8` nibbles are fixed), so they pass any UUID format check
+at the database or application boundary. `reset()` returns the sequence to its
+starting seed.
 
 ```ts
 import { FakeIdGenerator } from '@ods/kernel';
@@ -290,17 +456,23 @@ import { FakeIdGenerator } from '@ods/kernel';
 const idGen = new FakeIdGenerator(1);  // seed = 1
 idGen.generate(); // → '00000000-0000-4000-8000-000000000001'
 idGen.generate(); // → '00000000-0000-4000-8000-000000000002'
-idGen.reset();
+idGen.reset();    //   sequence returns to 1
 ```
 
 ---
 
 ## `@ods/test-kit`
 
+Integration tests for any context that touches a database require a real
+PostgreSQL instance. The test-kit eliminates the boilerplate of spinning one up
+and tearing it down, and ensures migrations are applied in the same way they
+would be in production.
+
 #### `PostgresHarness`
 
-Spins up a throwaway PostgreSQL container via Testcontainers. Use in
-integration tests with `beforeAll` / `afterAll`.
+Starts a throwaway PostgreSQL container via Testcontainers. The container is
+isolated per test suite and destroyed in `afterAll`, so no test file shares
+database state with another.
 
 ```ts
 import { PostgresHarness } from '@ods/test-kit';
@@ -313,13 +485,23 @@ afterAll(async  () => { await harness.stop();  });
 // harness.connectionUrl — postgresql://… superuser URL
 ```
 
-Container startup can take up to ~30 s on a cold Docker pull; the 120 s
-timeout shown above is a safe upper bound.
+Container startup takes a few seconds on a warm Docker image and up to ~30 s
+on a cold pull. The 120 s `beforeAll` timeout shown above is a safe upper
+bound for CI on a first run.
+
+`connectionUrl` is the **superuser** URL. Use it only for migrations and test
+data seeding. Application pools should connect as `app_user`
+(see [Runtime database roles](#runtime-database-roles)).
 
 #### `runMigrations`
 
-Applies per-context SQL migrations to a database. Takes the superuser URL
-and an array of `{ name, migrationsDir }` descriptors.
+Applies all pending SQL migrations for one or more contexts to a given
+database. Run it once in `beforeAll`, before any context-level tests.
+
+**Why a custom runner, not Drizzle Kit?** Drizzle Kit generates table DDL but
+cannot model `CREATE SCHEMA`, role creation, or RLS policies. The hand-written
+SQL in `0000_bootstrap.sql` covers the full setup; the runner just applies
+migration files in order and tracks what has already been applied.
 
 ```ts
 import { runMigrations } from '@ods/test-kit';
@@ -344,71 +526,146 @@ For each context the runner:
 
 ## Bounded-context anatomy
 
-Every context in `packages/contexts/<name>/` follows this structure:
+Every context in `packages/contexts/<name>/` follows this structure. The
+`contexts/sample` package is the canonical reference — its tests pass, its
+migration runs, and its RLS policies have been verified in integration.
+When in doubt, copy from sample.
 
 ```
-src/
-  domain/          ← pure TypeScript — no ORM, no framework
-    <aggregate>.ts     entity + repository interface
-    domain-ids.ts      branded IDs local to this context (optional)
-    domain-events.ts   event type definitions (optional)
-  application/     ← use-cases (not yet in sample; add as needed)
-  infrastructure/
-    schema.ts          Drizzle table definitions (pgSchema('<name>'))
-    drizzle-<x>-repository.ts   Drizzle implementation of the domain repository port
-    migrations/
-      0000_bootstrap.sql   schema, tables, RLS policies, outbox table
-  __tests__/
-    rls-isolation.integration.test.ts
-    outbox.integration.test.ts
-  index.ts         ← the context's public API surface
+packages/contexts/<name>/
+  package.json               name: "@ods/<name>", type: "module"
+  tsconfig.json              extends root; NodeNext module + resolution
+  src/
+    domain/                  ← pure TypeScript — zero external dependencies
+      <aggregate>.ts           entity type + repository interface
+      domain-ids.ts            branded IDs local to this context (optional)
+    application/             ← use-cases (not yet in sample; add when needed)
+    infrastructure/          ← all framework/ORM/database code lives here
+      schema.ts                Drizzle table definitions (pgSchema('<name>'))
+      drizzle-<x>-repository.ts  Drizzle implementation of the domain port
+      migrations/
+        0000_bootstrap.sql     schema, roles, tables, RLS policies, outbox table
+    __tests__/
+      rls-isolation.integration.test.ts
+      outbox.integration.test.ts
+    index.ts                 ← the context's public API surface
 ```
 
-### Domain layer rules
+### Domain layer
 
-- **No ORM imports** — `drizzle-orm` and `pg` are infrastructure concerns.
-- **No `@ods/<context>` imports** — contexts never import each other. The
-  boundary lint rule enforces this statically.
-- `@ods/kernel` types (`TenantId`, `AccountId`, `DomainEvent`, etc.) are
-  allowed in the domain layer.
+The domain layer must have **no external dependencies** — no `pg`, no
+`drizzle-orm`, no HTTP clients. It may only import:
+- `@ods/kernel` types (`TenantId`, `AccountId`, `DomainEvent`, ports).
+- Other files within the same context's `domain/` folder.
 
-### Infrastructure layer rules
+The only things defined here are:
 
-- Drizzle schema uses `pgSchema('<name>')` so every table lives in its own
-  PostgreSQL schema, matching the migrations.
-- Repository implementations take a `pg.PoolClient` (not a `Pool`) — the
-  caller (`withTransaction` / `withOutboxTransaction`) owns the connection.
-- Drizzle is constructed from the client inside each repository method:
-  `drizzle(client)`.
+- **Entity types** — plain TypeScript interfaces or classes describing the
+  aggregate root and its state.
+- **Repository interfaces** — narrow, aggregate-specific ports
+  (`EntryRepository { findById; save }`) expressed in domain terms, not SQL.
+  Avoid a generic `Repository<T>` base — it exposes a CRUD surface that leaks
+  persistence concerns into the domain and couples the interface to
+  implementation details of the adapter.
+- **Domain event payload types** — TypeScript payload types, co-located with
+  the aggregate they describe.
+
+```ts
+// src/domain/entry.ts
+export interface Entry {
+  readonly id:        string;
+  readonly tenantId:  TenantId;
+  readonly accountId: AccountId;
+  readonly showId:    string;
+  readonly dogName:   string;
+}
+
+export interface EntryRepository {
+  findAll(): Promise<Entry[]>;
+  save(entry: Entry): Promise<void>;
+}
+```
+
+### Infrastructure layer
+
+The infrastructure layer _implements_ the domain's repository interfaces using
+Drizzle and `pg`. Key conventions:
+
+- **Drizzle schema uses `pgSchema('<name>')`** so every table is in its own
+  PostgreSQL schema, matching the migration and keeping tables from different
+  contexts isolated even in a shared database.
+- **Repository constructors take a `pg.PoolClient`**, not a `pg.Pool`. The
+  caller (`withTransaction` / `withOutboxTransaction`) owns the connection and
+  the transaction lifetime. The repository is a pure data-access adapter.
+- **Build Drizzle from the client**: `this.db = drizzle(client)`. A Drizzle
+  instance wraps a single connection; building it from a pool would bypass the
+  active transaction and the already-set RLS session variables.
+
+```ts
+export class DrizzleEntryRepository implements EntryRepository {
+  private readonly db;
+  constructor(client: pg.PoolClient) { this.db = drizzle(client); }
+
+  async save(entry: Entry): Promise<void> {
+    await this.db
+      .insert(entriesTable).values(entry)
+      .onConflictDoUpdate({ target: entriesTable.id, set: { dogName: entry.dogName } });
+  }
+}
+```
 
 ### `index.ts` — public surface
 
-Export only what consuming code (application services, the composition root)
-needs. Keep domain and infrastructure internals unexported.
+The `index.ts` is the context's published API. Everything the composition root
+or integration tests need must be exported here; all other files are private
+implementation details. Module resolution goes through `package.json`
+`"exports"`, which points only at `index.ts` — other packages cannot reach
+into `src/domain/` or `src/infrastructure/` directly.
 
 ```ts
 export type { Entry, EntryRepository } from './domain/entry.js';
-export { DrizzleEntryRepository } from './infrastructure/drizzle-entry-repository.js';
+export      { DrizzleEntryRepository } from './infrastructure/drizzle-entry-repository.js';
 ```
 
 ---
 
 ## Data ownership and RLS
 
-See ADR-0005 for the full rationale. The short version:
+### The problem with a single `tenant_id`
 
-Every table belongs to one of three **ownership scopes**:
+ADR-0004 initially said “row-level `tenant_id` + RLS on every table.” The
+domain pushed back. The platform has three distinct kinds of data:
 
-| Scope       | Isolated by          | Who can read/write |
-|-------------|----------------------|--------------------|
-| `tenant`    | `tenant_id`          | One Club and its staff |
-| `exhibitor` | `account_id`         | One dog owner, cross-club |
-| `platform`  | _(no RLS policy)_    | Role-gated; platform admin or migration owner |
+1. **Club-owned** — Shows, rings, results. A tenant is a Club; this data must
+   be invisible to other Clubs.
+2. **Exhibitor-owned** — Dogs, Ownerships, Titles. A dog owner enters the same
+   dog into shows run by different Clubs. This data cannot be owned by one
+   Club; it must be accessible cross-tenant.
+3. **Platform-owned** — Rulesets, the Ruleset Catalog, Users. No Club owns
+   this reference data.
 
-A **hybrid** table (e.g. `entries`) is Club-owned but visible to the Exhibitor
-who submitted it:
+A uniform `tenant_id` key cannot express these three shapes. Copying a Dog per
+Club would destroy the “one durable Dog identity reused across Entries”
+invariant. Application-level filtering instead of RLS was also rejected: one
+missed `WHERE` clause becomes a cross-tenant data leak. The solution is
+**scope-per-table** with PostgreSQL RLS enforced at the database level, which
+provides defence-in-depth even if application code has a bug.
+
+### Three ownership scopes
+
+| Scope       | RLS key       | Examples |
+|-------------|---------------|----------|
+| `tenant`    | `tenant_id`   | Shows, rings, classes, ring results |
+| `exhibitor` | `account_id`  | Dogs, Ownerships, Titles |
+| `platform`  | _(exempt)_    | Rulesets, Ruleset Catalog, Users |
+
+**Hybrid tables** are Club-owned but must also be readable by the Exhibitor
+who created the row. An `Entry` belongs to the Club's show but was submitted
+by the Exhibitor; both parties must be able to read it. The RLS predicate uses
+a disjunction:
+
 ```sql
-CREATE POLICY entries_hybrid ON sample.entries
+CREATE POLICY entries_hybrid ON entries.entries
   AS PERMISSIVE FOR ALL TO app_user
   USING (
     tenant_id  = nullif(current_setting('app.tenant_id',  true), '')::uuid
@@ -416,40 +673,81 @@ CREATE POLICY entries_hybrid ON sample.entries
   );
 ```
 
-The `nullif(…, '')::uuid` pattern is intentional: `withTransaction` sets
-unused scope keys to an empty string (not `NULL`), so the cast must handle it
-gracefully — an empty string casts to `NULL`, which matches no row.
+### The `nullif(…, '')::uuid` pattern
 
-**RLS is always `FORCE ROW LEVEL SECURITY`** on every app table, so even the
-table owner is subject to policies when connecting as `app_user`. The
-`migration_owner` role is exempt (it is the table owner), which is why
-migrations run as `migration_owner`, not as `app_user`.
+`withTransaction` sets unused scope keys to an **empty string**, not `NULL`,
+because `set_config()` only accepts text. A bare `::uuid` cast would throw on
+an empty string and break all queries for a `platform`-scoped transaction.
+`nullif(…, '')` converts the empty string to `NULL` first; `NULL::uuid` is
+`NULL`; and `tenant_id = NULL` evaluates to `NULL` (not `TRUE`) in SQL, so
+no rows match — which is the correct behaviour (a platform-scoped transaction
+should not see tenant-scoped rows).
+
+### Why `FORCE ROW LEVEL SECURITY`
+
+PostgreSQL bypasses RLS for the table owner. Tables are created as
+`migration_owner`, which means code running _as_ `migration_owner` sees all
+rows regardless of policies. `FORCE ROW LEVEL SECURITY` overrides this — even
+the owner is subject to policies when connecting as a non-superuser role.
+Application code connects as `app_user` (a non-owner), so policies are always
+active. The migration runner connects as the superuser specifically to be exempt
+from RLS during schema setup and test data seeding.
+
+### Why `SET LOCAL`
+
+The session variables are set with `set_config(name, value, is_local := true)`,
+equivalent to `SET LOCAL` — the setting is transaction-scoped and reverts
+automatically on `COMMIT` or `ROLLBACK`. Setting them session-wide would leak
+the previous user’s scope into the next request on a pooled connection.
+`SET LOCAL` inside a transaction is the only safe pattern.
 
 ### Runtime database roles
 
-| Role             | Purpose |
-|------------------|---------|
-| `migration_owner`| Owns all schemas and tables; runs DDL; RLS exempt |
-| `app_user`       | Runtime application role; non-owner; RLS always enforced |
+| Role             | Purpose | RLS status |
+|------------------|---------|------------|
+| `migration_owner`| Owns all schemas/tables; runs DDL | Exempt (table owner) |
+| `app_user`       | Runtime application role | Always enforced |
 
-Application pools connect as `app_user`; `PostgresHarness.connectionUrl` is
-the superuser URL used only for migrations and test data seeding.
+Application pools must connect as `app_user`. Do not use the superuser URL in
+application pools. In tests, derive the `app_user` URL from the harness URL:
+
+```ts
+const appUserUrl = harness.connectionUrl.replace(
+  /\/\/[^:]+:[^@]+@/,
+  '//app_user:app_user@',
+);
+const appPool = new pg.Pool({ connectionString: appUserUrl });
+```
 
 ---
 
 ## Boundary lint
 
+### Why it exists
+
+Contexts in a modular monolith have _physical_ access to each other’s source
+files, even though they must not _logically_ depend on each other. Without a
+guardrail, a convenience import can couple two contexts undetected until a
+requirement to deploy or test them independently breaks. The boundary lint
+rules turn that mistake into a CI failure, not a code-review catch.
+
 `eslint-plugin-boundaries` enforces two invariants statically:
 
-1. **No infra → kernel domain violation**: `domain/` files cannot import from
-   `infrastructure/` within the same context.
-2. **No cross-context imports**: `@ods/<context>` packages cannot be imported
-   from inside another context's `domain/` or `infrastructure/` layers.
-   `@ods/kernel` is the only cross-package import that is always allowed.
+1. **Layer rule (inward-only)** — `domain/` files cannot import from
+   `infrastructure/` in the same context. Application layer cannot import from
+   infrastructure. Violations are reported as `boundaries/dependencies` errors.
 
-These rules are tested by `scripts/__tests__/boundary-lint.test.ts` — a
-Vitest suite that lints virtual code snippets and asserts violations are
-detected (or permitted). Run it with `pnpm test`.
+2. **Context-zone rule (no cross-context imports)** — `@ods/<context>`
+   packages cannot be imported from inside another context’s `domain/` or
+   `infrastructure/` layers. `@ods/kernel` is the only cross-context package
+   import that is always permitted. When a context genuinely needs to react to
+   another context’s events, it does so through the dispatcher’s
+   `EventHandler` callback — not by importing the other context’s types.
+
+`scripts/__tests__/boundary-lint.test.ts` lints virtual code snippets against
+the real ESLint config and asserts that violations are detected (and permitted
+imports are clean). This proves the _rule configuration_ is correct, not just
+that existing code happens to comply. Run with `pnpm test`.
 
 ---
 
@@ -459,28 +757,42 @@ detected (or permitted). Run it with `pnpm test`.
 
 ```sh
 pnpm new:context
-# Prompts: Context name (kebab-case, e.g. show-organisation)
+# → Context name (kebab-case, e.g. show-organisation):
 ```
 
-This generates the full package skeleton under `packages/contexts/<name>/`
-including `package.json`, `tsconfig.json`, domain stub, Drizzle schema,
-repository, bootstrap migration, and integration test stubs.
+The generator (`plop`) creates the full package skeleton under
+`packages/contexts/<name>/`, including `package.json`, `tsconfig.json`, a
+domain stub (`item.ts`), Drizzle schema, a repository stub,
+`0000_bootstrap.sql`, and both integration test stubs.
 
-After scaffolding, run `pnpm install` to link the new workspace package.
+After scaffolding:
+
+```sh
+pnpm install   # link the new workspace package
+pnpm typecheck # verify the skeleton compiles
+```
+
+The generated integration tests run against a real database and must pass
+before any domain logic is written. This is the acceptance criterion: a
+new context _boots_.
 
 ### 2. Rename the domain stub
 
-The generator creates `src/domain/item.ts` with a placeholder `Item` entity.
-Rename it and its repository interface to the actual aggregate name.
+The generator creates `src/domain/item.ts` with a placeholder `Item` entity
+and `ItemRepository` interface. Rename both to the actual aggregate name (e.g.
+`Entry` / `EntryRepository`), update the Drizzle repository accordingly, and
+re-export from `index.ts`.
 
 ### 3. Write the bootstrap migration
 
-Edit `src/infrastructure/migrations/0000_bootstrap.sql`. Use the RLS template
-from `contexts/sample` as a guide — copy the policy block that matches your
-table's ownership scope (`tenant`, `exhibitor`, or `hybrid`) and adjust the
-table and policy names.
+Edit `src/infrastructure/migrations/0000_bootstrap.sql`. Use
+`contexts/sample/src/infrastructure/migrations/0000_bootstrap.sql` as the
+reference — it contains commented RLS policy templates for all three scope
+kinds. Copy the block that matches each table’s ownership scope (`tenant`,
+`exhibitor`, or `hybrid`), replace `sample.` with your context’s schema name,
+and adjust the table and policy names.
 
-Every context's bootstrap migration must also create the outbox table:
+Every bootstrap migration must create the outbox table:
 
 ```sql
 CREATE TABLE IF NOT EXISTS <name>.outbox (
@@ -495,60 +807,99 @@ CREATE TABLE IF NOT EXISTS <name>.outbox (
   payload        JSONB        NOT NULL,
   dispatched_at  TIMESTAMPTZ
 );
+
+GRANT SELECT, INSERT, UPDATE ON <name>.outbox TO app_user;
+GRANT USAGE, SELECT ON SEQUENCE <name>.outbox_seq_seq TO app_user;
 ```
 
 ### 4. Update the Drizzle schema
 
 Edit `src/infrastructure/schema.ts`. Change `pgSchema('sample')` to
-`pgSchema('<name>')` and define your tables to match the migration.
+`pgSchema('<name>')` and define your tables to mirror the migration. Keep the
+TypeScript schema and the SQL migration in sync — Drizzle is not used in
+auto-migrate mode; the SQL migration is the source of truth.
 
 ### 5. Implement the repository
 
 Replace the placeholder `DrizzleItemRepository` with a real implementation.
-The constructor takes a `pg.PoolClient`; always build the Drizzle instance from
-that client, not from a pool.
+The constructor takes a `pg.PoolClient` (not a `pg.Pool`). Build Drizzle from
+the client: `this.db = drizzle(client)`.
 
 ### 6. Expose from `index.ts`
 
-Add `export type` lines for the domain interfaces and `export` lines for the
-infrastructure implementations.
+```ts
+export type { Entry, EntryRepository }  from './domain/entry.js';
+export      { DrizzleEntryRepository }  from './infrastructure/drizzle-entry-repository.js';
+```
 
-### 7. Wire up in integration tests
+### 7. Fill in integration tests
 
-The generated `outbox.integration.test.ts` and `rls-isolation.integration.test.ts`
-already import `PostgresHarness` and `runMigrations`. Fill in the real entity,
-IDs, and event types; the harness and migration runner work unchanged.
+The generated tests already set up the harness, run migrations, and have
+skeleton test bodies. Fill in the real entity, IDs, and event types.
 
-Run integration tests with:
+The outbox test should verify the full round-trip:
+1. Call `withOutboxTransaction`, save an entity, and append an event.
+2. Call `dispatcher.poll()`.
+3. Assert the handler received the expected event with the correct payload.
+
+Run integration tests (Docker must be running):
 
 ```sh
 pnpm vitest --config vitest.integration.config.ts
 ```
 
-Docker must be running (Testcontainers requirement).
-
 ---
 
 ## End-to-end outbox flow
 
+Understanding the full lifecycle of a write that produces an event helps when
+debugging unexpected delivery behaviour.
+
 ```
-Application call
-  └─ withOutboxTransaction(pool, scope, writer, async (client, outbox) => {
-       // 1. BEGIN + SET LOCAL app.tenant_id / app.account_id
-       repo.save(aggregate);          // 2. INSERT/UPDATE via Drizzle (RLS active)
-       outbox.append(event);          // 3. accumulate in memory
-       // 4. writer.write(client, events, scope)  → INSERT INTO <schema>.outbox
-       // 5. COMMIT  ← aggregate change + outbox row land atomically
+HTTP request / use-case call
+  │
+  └─ withOutboxTransaction(appPool, scope, writer, async (client, outbox) => {
+       │
+       ├─ BEGIN
+       ├─ SET LOCAL app.tenant_id  = '<uuid>'   ← RLS active from here
+       ├─ SET LOCAL app.account_id = '<uuid>'
+       │
+       ├─ repo.save(aggregate)                  ← INSERT/UPDATE (RLS filters)
+       ├─ outbox.append(event)                  ← accumulates in memory
+       │
+       ├─ writer.write(client, [event], scope)  ← INSERT INTO <schema>.outbox
+       └─ COMMIT                                 ← aggregate + outbox row atomic
      })
-
+       │
+       │   ← process may crash here: outbox row is pending, will be redelivered
+       │
 PgPollingDispatcher.poll()
-  └─ FOR UPDATE SKIP LOCKED on outbox WHERE dispatched_at IS NULL
-       handler(event)                 // 6. deliver to subscriber
-       UPDATE outbox SET dispatched_at = NOW()   // 7. mark dispatched
-       COMMIT                         // 8. per-row transaction
+  │
+  └─ BEGIN
+       SELECT … FROM <schema>.outbox
+         WHERE dispatched_at IS NULL
+         ORDER BY seq
+         FOR UPDATE SKIP LOCKED
+         LIMIT 1
+       handler(event)                            ← must be idempotent on eventId
+       UPDATE outbox SET dispatched_at = NOW()
+     COMMIT
 ```
 
-Steps 1–5 are atomic: either both the aggregate row and the outbox row land, or
-neither does. Steps 6–8 are at-least-once: if the process crashes between 7 and
-8, the row is redelivered on the next poll cycle. Handlers must be idempotent
-on `event.eventId`.
+**The atomic guarantee.** The aggregate change and the outbox row land in a
+single PostgreSQL transaction. There is no window where a change exists without
+a corresponding pending event, or an event exists for a change that was rolled
+back.
+
+**The at-least-once guarantee.** After the write `COMMIT`, the outbox row is
+visible to the dispatcher. If the process crashes between the handler returning
+and `dispatched_at` being committed, the row is redelivered on the next poll
+cycle. Every handler must be **idempotent on `event.eventId`**.
+
+Common idempotency patterns:
+
+| Pattern | When to use |
+|---------|-------------|
+| `INSERT … ON CONFLICT (event_id) DO NOTHING` on a tracking table | Events that trigger a side-effect which has its own ID |
+| Upsert on the projection keyed by `aggregateId` | Read-model updates that are fully derived from the event payload |
+| Natural idempotency | Projections that recompute the same value regardless of how many times they run |
