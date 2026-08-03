@@ -1,0 +1,59 @@
+-- SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+-- SPDX-License-Identifier: AGPL-3.0-only
+
+-- Create the runtime app role (non-owner; RLS is enforced for non-owner roles).
+-- NOTE: The hardcoded password is for development / CI only.
+-- Production deployments MUST replace 'app_user' with a strong, environment-supplied
+-- secret before applying this migration.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'app_user') THEN
+    CREATE ROLE app_user WITH LOGIN PASSWORD 'app_user' NOINHERIT;
+  END IF;
+END
+$$;
+
+CREATE SCHEMA IF NOT EXISTS {{snakeCase name}};
+
+GRANT USAGE ON SCHEMA {{snakeCase name}} TO app_user;
+
+-- ---------------------------------------------------------------------------
+-- Items table — tenant-scoped (template: tenant)
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS {{snakeCase name}}.items (
+  id        UUID NOT NULL PRIMARY KEY,
+  tenant_id UUID NOT NULL,
+  name      TEXT NOT NULL
+);
+
+ALTER TABLE {{snakeCase name}}.items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE {{snakeCase name}}.items FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY items_tenant ON {{snakeCase name}}.items
+  AS PERMISSIVE FOR ALL TO app_user
+  USING (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON {{snakeCase name}}.items TO app_user;
+
+-- ---------------------------------------------------------------------------
+-- Outbox table — infrastructure (no RLS: the dispatcher is a platform-level
+-- background process that reads all pending rows regardless of tenant).
+-- app_user needs INSERT for atomic writes during transactions.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS {{snakeCase name}}.outbox (
+  seq           BIGSERIAL   NOT NULL PRIMARY KEY,
+  event_id      UUID        NOT NULL UNIQUE,
+  type          TEXT        NOT NULL,
+  occurred_at   TIMESTAMPTZ NOT NULL,
+  scope         TEXT        NOT NULL,
+  tenant_id     UUID,
+  account_id    UUID,
+  aggregate_id  TEXT        NOT NULL,
+  payload       JSONB       NOT NULL,
+  dispatched_at TIMESTAMPTZ
+);
+
+GRANT SELECT, INSERT, UPDATE ON {{snakeCase name}}.outbox TO app_user;
+GRANT USAGE ON SEQUENCE {{snakeCase name}}.outbox_seq_seq TO app_user;

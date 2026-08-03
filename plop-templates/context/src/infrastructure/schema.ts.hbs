@@ -1,0 +1,12 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import { pgSchema, uuid, text } from 'drizzle-orm/pg-core';
+
+const schema = pgSchema('{{snakeCase name}}');
+
+export const itemsTable = schema.table('items', {
+    id: uuid('id').primaryKey(),
+    tenantId: uuid('tenant_id').notNull(),
+    name: text('name').notNull(),
+});
