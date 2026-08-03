@@ -7,7 +7,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PostgresHarness, runMigrations } from '@ods/test-kit';
 import {
-    withTransaction,
+    withOutboxTransaction,
     asTenantId,
     asAccountId,
     createDomainEvent,
@@ -93,16 +93,16 @@ describe('Transactional outbox — {{name}} context', () => {
 
         it('rolls back both the item and the outbox row when the transaction fails', async () => {
             await expect(
-                withTransaction(
+                withOutboxTransaction(
                     appPool,
                     scope,
+                    outboxWriter,
                     async (client, outbox) => {
                         const repo = new DrizzleItemRepository(client);
                         await repo.save(item);
                         outbox.append(makeEvent());
                         throw new Error('simulated failure');
                     },
-                    outboxWriter,
                 ),
             ).rejects.toThrow('simulated failure');
 
@@ -120,15 +120,15 @@ describe('Transactional outbox — {{name}} context', () => {
         });
 
         it('writes both the item and the outbox row when the transaction succeeds', async () => {
-            await withTransaction(
+            await withOutboxTransaction(
                 appPool,
                 scope,
+                outboxWriter,
                 async (client, outbox) => {
                     const repo = new DrizzleItemRepository(client);
                     await repo.save(item);
                     outbox.append(makeEvent());
                 },
-                outboxWriter,
             );
 
             const { rows: itemRows } = await superPool.query(

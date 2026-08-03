@@ -6,7 +6,7 @@ import type { DomainEvent } from './domain-event.js';
 /**
  * Accumulates domain events during a unit-of-work transaction.
  *
- * Passed as the second argument to the `withTransaction` callback so callers
+ * Passed as the second argument to the `withOutboxTransaction` callback so callers
  * can queue events for atomic outbox-write without coupling to the transport.
  */
 export interface OutboxAppender {
