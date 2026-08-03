@@ -85,6 +85,10 @@ eslint-plugin-unicorn — https://github.com/sindresorhus/eslint-plugin-unicorn
 Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
 MIT — dev-only, used in open-dog-show (root)
 
+plop — https://plopjs.com
+Copyright (c) Andrew Worcester <andrew@amwmedia.com>
+MIT — dev-only, used in open-dog-show (root)
+
 prettier — https://prettier.io
 Copyright © James Long and contributors
 MIT — dev-only, used in open-dog-show (root)

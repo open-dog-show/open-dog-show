@@ -76,25 +76,6 @@ importers:
         specifier: ^8.11.14
         version: 8.20.3
 
-  packages/contexts/smoke-test:
-    dependencies:
-      '@ods/kernel':
-        specifier: workspace:*
-        version: link:../../kernel
-      drizzle-orm:
-        specifier: ^0.44.0
-        version: 0.44.7(@types/pg@8.20.3)(pg@8.22.0)
-      pg:
-        specifier: ^8.16.3
-        version: 8.22.0
-    devDependencies:
-      '@ods/test-kit':
-        specifier: workspace:*
-        version: link:../../test-kit
-      '@types/pg':
-        specifier: ^8.11.14
-        version: 8.20.3
-
   packages/kernel:
     devDependencies:
       '@types/pg':
