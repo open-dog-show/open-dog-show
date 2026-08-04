@@ -35,6 +35,5 @@ export type { AwardScope, AwardType } from './domain/award-type.js';
 export type { RecognitionStatus, Breed, Variety, Group } from './domain/breed.js';
 export type { ShowType } from './domain/show-type.js';
 export type { EffectiveRuleset } from './domain/effective-ruleset.js';
+export type { RulesetLayer } from './domain/ruleset-layer.js';
 export { resolveEffectiveRuleset } from './domain/resolve-effective-ruleset.js';
-// RulesetLayer is intentionally NOT exported — it is an internal type
-// used only by resolveEffectiveRuleset.

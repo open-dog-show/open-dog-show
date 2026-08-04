@@ -162,7 +162,7 @@ describe('resolveEffectiveRuleset', () => {
         });
     });
 
-    describe('deep copy', () => {
+    describe('array isolation', () => {
         it('mutating the input classDefinitions array after calling the function does not change the returned snapshot', () => {
             const mutableDefs: ClassDefinition[] = [makeClass('c-1')];
             const layer = makeLayer('fci', { classDefinitions: mutableDefs });

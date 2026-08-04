@@ -14,8 +14,8 @@ import type { LocalDate } from './local-date.js';
  * - The last layer in the array wins when two layers share an item ID
  *   (wholesale replacement — no field-level merging).
  * - Items not overridden by a later layer are preserved as-is.
- * - The returned value is a deep copy; mutating the input layers afterwards
- *   cannot affect the snapshot.
+ * - The returned snapshot detaches the collections from their inputs (new
+ *   arrays); individual item references are preserved, not structurally cloned.
  *
  * @param layers    Ordered layers, base first (e.g. [fciLayer, srshLayer]).
  * @param resolvedAt Calendar date of resolution, supplied by the caller to
@@ -26,7 +26,7 @@ export function resolveEffectiveRuleset(
     resolvedAt: LocalDate,
 ): EffectiveRuleset {
     return {
-        resolvedAt,
+        resolvedAt: { ...resolvedAt },
         sourceLayerIds: layers.map((l) => l.id),
         classDefinitions: mergeById(layers.flatMap((l) => [...l.classDefinitions])),
         gradeScales: mergeById(layers.flatMap((l) => [...l.gradeScales])),
