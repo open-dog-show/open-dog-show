@@ -81,11 +81,25 @@ export default tseslint.config(
                     checkAllOrigins: true,
                     policies: [
                         // ── context-domain ────────────────────────────────────
-                        // Pure domain: only @ods/kernel is permitted; no ORM,
-                        // no other contexts, no infrastructure references.
+                        // Pure domain: @ods/kernel and same-context domain
+                        // siblings are permitted; no ORM, no other contexts,
+                        // no infrastructure references.
                         {
                             from: { element: { type: 'context-domain' } },
-                            allow: [allowKernel],
+                            allow: [
+                                allowKernel,
+                                {
+                                    to: {
+                                        element: {
+                                            type: 'context-domain',
+                                            captured: {
+                                                contextName:
+                                                    '{{ from.element.captured.contextName }}',
+                                            },
+                                        },
+                                    },
+                                },
+                            ],
                         },
                         // ── context-application ───────────────────────────────
                         // Use-cases: may depend on same-context domain layer
