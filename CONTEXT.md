@@ -4,14 +4,14 @@ Ubiquitous language for **OpenDogShow**, an open-source **conformation** ("beaut
 
 The domain splits into bounded contexts — see [`CONTEXT-MAP.md`](./CONTEXT-MAP.md). Terms below are grouped by their **owning context**; each term is owned by exactly one context. When code lands, each context's terms will move to `src/<context>/CONTEXT.md`.
 
-Note on shared vocabulary: **Rulesets** owns the _type/definition_ of `Class`, `Grade`, `Award`, the breed taxonomy, `Show Type`, and the set of `Title` types; other contexts own the _occurrences_ (a Grade given, an Award won). A `Title` is **owner-asserted** data on a Dog (Entries & Registration) — never computed or confirmed by the platform.
+Note on shared vocabulary: **Rulesets** owns the _type/definition_ of `Class`, `Grade`, `Award`, the breed taxonomy, `Show Type`, and the entry-certificate vocabulary; other contexts own the _occurrences_ (a Grade given, an Award won). A `Champion Certificate` is **owner-asserted** data on a Dog (Entries & Registration) — never computed or confirmed by the platform.
 
 ## Rulesets
 
 The upstream **Published Language**: it defines the rule vocabulary every other context conforms to.
 
 **Ruleset**:
-The named, pluggable bundle of kennel-club rules the core depends on — Classes and their eligibility, breed/group/variety taxonomy, Grade scale, Award types and conditions, and the set of Title types. Each Show runs under exactly one effective Ruleset. Rulesets **compose**: a national member's Ruleset (SRSH/KMSH) layers its national rules on top of the FCI base Ruleset.
+The named, pluggable bundle of kennel-club rules the core depends on — Classes and their eligibility, breed/group/variety taxonomy, Grade Scales, Award Types, and the entry-certificate vocabulary. Each Show runs under exactly one effective Ruleset. Rulesets **compose**: a national member's Ruleset (SRSH/KMSH) layers its national rules on top of the FCI base Ruleset.
 _Avoid_: Rulebook, Policy (too generic), Regulation
 
 **Effective Ruleset**:
@@ -22,9 +22,21 @@ _Avoid_: Resolved Ruleset (acceptable synonym), Merged Ruleset
 A ruleset-owned classification of a Show (e.g. CAC-only, CAC-CACIB, Open, Breed Special, Young & Veterans Day) that selects which Ruleset layers and Award types are in scope for that Show, and which catalogue-publication rules apply.
 _Avoid_: Show Category, Show Class
 
+**Grade Scale**:
+The ruleset-owned ordered set of quality grades a judge assigns within a class, paired with a placeable threshold — the minimum grade for a Dog to receive an ordinal Placement. The FCI adult scale (Excellent → Sufficient, plus Disqualified / Cannot Be Judged) has threshold Very Good; the puppy/minor-puppy scale (Very Promising → Less Promising) has threshold Very Promising. Each Class Definition references one Grade Scale.
+_Avoid_: Grading system, Qualification scale
+
 **Class**:
-A competition category into which a Dog is entered, defined by the active Ruleset through an eligibility rule (age window, required title, working qualification). The set of classes and their eligibility is ruleset-owned data, not fixed in the core. A Dog is entered in exactly one compulsory Class per Show; whether a Class is award-eligible is ruleset-defined.
+A competition category into which a Dog is entered, defined by the active Ruleset through a **Class Definition** — an eligibility rule (age window, required entry certificates, optional breeder-handler condition), a Grade Scale, and the Award Types the class feeds. The set of classes and their eligibility is ruleset-owned data, not fixed in the core. A Dog is entered in exactly one compulsory Class per Show; whether a Class is award-eligible is ruleset-defined.
 _Avoid_: Category, Division
+
+**Class Definition**:
+The ruleset-owned data record for a single Class — its age window, the set of required entry certificates (e.g. champion-certificate for Champion Class, working-certificate for Working Class), whether the Bred-by-Exhibitor handler condition applies, the Grade Scale used, and the Award Types the class feeds. When a national Ruleset layer overrides a class, the entire Class Definition is replaced as a unit. Age is evaluated on the show day; a dog that reaches an age boundary on show day moves to the higher class (FCI 2026; KMSH ART.23). Note: the FCI Bred-by-Exhibitor class becomes mandatory from 2027; the Belgian SRSH layer adds a similar national "Fokkersklas" (Breeder Class) for breed-specific shows under its own Class Definition.
+_Avoid_: Class configuration, Class parameters
+
+**Award Type**:
+The ruleset-owned definition of a single honour that can be proposed in a judging unit — specifying the minimum grade and placement required (e.g. Excellent-1st for CACIB), whether the award is discretionary, and the scope level at which it is determined (per-sex, breed, group, or show). Award Types are published as part of the Effective Ruleset.
+_Avoid_: Award category
 
 **Breed**:
 An officially recognised breed, classified into one Group and described by a Breed Standard. Its recognition status (definitive / provisional / unrecognised) gates award eligibility. The breed list and classification are ruleset-owned reference data.
@@ -43,7 +55,7 @@ One of the governing body's top-level breed groupings (the FCI defines 10). Used
 _Avoid_: Breeders' Group / Progeny Group (those are Collective Competitions)
 
 **National Canine Organisation (NCO)**:
-The kennel club governing a jurisdiction and owning its national Ruleset layer (e.g. SRSH/KMSH for Belgium). Authorises Judges and confirms national Awards and Titles.
+The kennel club governing a jurisdiction and owning its national Ruleset layer (e.g. SRSH/KMSH for Belgium). Authorises Judges and confirms national Awards and Champion Certificates.
 _Avoid_: Kennel Club (when the generic body is meant), Federation
 
 ## Show Organisation
@@ -94,9 +106,13 @@ _Avoid_: Registry (when the specific book is meant)
 The registered breeder's name (affix) that forms part of a Dog's registered name; the basis for Breeders' Group eligibility.
 _Avoid_: Affix (acceptable synonym, but prefer Kennel Name), Prefix
 
-**Title**:
-An **owner-asserted** status recorded on a Dog (e.g. Belgian Champion, International Beauty Champion / C.I.B.), maintained by the Owner in their dog administration with supporting evidence. The platform stores Titles but does **not** compute or confirm them; authoritative confirmation is external (NCO / FCI). The set of possible Title types is ruleset-owned vocabulary.
-_Avoid_: Championship (when the show type is meant)
+**Champion Certificate**:
+An **owner-asserted** certificate held by a Dog (e.g. International Beauty Champion / C.I.B., Champion Belge de Beauté), recorded by the Owner with supporting evidence. The platform stores Champion Certificates but does **not** compute or confirm them; authoritative confirmation is external (NCO / FCI).
+_Avoid_: Title (acceptable FCI synonym), Championship (when the show type is meant)
+
+**Working Certificate**:
+An **owner-asserted** certificate (WCC — Working Class Certificate) confirming a Dog has passed a breed-specific working test, required to enter Working Class at any show where that class is offered. Issued by the NCO in which the test was held. The platform stores Working Certificates but does not administer the tests.
+_Avoid_: WCC (acceptable abbreviation)
 
 **Ownership**:
 The single owner or owner-partnership responsible for a Dog at a Show. Every Entry belongs to exactly one Ownership (the "one ownership per entry" rule).
@@ -147,8 +163,8 @@ The ordinal ranking (1st–4th) a Dog receives within its Class, among Dogs meet
 _Avoid_: Rank, Position
 
 **Award**:
-A discrete honour won at a single Show — e.g. CAC, Reserve CAC, CACIB, Reserve CACIB, CACIB-J/-V, Best of Breed, Best of Opposite Sex, Best in Group, Best in Show. The set of Award types is ruleset-owned. Some Awards require a specific Grade/Placement (e.g. Excellent-1st).
-_Avoid_: Prize, Certificate (when a Title certificate is meant)
+A discrete honour proposed or won at a single Show — e.g. CAC, Reserve CAC, CACIB, Reserve CACIB, CACIB-J/-V, Best of Breed, Best of Opposite Sex, Best in Group, Best in Show, Best Junior, Best Veteran, Best Puppy, Best Minor Puppy. The set of Award types is ruleset-owned. Some Awards require a specific Grade/Placement (e.g. Excellent-1st for CACIB). International Awards such as the CACIB are **proposals** at show time, subject to later confirmation by the FCI or NCO.
+_Avoid_: Prize, Certificate (when a Champion Certificate is meant)
 
 ## Catalogue & Publishing
 
@@ -191,7 +207,7 @@ The operator of the platform instance. Onboards Clubs, curates the Ruleset Catal
 _Avoid_: Superuser, Root, Sysadmin
 
 **Tenant**:
-The unit of data isolation on the hosted platform — **one per Club**. A Club's own data (its Shows, rings, classes, catalogues, ring results) is tenant-scoped, isolated by `tenant_id`. Not all data is tenant-scoped: a Dog's owner-asserted administration (`Dog`, `Ownership`, `Title`) is **exhibitor-scoped** and reused across Clubs, and reference/operator data (`Ruleset`, `Ruleset Catalog`, `User`) is **platform-global**. See ADR-0005.
+The unit of data isolation on the hosted platform — **one per Club**. A Club's own data (its Shows, rings, classes, catalogues, ring results) is tenant-scoped, isolated by `tenant_id`. Not all data is tenant-scoped: a Dog's owner-asserted administration (`Dog`, `Ownership`, `Champion Certificate`) is **exhibitor-scoped** and reused across Clubs, and reference/operator data (`Ruleset`, `Ruleset Catalog`, `User`) is **platform-global**. See ADR-0005.
 _Avoid_: Account, Organisation (when the isolation unit is meant)
 
 **Ruleset Catalog**:
