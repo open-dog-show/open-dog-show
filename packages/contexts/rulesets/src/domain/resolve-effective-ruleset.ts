@@ -35,8 +35,12 @@ export function resolveEffectiveRuleset(
     };
 }
 
-/** Returns a new array of items deduplicated by `id`, last occurrence wins. */
-function mergeById<T extends { readonly id: string }>(items: T[]): ReadonlyArray<T> {
+/**
+ * Returns a new array deduplicated by `id`, last occurrence wins.
+ * Each item reference is preserved (shallow copy of the collection, not a
+ * structural deep clone of each item).
+ */
+function mergeById<T extends { readonly id: string }>(items: ReadonlyArray<T>): ReadonlyArray<T> {
     const map = new Map<string, T>();
     for (const item of items) {
         map.set(item.id, item);

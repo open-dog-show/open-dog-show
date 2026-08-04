@@ -6,6 +6,7 @@ import { resolveEffectiveRuleset } from '../domain/resolve-effective-ruleset.js'
 import {
     asClassId,
     asRulesetLayerId,
+    asGradeId,
     asGradeScaleId,
     asAwardTypeId,
     asShowTypeId,
@@ -57,7 +58,7 @@ function makeGradeScale(id: string): GradeScale {
         id: asGradeScaleId(id),
         name: `Scale ${id}`,
         grades: [],
-        placeableThresholdId: asGradeScaleId('placeholder') as never,
+        placeableThresholdId: asGradeId('placeholder'),
         specialOutcomes: [],
     };
 }
@@ -66,7 +67,7 @@ function makeAwardType(id: string): AwardType {
     return {
         id: asAwardTypeId(id),
         name: `Award ${id}`,
-        minimumGradeId: asGradeScaleId('g1') as never,
+        minimumGradeId: asGradeId('g1'),
         minimumPlacement: undefined,
         isDiscretionary: false,
         scope: 'breed',
