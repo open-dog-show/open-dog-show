@@ -6,6 +6,8 @@ status: accepted
 
 > **Amended 2026-07-29:** Titles are owner-asserted data on the Dog, not computed — `TitlePolicy` removed, so the abstraction has **two** policy ports (`ClassEligibilityPolicy`, `AwardPolicy`). See ADR-0002.
 
+> **Amended 2026-08-04:** Collective competitions (Brace/Couple, Breeders’ Group, Progeny Group) are judged on a group of Dogs, not a single Dog, and have structurally different inputs to individual-class judging. A **third** policy port — `CollectiveAwardPolicy` — is added. It is separate from `AwardPolicy` to keep each port’s inputs coherent; merging them would widen the port to the point where neither half is usable in isolation.
+
 ## Context
 
 The platform must serve many kennel clubs (FCI, the Belgian member SRSH/KMSH first, later AKC/KC) whose show rules differ along ~10 axes (class list and eligibility, breed/group/variety taxonomy, grade scale, award vocabulary and conditions, title-earning economics, propose-vs-confirm workflow, reserve-upgrade logic, show taxonomy, breed-recognition gates, judge-competency). The core domain (Show, Entry, Dog, Judge, Placement) must stay **kennel-club-agnostic** and must never name a specific club. See the research on the `research/fci-ruleset` and `research/belgium-ruleset` branches.
