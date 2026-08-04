@@ -29,6 +29,8 @@ export {
 } from './domain/domain-ids.js';
 export type { LocalDate } from './domain/local-date.js';
 export { CertificateKind } from './domain/certificate-kind.js';
+export type { DogEligibilityProfile } from './domain/dog-eligibility-profile.js';
+export type { ClassEligibilityPolicy } from './domain/class-eligibility-policy.js';
 export type { Grade, SpecialOutcome, GradeScale } from './domain/grade-scale.js';
 export type { ClassDefinition } from './domain/class-definition.js';
 export type { AwardScope, AwardType } from './domain/award-type.js';
