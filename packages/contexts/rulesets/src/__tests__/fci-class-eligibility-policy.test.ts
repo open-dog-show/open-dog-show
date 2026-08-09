@@ -17,20 +17,20 @@ import type { LocalDate } from '../domain/local-date.js';
 const SHOW_DATE: LocalDate = { year: 2026, month: 8, day: 4 };
 
 /**
- * From 2026-05-06 to 2026-08-04: 25 (rem. May) + 30 (Jun) + 31 (Jul) + 4 (Aug) = 90 days.
+ * Born exactly 3 months before show day: `completedMonths(2026-05-04, 2026-08-04) === 3`.
  */
-const AGE_90_DAYS: LocalDate = { year: 2026, month: 5, day: 6 };
-/** One day younger → 89 days on show day. */
-const AGE_89_DAYS: LocalDate = { year: 2026, month: 5, day: 7 };
-/** One day older → 91 days on show day. */
-const AGE_91_DAYS: LocalDate = { year: 2026, month: 5, day: 5 };
+const BORN_EXACTLY_3M: LocalDate = { year: 2026, month: 5, day: 4 };
+/** Born one day later → 2 completed months on show day. */
+const BORN_UNDER_3M: LocalDate = { year: 2026, month: 5, day: 5 };
+/** Born one day earlier → 3 completed months on show day. */
+const BORN_OVER_3M: LocalDate = { year: 2026, month: 5, day: 3 };
 
 function makeClass(overrides: Partial<ClassDefinition> = {}): ClassDefinition {
     return {
         id: asClassId('test-class'),
         name: 'Test Class',
-        minAgeDays: undefined,
-        maxAgeDays: undefined,
+        fromAgeMonths: undefined,
+        lessThanAgeMonths: undefined,
         requiredCertificates: [],
         bredByExhibitor: false,
         gradeScaleId: asGradeScaleId('standard'),
@@ -41,7 +41,7 @@ function makeClass(overrides: Partial<ClassDefinition> = {}): ClassDefinition {
 
 function makeProfile(overrides: Partial<DogEligibilityProfile> = {}): DogEligibilityProfile {
     return {
-        dateOfBirth: AGE_90_DAYS,
+        dateOfBirth: BORN_EXACTLY_3M,
         heldCertificates: [],
         ...overrides,
     };
@@ -54,75 +54,75 @@ const policy = new FciClassEligibilityPolicy();
 // ---------------------------------------------------------------------------
 
 describe('FciClassEligibilityPolicy — age window', () => {
-    describe('minAgeDays', () => {
-        it('is ineligible when dog is younger than minAgeDays', () => {
-            const classDef = makeClass({ minAgeDays: 90 });
-            const profile = makeProfile({ dateOfBirth: AGE_89_DAYS });
+    describe('fromAgeMonths', () => {
+        it('is ineligible when dog is younger than fromAgeMonths', () => {
+            const classDef = makeClass({ fromAgeMonths: 3 });
+            const profile = makeProfile({ dateOfBirth: BORN_UNDER_3M });
 
             expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(false);
         });
 
-        it('is eligible when dog age equals minAgeDays exactly (boundary)', () => {
-            const classDef = makeClass({ minAgeDays: 90 });
-            const profile = makeProfile({ dateOfBirth: AGE_90_DAYS });
+        it('is eligible when dog age equals fromAgeMonths exactly (boundary)', () => {
+            const classDef = makeClass({ fromAgeMonths: 3 });
+            const profile = makeProfile({ dateOfBirth: BORN_EXACTLY_3M });
 
             expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
         });
 
-        it('is eligible when dog age is greater than minAgeDays', () => {
-            const classDef = makeClass({ minAgeDays: 90 });
-            const profile = makeProfile({ dateOfBirth: AGE_91_DAYS });
+        it('is eligible when dog age is greater than fromAgeMonths', () => {
+            const classDef = makeClass({ fromAgeMonths: 3 });
+            const profile = makeProfile({ dateOfBirth: BORN_OVER_3M });
 
             expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
         });
 
-        it('applies no lower-bound check when minAgeDays is undefined', () => {
-            const classDef = makeClass({ minAgeDays: undefined, maxAgeDays: 200 });
-            const profile = makeProfile({ dateOfBirth: AGE_89_DAYS });
+        it('applies no lower-bound check when fromAgeMonths is undefined', () => {
+            const classDef = makeClass({ fromAgeMonths: undefined, lessThanAgeMonths: 10 });
+            const profile = makeProfile({ dateOfBirth: BORN_UNDER_3M });
 
             expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
         });
     });
 
-    describe('maxAgeDays', () => {
-        it('is ineligible when dog age equals maxAgeDays (moves to higher class)', () => {
-            const classDef = makeClass({ maxAgeDays: 90 });
-            const profile = makeProfile({ dateOfBirth: AGE_90_DAYS });
+    describe('lessThanAgeMonths', () => {
+        it('is ineligible when dog age equals lessThanAgeMonths (moves to higher class)', () => {
+            const classDef = makeClass({ lessThanAgeMonths: 3 });
+            const profile = makeProfile({ dateOfBirth: BORN_EXACTLY_3M });
 
             expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(false);
         });
 
-        it('is ineligible when dog age exceeds maxAgeDays', () => {
-            const classDef = makeClass({ maxAgeDays: 90 });
-            const profile = makeProfile({ dateOfBirth: AGE_91_DAYS });
+        it('is ineligible when dog age exceeds lessThanAgeMonths', () => {
+            const classDef = makeClass({ lessThanAgeMonths: 3 });
+            const profile = makeProfile({ dateOfBirth: BORN_OVER_3M });
 
             expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(false);
         });
 
-        it('is eligible when dog age is strictly less than maxAgeDays', () => {
-            const classDef = makeClass({ maxAgeDays: 90 });
-            const profile = makeProfile({ dateOfBirth: AGE_89_DAYS });
+        it('is eligible when dog age is strictly less than lessThanAgeMonths', () => {
+            const classDef = makeClass({ lessThanAgeMonths: 3 });
+            const profile = makeProfile({ dateOfBirth: BORN_UNDER_3M });
 
             expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
         });
 
-        it('applies no upper-bound check when maxAgeDays is undefined', () => {
-            const classDef = makeClass({ minAgeDays: 90, maxAgeDays: undefined });
-            const profile = makeProfile({ dateOfBirth: AGE_91_DAYS });
+        it('applies no upper-bound check when lessThanAgeMonths is undefined', () => {
+            const classDef = makeClass({ fromAgeMonths: 3, lessThanAgeMonths: undefined });
+            const profile = makeProfile({ dateOfBirth: BORN_OVER_3M });
 
             expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
         });
     });
 
-    it('is eligible when dog age is within the min/max window', () => {
-        const classDef = makeClass({ minAgeDays: 90, maxAgeDays: 180 });
-        const profile = makeProfile({ dateOfBirth: AGE_91_DAYS });
+    it('is eligible when dog age is within the fromAgeMonths/lessThanAgeMonths window', () => {
+        const classDef = makeClass({ fromAgeMonths: 3, lessThanAgeMonths: 6 });
+        const profile = makeProfile({ dateOfBirth: BORN_OVER_3M });
 
         expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
     });
 
     it('is ineligible when showDate is before dateOfBirth (negative age guard)', () => {
-        const classDef = makeClass(); // no min/max age bounds
+        const classDef = makeClass(); // no age bounds
         const futureBirth: LocalDate = { year: 2026, month: 9, day: 1 };
         const profile = makeProfile({ dateOfBirth: futureBirth });
 
@@ -230,11 +230,11 @@ describe('FciClassEligibilityPolicy — requiresBreederHandler', () => {
 describe('FciClassEligibilityPolicy — class with no certificate restrictions', () => {
     it('is eligible for any age-eligible dog when requiredCertificates is empty and bredByExhibitor is false', () => {
         const classDef = makeClass({
-            minAgeDays: 90,
+            fromAgeMonths: 3,
             requiredCertificates: [],
             bredByExhibitor: false,
         });
-        const profile = makeProfile({ dateOfBirth: AGE_91_DAYS, heldCertificates: [] });
+        const profile = makeProfile({ dateOfBirth: BORN_OVER_3M, heldCertificates: [] });
 
         expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
     });
