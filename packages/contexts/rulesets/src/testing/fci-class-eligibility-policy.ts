@@ -52,7 +52,10 @@ export class FciClassEligibilityPolicy implements ClassEligibilityPolicy {
             return false;
         }
 
-        if (classDefinition.lessThanAgeMonths !== undefined && age >= classDefinition.lessThanAgeMonths) {
+        if (
+            classDefinition.lessThanAgeMonths !== undefined &&
+            age >= classDefinition.lessThanAgeMonths
+        ) {
             return false;
         }
 
