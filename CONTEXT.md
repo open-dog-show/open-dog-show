@@ -47,8 +47,16 @@ The dog-side snapshot — date of birth and held certificates — that the Entri
 _Avoid_: Dog snapshot, Eligibility data
 
 **Award Type**:
-The ruleset-owned definition of a single honour that can be proposed in a judging unit — specifying the minimum grade and placement required (e.g. Excellent-1st for CACIB), whether the award is discretionary, and the scope level at which it is determined (per-sex, breed, group, or show). Award Types are published as part of the Effective Ruleset.
+The ruleset-owned definition of a single honour that can be proposed in a judging unit — specifying the minimum grade and placement required (e.g. Excellent-1st for CACIB), whether the award is discretionary, and the **Award Scope Level** at which it is determined. Award Types are published as part of the Effective Ruleset.
 _Avoid_: Award category
+
+**Award Scope Level**:
+One of four levels at which Awards are decided in FCI competition, in ascending order: **per-sex** (within one sex of a breed, across all its eligible classes), **breed** (BOB / BOS, from per-sex title-winners of both sexes), **group** (BIG, from the BOB winners of all breeds in the group), **show** (BIS, from the BIG winners). Each Award Type belongs to exactly one scope level. The Award Policy gates which types may be proposed at each level.
+_Avoid_: Judging Round, Judging Phase
+
+**Award Policy**:
+The ruleset-owned rules that answer two questions for a given Award Scope Level and its results: (a) which Award Types may the Judge propose, and (b) are the Judge's proposed assignments valid? For example, the FCI Award Policy permits CACIB only when an Excellent-1st dog is present in a CACIB-eligible Class, and rejects a CACIB proposed for a dog with a lower grade. Stateless — evaluated once per scope, from that scope's placements or candidates alone. Part of the Rulesets' Published Language.
+_Avoid_: Award Rules (too generic), Eligibility Rules (misses the validation half)
 
 **Breed**:
 An officially recognised breed, classified into one Group and described by a Breed Standard. Its recognition status (definitive / provisional / unrecognised) gates award eligibility. The breed list and classification are ruleset-owned reference data.
@@ -179,7 +187,7 @@ The ordinal ranking (1st–4th) a Dog receives within its Class, among Dogs meet
 _Avoid_: Rank, Position
 
 **Award**:
-A discrete honour proposed or won at a single Show — e.g. CAC, Reserve CAC, CACIB, Reserve CACIB, CACIB-J/-V, Best of Breed, Best of Opposite Sex, Best in Group, Best in Show, Best Junior, Best Veteran, Best Puppy, Best Minor Puppy. The set of Award types is ruleset-owned. Some Awards require a specific Grade/Placement (e.g. Excellent-1st for CACIB). International Awards such as the CACIB are **proposals** at show time, subject to later confirmation by the FCI or NCO.
+A discrete honour proposed or won at a single Show — e.g. CAC, Reserve CAC, CACIB, Reserve CACIB, CACIB-J/-V, Best of Breed, Best of Opposite Sex, Best in Group, Best in Show, Best Junior, Best Veteran, Best Puppy, Best Minor Puppy. The set of Award types is ruleset-owned. Some Awards require a specific Grade/Placement (e.g. Excellent-1st for CACIB); which types may be proposed at each **Award Scope Level** and whether proposed choices are valid is governed by the **Award Policy** (both Rulesets). International Awards such as the CACIB are **proposals** at show time, subject to later confirmation by the FCI or NCO.
 _Avoid_: Prize, Certificate (when a Champion Certificate is meant)
 
 ## Catalogue & Publishing
