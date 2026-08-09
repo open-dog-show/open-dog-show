@@ -14,8 +14,12 @@ The upstream **Published Language**: it defines the rule vocabulary every other 
 The named, pluggable bundle of kennel-club rules the core depends on — Classes and their eligibility, breed/group/variety taxonomy, Grade Scales, Award Types, and the entry-certificate vocabulary. Each Show runs under exactly one effective Ruleset. Rulesets **compose**: a national member's Ruleset (SRSH/KMSH) layers its national rules on top of the FCI base Ruleset.
 _Avoid_: Rulebook, Policy (too generic), Regulation
 
+**Ruleset Layer**:
+One discrete, named slice of kennel-club rules (e.g. the FCI base layer, the SRSH national layer) that contributes to a composed Effective Ruleset. Layers are ordered: the last layer wins when two layers define the same Class — the override is wholesale (the entire Class Definition is replaced, no field-by-field merging). A Show that runs under a national member's rules always has at least two layers: the FCI base and the NCO's national override.
+_Avoid_: Ruleset Version, Ruleset Override, Layer (unqualified)
+
 **Effective Ruleset**:
-The resolved, versioned snapshot of the composed Ruleset layers that a Show is judged under, pinned onto the Show at setup so results are immune to later Ruleset edits. The domain core operates only on the Effective Ruleset.
+The resolved, versioned snapshot of composed Ruleset Layers that a Show is judged under, stamped with the calendar date on which the layers were composed and which layers were the source. Pinned onto the Show at setup so results are immune to later Ruleset edits. The domain core operates only on the Effective Ruleset.
 _Avoid_: Resolved Ruleset (acceptable synonym), Merged Ruleset
 
 **Show Type**:
@@ -23,8 +27,12 @@ A ruleset-owned classification of a Show (e.g. CAC-only, CAC-CACIB, Open, Breed 
 _Avoid_: Show Category, Show Class
 
 **Grade Scale**:
-The ruleset-owned ordered set of quality grades a judge assigns within a class, paired with a placeable threshold — the minimum grade for a Dog to receive an ordinal Placement. The FCI adult scale (Excellent → Sufficient, plus Disqualified / Cannot Be Judged) has threshold Very Good; the puppy/minor-puppy scale (Very Promising → Less Promising) has threshold Very Promising. Each Class Definition references one Grade Scale.
+The ruleset-owned ordered set of quality grades a judge assigns within a class, paired with a placeable threshold — the minimum grade for a Dog to receive an ordinal Placement. The FCI adult scale (Excellent → Sufficient) has threshold Very Good; the puppy/minor-puppy scale (Very Promising → Less Promising) has threshold Very Promising. Each Grade Scale also carries its ruleset-defined **Special Outcomes** (Disqualified, Cannot Be Judged). Each Class Definition references one Grade Scale.
 _Avoid_: Grading system, Qualification scale
+
+**Special Outcome**:
+A non-ordinal result a Judge assigns to a Dog instead of a Grade — specifically Disqualified or Cannot Be Judged. Special Outcomes are defined on the Grade Scale but carry no ordinal position and never qualify a Dog for a Placement. Ruleset-owned.
+_Avoid_: Grade (ordinal only), Fault (a different concept)
 
 **Class**:
 A competition category into which a Dog is entered, defined by the active Ruleset through a **Class Definition** — an eligibility rule (age window, required entry certificates, optional breeder-handler condition), a Grade Scale, and the Award Types the class feeds. The set of classes and their eligibility is ruleset-owned data, not fixed in the core. A Dog is entered in exactly one compulsory Class per Show; whether a Class is award-eligible is ruleset-defined.
@@ -163,7 +171,7 @@ The Judge's assistant in the ring — collects classes, checks absentees, manage
 _Avoid_: Marshal, Steward (unqualified)
 
 **Grade**:
-The quality rating a Judge gives a Dog in its Class (e.g. Excellent, Very Good, Good, Sufficient, Disqualified, Cannot Be Judged; for puppies Very Promising / Promising / Less Promising). The scale is ruleset-owned.
+The ordinal quality rating a Judge gives a Dog in its Class (e.g. Excellent, Very Good, Good, Sufficient; for puppies Very Promising / Promising / Less Promising). Only Dogs meeting the ruleset's minimum Grade for their Grade Scale receive an ordinal Placement. The Grade Scale is ruleset-owned. Disqualified and Cannot Be Judged are not Grades — see **Special Outcome** (Rulesets).
 _Avoid_: Score, Mark, Qualification (acceptable synonym, but prefer Grade)
 
 **Placement**:
