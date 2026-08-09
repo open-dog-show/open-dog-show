@@ -43,6 +43,10 @@ export class FciClassEligibilityPolicy implements ClassEligibilityPolicy {
     ): boolean {
         const age = daysBetween(dogProfile.dateOfBirth, showDate);
 
+        if (age < 0) {
+            return false; // show date is before date of birth — fail closed
+        }
+
         if (classDefinition.minAgeDays !== undefined && age < classDefinition.minAgeDays) {
             return false;
         }

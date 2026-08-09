@@ -120,6 +120,14 @@ describe('FciClassEligibilityPolicy — age window', () => {
 
         expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
     });
+
+    it('is ineligible when showDate is before dateOfBirth (negative age guard)', () => {
+        const classDef = makeClass(); // no min/max age bounds
+        const futureBirth: LocalDate = { year: 2026, month: 9, day: 1 };
+        const profile = makeProfile({ dateOfBirth: futureBirth });
+
+        expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(false);
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -219,7 +227,7 @@ describe('FciClassEligibilityPolicy — requiresBreederHandler', () => {
 // Open class (no restrictions)
 // ---------------------------------------------------------------------------
 
-describe('FciClassEligibilityPolicy — open class (no restrictions)', () => {
+describe('FciClassEligibilityPolicy — class with no certificate restrictions', () => {
     it('is eligible for any age-eligible dog when requiredCertificates is empty and bredByExhibitor is false', () => {
         const classDef = makeClass({
             minAgeDays: 90,
