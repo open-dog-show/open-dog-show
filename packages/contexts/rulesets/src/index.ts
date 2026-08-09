@@ -39,3 +39,13 @@ export type { ShowType } from './domain/show-type.js';
 export type { EffectiveRuleset } from './domain/effective-ruleset.js';
 export type { RulesetLayer } from './domain/ruleset-layer.js';
 export { resolveEffectiveRuleset } from './domain/resolve-effective-ruleset.js';
+export type {
+    ClassPlacement,
+    CandidateEntry,
+    JudgingScopeResults,
+} from './domain/judging-scope-results.js';
+export type {
+    ProposedAwardAssignment,
+    AwardValidationResult,
+    AwardPolicy,
+} from './domain/award-policy.js';
