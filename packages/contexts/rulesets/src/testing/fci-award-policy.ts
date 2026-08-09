@@ -55,10 +55,10 @@ export class FciAwardPolicy implements AwardPolicy {
                 return this.perSexEligible(scope.placements, ruleset);
             case 'breed': {
                 const qualifyingMales = scope.maleCandidates.filter((c) =>
-                    this.candidateMeetsGradeRequirement(c, ruleset),
+                    this.candidateMeetsBreedMinimumGrade(c, ruleset),
                 );
                 const qualifyingFemales = scope.femaleCandidates.filter((c) =>
-                    this.candidateMeetsGradeRequirement(c, ruleset),
+                    this.candidateMeetsBreedMinimumGrade(c, ruleset),
                 );
                 if (qualifyingMales.length === 0 || qualifyingFemales.length === 0) {
                     return [];
@@ -135,7 +135,12 @@ export class FciAwardPolicy implements AwardPolicy {
     ): AwardValidationResult {
         for (const assignment of proposed) {
             const awardType = ruleset.awardTypes.find((at) => at.id === assignment.awardTypeId);
-            if (!awardType) continue;
+            if (!awardType) {
+                return {
+                    valid: false,
+                    reason: `Unknown award type '${assignment.awardTypeId}'`,
+                };
+            }
 
             const placement = placements.find((p) => p.dogRef === assignment.dogRef);
             if (!placement) {
@@ -146,7 +151,12 @@ export class FciAwardPolicy implements AwardPolicy {
             }
 
             const classDef = ruleset.classDefinitions.find((c) => c.id === placement.classId);
-            if (!classDef) continue;
+            if (!classDef) {
+                return {
+                    valid: false,
+                    reason: `Unknown class '${placement.classId}'`,
+                };
+            }
 
             if (!classDef.awardTypeIds.includes(assignment.awardTypeId)) {
                 return {
@@ -156,14 +166,24 @@ export class FciAwardPolicy implements AwardPolicy {
             }
 
             const dogGrade = this.resolveGrade(placement.gradeId, classDef.gradeScaleId, ruleset);
-            if (!dogGrade) continue;
+            if (!dogGrade) {
+                return {
+                    valid: false,
+                    reason: `Unknown grade '${placement.gradeId}' in grade scale '${classDef.gradeScaleId}'`,
+                };
+            }
 
             const minGrade = this.resolveGrade(
                 awardType.minimumGradeId,
                 classDef.gradeScaleId,
                 ruleset,
             );
-            if (!minGrade) continue;
+            if (!minGrade) {
+                return {
+                    valid: false,
+                    reason: `Award type '${awardType.name}' references unknown minimum grade '${awardType.minimumGradeId}'`,
+                };
+            }
 
             if (!this.gradeAtLeast(dogGrade, minGrade)) {
                 return {
@@ -202,25 +222,37 @@ export class FciAwardPolicy implements AwardPolicy {
     }
 
     /**
-     * Returns `true` when `candidate`'s grade meets the minimum grade of the
-     * award type it was proposed for.  Uses the first grade scale in the
-     * ruleset that contains the award type's minimum grade, so all per-sex
-     * award types must share a grade scale — which is the case for FCI.
+     * Returns `true` when `candidate`'s grade meets the strictest minimum
+     * grade among all `scope: 'breed'` award types in the ruleset.
+     * This guards the breed scope against per-sex feeder awards that carry
+     * a lower minimum grade than the breed-scope awards require.
      */
-    private candidateMeetsGradeRequirement(
+    private candidateMeetsBreedMinimumGrade(
         candidate: CandidateEntry,
         ruleset: EffectiveRuleset,
     ): boolean {
-        const awardType = ruleset.awardTypes.find((at) => at.id === candidate.awardTypeId);
-        if (!awardType) return false;
+        const breedAwardTypes = ruleset.awardTypes.filter((at) => at.scope === 'breed');
+        const firstBreed = breedAwardTypes[0];
+        if (!firstBreed) return false;
+
         const gradeScale = ruleset.gradeScales.find((gs) =>
-            gs.grades.some((g) => g.id === awardType.minimumGradeId),
+            gs.grades.some((g) => g.id === firstBreed.minimumGradeId),
         );
         if (!gradeScale) return false;
+
         const candidateGrade = gradeScale.grades.find((g) => g.id === candidate.gradeId);
-        const minGrade = gradeScale.grades.find((g) => g.id === awardType.minimumGradeId);
-        if (!candidateGrade || !minGrade) return false;
-        return this.gradeAtLeast(candidateGrade, minGrade);
+        if (!candidateGrade) return false;
+
+        // Strictest = lowest ordinal across all breed award minimum grades
+        let strictestOrdinal = Infinity;
+        for (const at of breedAwardTypes) {
+            const minGrade = gradeScale.grades.find((g) => g.id === at.minimumGradeId);
+            if (minGrade !== undefined && minGrade.ordinal < strictestOrdinal) {
+                strictestOrdinal = minGrade.ordinal;
+            }
+        }
+
+        return strictestOrdinal < Infinity && candidateGrade.ordinal <= strictestOrdinal;
     }
 
     /**
