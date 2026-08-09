@@ -44,8 +44,8 @@ function makeClass(id: string, name?: string): ClassDefinition {
     return {
         id: asClassId(id),
         name: name ?? `Class ${id}`,
-        minAgeDays: undefined,
-        maxAgeDays: undefined,
+        fromAgeMonths: undefined,
+        lessThanAgeMonths: undefined,
         requiredCertificates: [],
         bredByExhibitor: false,
         gradeScaleId: asGradeScaleId('gs-standard'),
