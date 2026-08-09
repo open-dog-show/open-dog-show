@@ -31,8 +31,12 @@ A competition category into which a Dog is entered, defined by the active Rulese
 _Avoid_: Category, Division
 
 **Class Definition**:
-The ruleset-owned data record for a single Class — its age window, the set of required entry certificates (e.g. champion-certificate for Champion Class, working-certificate for Working Class), whether the Bred-by-Exhibitor handler condition applies, the Grade Scale used, and the Award Types the class feeds. When a national Ruleset layer overrides a class, the entire Class Definition is replaced as a unit. Age is evaluated on the show day; a dog that reaches an age boundary on show day moves to the higher class (FCI 2026; KMSH ART.23). Note: the FCI Bred-by-Exhibitor class becomes mandatory from 2027; the Belgian SRSH layer adds a similar national "Fokkersklas" (Breeder Class) for breed-specific shows under its own Class Definition.
+The ruleset-owned data record for a single Class — its age window (expressed in whole calendar months; FCI phrasing: 'from X months' / 'less than Y months'), the set of required entry certificates (e.g. champion-certificate for Champion Class, working-certificate for Working Class), whether the Bred-by-Exhibitor handler condition applies (handler must be any breeder or co-breeder of the dog), the Grade Scale used, and the Award Types the class feeds. When a national Ruleset layer overrides a class, the entire Class Definition is replaced as a unit. Age is evaluated on the show day; a dog that reaches a month boundary on show day moves to the higher class (FCI 2026; KMSH ART.23). Note: the FCI Bred-by-Exhibitor class becomes mandatory from 2027; the Belgian SRSH layer adds a similar national "Fokkersklas" (Breeder Class) for breed-specific shows under its own Class Definition.
 _Avoid_: Class configuration, Class parameters
+
+**Dog Eligibility Profile**:
+The dog-side snapshot — date of birth and held certificates — that the Entries & Registration context assembles and passes to the Rulesets context when asking whether a Dog may enter a specific Class. Contains exactly the facts the Rulesets context needs for eligibility evaluation; the full Dog entity stays within Entries & Registration.
+_Avoid_: Dog snapshot, Eligibility data
 
 **Award Type**:
 The ruleset-owned definition of a single honour that can be proposed in a judging unit — specifying the minimum grade and placement required (e.g. Excellent-1st for CACIB), whether the award is discretionary, and the scope level at which it is determined (per-sex, breed, group, or show). Award Types are published as part of the Effective Ruleset.
@@ -113,6 +117,10 @@ _Avoid_: Title (acceptable FCI synonym), Championship (when the show type is mea
 **Working Certificate**:
 An **owner-asserted** certificate (WCC — Working Class Certificate) confirming a Dog has passed a breed-specific working test, required to enter Working Class at any show where that class is offered. Issued by the NCO in which the test was held. The platform stores Working Certificates but does not administer the tests.
 _Avoid_: WCC (acceptable abbreviation)
+
+**Vaccination Certificate**:
+An **owner-asserted** certificate confirming a Dog has current valid vaccinations. May be required as an entry certificate for certain Classes (configured in the Class Definition). The platform stores but does not verify vaccination records.
+_Avoid_: Health certificate, Vaccination record
 
 **Ownership**:
 The single owner or owner-partnership responsible for a Dog at a Show. Every Entry belongs to exactly one Ownership (the "one ownership per entry" rule).
