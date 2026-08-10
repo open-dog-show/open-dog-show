@@ -3,3 +3,4 @@
 
 export { FciClassEligibilityPolicy } from './fci-class-eligibility-policy.js';
 export { FciAwardPolicy } from './fci-award-policy.js';
+export { FciCollectiveAwardPolicy } from './fci-collective-award-policy.js';

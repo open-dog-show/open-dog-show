@@ -49,3 +49,11 @@ export type {
     AwardValidationResult,
     AwardPolicy,
 } from './domain/award-policy.js';
+export type {
+    CollectiveEntry,
+    CollectiveCompetitionResults,
+} from './domain/collective-competition-results.js';
+export type {
+    CollectiveAwardResult,
+    CollectiveAwardPolicy,
+} from './domain/collective-award-policy.js';
