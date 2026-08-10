@@ -55,8 +55,12 @@ One of four levels at which Awards are decided in FCI competition, in ascending 
 _Avoid_: Judging Round, Judging Phase
 
 **Award Policy**:
-The ruleset-owned rules that answer two questions for a given Award Scope Level and its results: (a) which Award Types may the Judge propose, and (b) are the Judge's proposed assignments valid? For example, the FCI Award Policy permits CACIB only when an Excellent-1st dog is present in a CACIB-eligible Class, and rejects a CACIB proposed for a dog with a lower grade. Stateless — evaluated once per scope, from that scope's placements or candidates alone. Part of the Rulesets' Published Language.
+The ruleset-owned rules that answer two questions for a given Award Scope Level and its results: (a) which Award Types may the Judge propose, and (b) are the Judge's proposed assignments valid? For example, the FCI Award Policy permits CACIB only when an Excellent-1st dog is present in a CACIB-eligible Class, and rejects a CACIB proposed for a dog with a lower grade. Stateless — evaluated once per scope, from that scope's placements or candidates alone. Applies to individual class/scope judging (the four Award Scope Levels); Collective Competitions are governed by the **Collective Award Policy**. Part of the Rulesets' Published Language.
 _Avoid_: Award Rules (too generic), Eligibility Rules (misses the validation half)
+
+**Collective Award Policy**:
+The ruleset-owned rules that validate whether a Collective Competition is structurally valid — e.g. Brace/Couple has exactly one Dog and one Bitch; Breeders' Group and Progeny Group have 3–5 participants. Evaluates one group in isolation and, when valid, returns the winning group (all participating entry refs — a Collective Competition has no internal ranking). Distinct from Award Policy, which governs individual class/scope judging. Part of the Rulesets' Published Language.
+_Avoid_: Group Award Policy, Collective Award Rules
 
 **Breed**:
 An officially recognised breed, classified into one Group and described by a Breed Standard. Its recognition status (definitive / provisional / unrecognised) gates award eligibility. The breed list and classification are ruleset-owned reference data.
@@ -159,7 +163,7 @@ The record of entering one Dog into one Show in exactly one compulsory Class, op
 _Avoid_: Registration, Booking
 
 **Collective Competition**:
-An optional competition judged on a _group_ of related dogs rather than a single dog. Types: **Brace/Couple** (one dog + one bitch, same breed & variety, same owner), **Breeders' Group** (3–5 dogs of the same breed/variety bred under the same kennel name), **Progeny Group** (a sire or dam with 3–5 first-generation offspring). Each participating Dog must also be individually entered in a compulsory Class at the same Show.
+An optional competition judged on a _group_ of related dogs rather than a single dog. Types: **Brace/Couple** (one dog + one bitch, same breed & variety, same owner), **Breeders' Group** (3–5 dogs of the same breed/variety bred under the same kennel name), **Progeny Group** (a sire or dam with 3–5 first-generation offspring). Each participating Dog must also be individually entered in a compulsory Class at the same Show. Won as a unit — all participants are co-winners; there is no internal ranking within the group. Structural validity is governed by the **Collective Award Policy** (Rulesets).
 _Avoid_: Group class (clashes with FCI Group), Team class
 
 **Team**:
