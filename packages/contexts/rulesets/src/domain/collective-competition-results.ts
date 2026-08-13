@@ -14,6 +14,13 @@ export interface CollectiveEntry {
 }
 
 /**
+ * The three FCI collective competition types.
+ * Derived from the `kind` discriminant of {@link CollectiveCompetitionResults}
+ * so the two never diverge.
+ */
+export type CollectiveCompetitionKind = CollectiveCompetitionResults['kind'];
+
+/**
  * The result of a Collective Competition: a discriminated union over the
  * three FCI collective competition types and the dogs participating in each.
  *

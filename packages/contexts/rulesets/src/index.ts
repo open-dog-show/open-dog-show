@@ -52,6 +52,7 @@ export type {
 export type {
     CollectiveEntry,
     CollectiveCompetitionResults,
+    CollectiveCompetitionKind,
 } from './domain/collective-competition-results.js';
 export type {
     CollectiveAwardResult,
