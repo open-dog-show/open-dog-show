@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, it, expect } from 'vitest';
+import { fciLayer, FCI_LAYER_ID, FCI_PUPPY_GRADE_SCALE_ID } from '../testing/fci-ruleset-layer.js';
 import {
-    fciLayer,
-    FCI_LAYER_ID,
-    FCI_PUPPY_GRADE_SCALE_ID,
-} from '../testing/fci-ruleset-layer.js';
-import { kmshLayer, KMSH_LAYER_ID, KMSH_AWARD_CAC, KMSH_AWARD_RCAC, KMSH_CLASS_FOKKERSKLAS } from '../testing/kmsh-ruleset-layer.js';
+    kmshLayer,
+    KMSH_LAYER_ID,
+    KMSH_AWARD_CAC,
+    KMSH_AWARD_RCAC,
+    KMSH_CLASS_FOKKERSKLAS,
+} from '../testing/kmsh-ruleset-layer.js';
 import { resolveEffectiveRuleset } from '../domain/resolve-effective-ruleset.js';
 import { CertificateKind } from '../domain/certificate-kind.js';
 import type { LocalDate } from '../domain/local-date.js';
@@ -24,7 +26,8 @@ describe('fciLayer — grade scales', () => {
     });
 
     describe('adult grade scale', () => {
-        const adultScale = () => fciLayer.gradeScales.find((s) => s.id !== FCI_PUPPY_GRADE_SCALE_ID)!;
+        const adultScale = () =>
+            fciLayer.gradeScales.find((s) => s.id !== FCI_PUPPY_GRADE_SCALE_ID)!;
 
         it('has four grades in ordinal order', () => {
             expect(adultScale().grades).toHaveLength(4);
@@ -52,7 +55,8 @@ describe('fciLayer — grade scales', () => {
     });
 
     describe('puppy grade scale', () => {
-        const puppyScale = () => fciLayer.gradeScales.find((s) => s.id === FCI_PUPPY_GRADE_SCALE_ID)!;
+        const puppyScale = () =>
+            fciLayer.gradeScales.find((s) => s.id === FCI_PUPPY_GRADE_SCALE_ID)!;
 
         it('exists with id fci-puppy', () => {
             expect(puppyScale()).toBeDefined();

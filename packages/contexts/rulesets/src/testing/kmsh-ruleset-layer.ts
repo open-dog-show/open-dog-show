@@ -81,58 +81,58 @@ export const KMSH_CLASS_FOKKERSKLAS = asClassId('fokkersklas');
  * Compose as `resolveEffectiveRuleset([fciLayer, kmshLayer], date)`.
  */
 export const kmshLayer: RulesetLayer = {
-    id:            KMSH_LAYER_ID,
-    name:          'KMSH / SRSH',
+    id: KMSH_LAYER_ID,
+    name: 'KMSH / SRSH',
     parentLayerId: FCI_LAYER_ID,
     classDefinitions: [
         // Override Minor Puppy: KMSH ART.23 specifies minimum 3 months
         // ("minimum 3 tot 6 maanden"), unlike FCI which has no numeric floor.
         {
-            id:                   asClassId('minor-puppy'),
-            name:                 'Minor Puppyklas',
-            fromAgeMonths:        3,
-            lessThanAgeMonths:    6,
+            id: asClassId('minor-puppy'),
+            name: 'Minor Puppyklas',
+            fromAgeMonths: 3,
+            lessThanAgeMonths: 6,
             requiredCertificates: [CertificateKind.Vaccination],
-            bredByExhibitor:      false,
-            gradeScaleId:         FCI_PUPPY_GRADE_SCALE_ID,
-            awardTypeIds:         [],
+            bredByExhibitor: false,
+            gradeScaleId: FCI_PUPPY_GRADE_SCALE_ID,
+            awardTypeIds: [],
         },
         // Fokkersklas (ART.24): available at breed-specific shows; feeds CAC + RCAC.
         {
-            id:                   KMSH_CLASS_FOKKERSKLAS,
-            name:                 'Fokkersklas',
-            fromAgeMonths:        15,
-            lessThanAgeMonths:    undefined,
+            id: KMSH_CLASS_FOKKERSKLAS,
+            name: 'Fokkersklas',
+            fromAgeMonths: 15,
+            lessThanAgeMonths: undefined,
             requiredCertificates: [],
-            bredByExhibitor:      true,
-            gradeScaleId:         FCI_GRADE_SCALE_ID,
-            awardTypeIds:         [KMSH_AWARD_CAC, KMSH_AWARD_RCAC],
+            bredByExhibitor: true,
+            gradeScaleId: FCI_GRADE_SCALE_ID,
+            awardTypeIds: [KMSH_AWARD_CAC, KMSH_AWARD_RCAC],
         },
     ],
     gradeScales: [], // No grade scale overrides — language is not a rule difference (ADR-0010)
     awardTypes: [
         {
-            id:               KMSH_AWARD_CAC,
-            name:             'CAC',
-            minimumGradeId:   FCI_GRADE_EXCELLENT,
+            id: KMSH_AWARD_CAC,
+            name: 'CAC',
+            minimumGradeId: FCI_GRADE_EXCELLENT,
             minimumPlacement: 1,
-            isDiscretionary:  true,
-            scope:            'per-sex',
+            isDiscretionary: true,
+            scope: 'per-sex',
         },
         {
             // Bijlage 1 §1a: remaining dogs + 2nd-placed dog from the class
             // where CAC was awarded compete for RCAC (eventueel = not mandatory).
-            id:               KMSH_AWARD_RCAC,
-            name:             'RCAC',
-            minimumGradeId:   FCI_GRADE_EXCELLENT,
+            id: KMSH_AWARD_RCAC,
+            name: 'RCAC',
+            minimumGradeId: FCI_GRADE_EXCELLENT,
             minimumPlacement: undefined,
-            isDiscretionary:  true,
-            scope:            'per-sex',
+            isDiscretionary: true,
+            scope: 'per-sex',
         },
     ],
     showTypes: [
         {
-            id:   asShowTypeId('kmsh-national-show'),
+            id: asShowTypeId('kmsh-national-show'),
             name: 'Nationale Tentoonstelling',
             availableAwardTypeIds: [
                 KMSH_AWARD_CAC,

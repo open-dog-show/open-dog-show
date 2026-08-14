@@ -65,7 +65,6 @@ requires only a new translation file — no domain code changes.
 - Translation key convention: `<concept-type>.<domain-id>` — e.g.
   `grade.excellent`, `class.junior`, `award.cacib`.
 
-
 ## Context
 
 The FCI publishes its regulations simultaneously in four working languages

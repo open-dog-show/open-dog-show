@@ -66,14 +66,14 @@ const fciAdultGradeScale: GradeScale = {
     id: FCI_GRADE_SCALE_ID,
     name: 'FCI Adult',
     grades: [
-        { id: FCI_GRADE_EXCELLENT,  name: 'Excellent',  ordinal: 0 },
-        { id: FCI_GRADE_VERY_GOOD,  name: 'Very Good',  ordinal: 1 },
-        { id: FCI_GRADE_GOOD,       name: 'Good',       ordinal: 2 },
+        { id: FCI_GRADE_EXCELLENT, name: 'Excellent', ordinal: 0 },
+        { id: FCI_GRADE_VERY_GOOD, name: 'Very Good', ordinal: 1 },
+        { id: FCI_GRADE_GOOD, name: 'Good', ordinal: 2 },
         { id: FCI_GRADE_SUFFICIENT, name: 'Sufficient', ordinal: 3 },
     ],
     placeableThresholdId: FCI_GRADE_VERY_GOOD,
     specialOutcomes: [
-        { id: FCI_OUTCOME_DISQUALIFIED,    name: 'Disqualified' },
+        { id: FCI_OUTCOME_DISQUALIFIED, name: 'Disqualified' },
         { id: FCI_OUTCOME_CANNOT_BE_JUDGED, name: 'Cannot Be Judged' },
     ],
 };
@@ -83,11 +83,11 @@ const fciAdultGradeScale: GradeScale = {
  * Used exclusively for Minor Puppy and Puppy classes.
  */
 const fciPuppyGradeScale: GradeScale = {
-    id:   FCI_PUPPY_GRADE_SCALE_ID,
+    id: FCI_PUPPY_GRADE_SCALE_ID,
     name: 'FCI Puppy',
     grades: [
         { id: FCI_GRADE_VERY_PROMISING, name: 'Very Promising', ordinal: 0 },
-        { id: FCI_GRADE_PROMISING,      name: 'Promising',      ordinal: 1 },
+        { id: FCI_GRADE_PROMISING, name: 'Promising', ordinal: 1 },
         { id: FCI_GRADE_LESS_PROMISING, name: 'Less Promising', ordinal: 2 },
     ],
     placeableThresholdId: FCI_GRADE_VERY_PROMISING,
@@ -100,70 +100,70 @@ const fciPuppyGradeScale: GradeScale = {
 
 const fciAwardTypes: ReadonlyArray<AwardType> = [
     {
-        id:               FCI_AWARD_CACIB,
-        name:             'CACIB',
-        minimumGradeId:   FCI_GRADE_EXCELLENT,
+        id: FCI_AWARD_CACIB,
+        name: 'CACIB',
+        minimumGradeId: FCI_GRADE_EXCELLENT,
         minimumPlacement: 1,
-        isDiscretionary:  true,
-        scope:            'per-sex',
+        isDiscretionary: true,
+        scope: 'per-sex',
     },
     {
         // Section 7: awarded to the second-best EXCELLENT dog from the CACIB-eligible
         // classes. Not compulsory. No equivalent reserve exists for CACIB-J or CACIB-V.
-        id:               FCI_AWARD_RES_CACIB,
-        name:             'Reserve CACIB',
-        minimumGradeId:   FCI_GRADE_EXCELLENT,
+        id: FCI_AWARD_RES_CACIB,
+        name: 'Reserve CACIB',
+        minimumGradeId: FCI_GRADE_EXCELLENT,
         minimumPlacement: undefined, // selection logic lives in AwardPolicy, not here
-        isDiscretionary:  true,
-        scope:            'per-sex',
+        isDiscretionary: true,
+        scope: 'per-sex',
     },
     {
-        id:               FCI_AWARD_CACIB_J,
-        name:             'CACIB-J',
-        minimumGradeId:   FCI_GRADE_EXCELLENT,
+        id: FCI_AWARD_CACIB_J,
+        name: 'CACIB-J',
+        minimumGradeId: FCI_GRADE_EXCELLENT,
         minimumPlacement: 1,
-        isDiscretionary:  true,
-        scope:            'per-sex',
+        isDiscretionary: true,
+        scope: 'per-sex',
     },
     {
-        id:               FCI_AWARD_CACIB_V,
-        name:             'CACIB-V',
-        minimumGradeId:   FCI_GRADE_EXCELLENT,
+        id: FCI_AWARD_CACIB_V,
+        name: 'CACIB-V',
+        minimumGradeId: FCI_GRADE_EXCELLENT,
         minimumPlacement: 1,
-        isDiscretionary:  true,
-        scope:            'per-sex',
+        isDiscretionary: true,
+        scope: 'per-sex',
     },
     {
-        id:               FCI_AWARD_BOB,
-        name:             'Best of Breed',
-        minimumGradeId:   FCI_GRADE_EXCELLENT,
+        id: FCI_AWARD_BOB,
+        name: 'Best of Breed',
+        minimumGradeId: FCI_GRADE_EXCELLENT,
         minimumPlacement: undefined,
-        isDiscretionary:  false,
-        scope:            'breed',
+        isDiscretionary: false,
+        scope: 'breed',
     },
     {
-        id:               FCI_AWARD_BOS,
-        name:             'Best of Opposite Sex',
-        minimumGradeId:   FCI_GRADE_EXCELLENT,
+        id: FCI_AWARD_BOS,
+        name: 'Best of Opposite Sex',
+        minimumGradeId: FCI_GRADE_EXCELLENT,
         minimumPlacement: undefined,
-        isDiscretionary:  false,
-        scope:            'breed',
+        isDiscretionary: false,
+        scope: 'breed',
     },
     {
-        id:               FCI_AWARD_BIG,
-        name:             'Best in Group',
-        minimumGradeId:   FCI_GRADE_EXCELLENT,
+        id: FCI_AWARD_BIG,
+        name: 'Best in Group',
+        minimumGradeId: FCI_GRADE_EXCELLENT,
         minimumPlacement: undefined,
-        isDiscretionary:  false,
-        scope:            'group',
+        isDiscretionary: false,
+        scope: 'group',
     },
     {
-        id:               FCI_AWARD_BIS,
-        name:             'Best in Show',
-        minimumGradeId:   FCI_GRADE_EXCELLENT,
+        id: FCI_AWARD_BIS,
+        name: 'Best in Show',
+        minimumGradeId: FCI_GRADE_EXCELLENT,
         minimumPlacement: undefined,
-        isDiscretionary:  false,
-        scope:            'show',
+        isDiscretionary: false,
+        scope: 'show',
     },
     // -----------------------------------------------------------------------
     // Main ring competitions (Section 7) — individual dog awards.
@@ -172,36 +172,36 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
     // for handlers, not dogs.
     // -----------------------------------------------------------------------
     {
-        id:               FCI_AWARD_BEST_JUNIOR,
-        name:             'Best Junior in Show',
-        minimumGradeId:   FCI_GRADE_EXCELLENT,     // from CACIB-J winners
+        id: FCI_AWARD_BEST_JUNIOR,
+        name: 'Best Junior in Show',
+        minimumGradeId: FCI_GRADE_EXCELLENT, // from CACIB-J winners
         minimumPlacement: undefined,
-        isDiscretionary:  false,
-        scope:            'show',
+        isDiscretionary: false,
+        scope: 'show',
     },
     {
-        id:               FCI_AWARD_BEST_VETERAN,
-        name:             'Best Veteran in Show',
-        minimumGradeId:   FCI_GRADE_EXCELLENT,     // from CACIB-V winners
+        id: FCI_AWARD_BEST_VETERAN,
+        name: 'Best Veteran in Show',
+        minimumGradeId: FCI_GRADE_EXCELLENT, // from CACIB-V winners
         minimumPlacement: undefined,
-        isDiscretionary:  false,
-        scope:            'show',
+        isDiscretionary: false,
+        scope: 'show',
     },
     {
-        id:               FCI_AWARD_BEST_PUPPY,
-        name:             'Best Puppy in Show',
-        minimumGradeId:   FCI_GRADE_VERY_PROMISING, // Very Promising 1st from Puppy class
+        id: FCI_AWARD_BEST_PUPPY,
+        name: 'Best Puppy in Show',
+        minimumGradeId: FCI_GRADE_VERY_PROMISING, // Very Promising 1st from Puppy class
         minimumPlacement: undefined,
-        isDiscretionary:  false,
-        scope:            'show',
+        isDiscretionary: false,
+        scope: 'show',
     },
     {
-        id:               FCI_AWARD_BEST_MINOR_PUPPY,
-        name:             'Best Minor Puppy in Show',
-        minimumGradeId:   FCI_GRADE_VERY_PROMISING, // Very Promising 1st from Minor Puppy class
+        id: FCI_AWARD_BEST_MINOR_PUPPY,
+        name: 'Best Minor Puppy in Show',
+        minimumGradeId: FCI_GRADE_VERY_PROMISING, // Very Promising 1st from Minor Puppy class
         minimumPlacement: undefined,
-        isDiscretionary:  false,
-        scope:            'show',
+        isDiscretionary: false,
+        scope: 'show',
     },
     // -----------------------------------------------------------------------
     // Collective competition awards (Section 7) — awarded to the winning group.
@@ -209,28 +209,28 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
     // CollectiveAwardPolicy, not by an individual dog grade.
     // -----------------------------------------------------------------------
     {
-        id:               FCI_AWARD_BEST_BRACE,
-        name:             'Best Brace/Couple',
-        minimumGradeId:   undefined,
+        id: FCI_AWARD_BEST_BRACE,
+        name: 'Best Brace/Couple',
+        minimumGradeId: undefined,
         minimumPlacement: undefined,
-        isDiscretionary:  false,
-        scope:            'collective',
+        isDiscretionary: false,
+        scope: 'collective',
     },
     {
-        id:               FCI_AWARD_BEST_BREEDERS_GROUP,
-        name:             'Best Breeders\u2019 Group',
-        minimumGradeId:   undefined,
+        id: FCI_AWARD_BEST_BREEDERS_GROUP,
+        name: 'Best Breeders\u2019 Group',
+        minimumGradeId: undefined,
         minimumPlacement: undefined,
-        isDiscretionary:  false,
-        scope:            'collective',
+        isDiscretionary: false,
+        scope: 'collective',
     },
     {
-        id:               FCI_AWARD_BEST_PROGENY_GROUP,
-        name:             'Best Progeny Group',
-        minimumGradeId:   undefined,
+        id: FCI_AWARD_BEST_PROGENY_GROUP,
+        name: 'Best Progeny Group',
+        minimumGradeId: undefined,
         minimumPlacement: undefined,
-        isDiscretionary:  false,
-        scope:            'collective',
+        isDiscretionary: false,
+        scope: 'collective',
     },
 ];
 
@@ -253,119 +253,119 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // the Vaccination certificate ("correctly inoculated", Section 5b).
     // -----------------------------------------------------------------------
     {
-        id:                   asClassId('minor-puppy'),
-        name:                 'Minor Puppy Class',
-        fromAgeMonths:        undefined,
-        lessThanAgeMonths:    6,
+        id: asClassId('minor-puppy'),
+        name: 'Minor Puppy Class',
+        fromAgeMonths: undefined,
+        lessThanAgeMonths: 6,
         requiredCertificates: [CertificateKind.Vaccination],
-        bredByExhibitor:      false,
-        gradeScaleId:         FCI_PUPPY_GRADE_SCALE_ID,
-        awardTypeIds:         [],
+        bredByExhibitor: false,
+        gradeScaleId: FCI_PUPPY_GRADE_SCALE_ID,
+        awardTypeIds: [],
     },
     // -----------------------------------------------------------------------
     // Puppy — Section 5b; compulsory; no CACIB; uses puppy grade scale
     // -----------------------------------------------------------------------
     {
-        id:                   asClassId('puppy'),
-        name:                 'Puppy Class',
-        fromAgeMonths:        6,
-        lessThanAgeMonths:    9,
+        id: asClassId('puppy'),
+        name: 'Puppy Class',
+        fromAgeMonths: 6,
+        lessThanAgeMonths: 9,
         requiredCertificates: [],
-        bredByExhibitor:      false,
-        gradeScaleId:         FCI_PUPPY_GRADE_SCALE_ID,
-        awardTypeIds:         [],
+        bredByExhibitor: false,
+        gradeScaleId: FCI_PUPPY_GRADE_SCALE_ID,
+        awardTypeIds: [],
     },
     // -----------------------------------------------------------------------
     // Junior — Section 5b; compulsory; CACIB-J
     // -----------------------------------------------------------------------
     {
-        id:                   asClassId('junior'),
-        name:                 'Junior Class',
-        fromAgeMonths:        9,
-        lessThanAgeMonths:    18,
+        id: asClassId('junior'),
+        name: 'Junior Class',
+        fromAgeMonths: 9,
+        lessThanAgeMonths: 18,
         requiredCertificates: [],
-        bredByExhibitor:      false,
-        gradeScaleId:         FCI_GRADE_SCALE_ID,
-        awardTypeIds:         [FCI_AWARD_CACIB_J],
+        bredByExhibitor: false,
+        gradeScaleId: FCI_GRADE_SCALE_ID,
+        awardTypeIds: [FCI_AWARD_CACIB_J],
     },
     // -----------------------------------------------------------------------
     // Intermediate — Section 5a; compulsory; CACIB
     // -----------------------------------------------------------------------
     {
-        id:                   asClassId('intermediate'),
-        name:                 'Intermediate Class',
-        fromAgeMonths:        15,
-        lessThanAgeMonths:    24,
+        id: asClassId('intermediate'),
+        name: 'Intermediate Class',
+        fromAgeMonths: 15,
+        lessThanAgeMonths: 24,
         requiredCertificates: [],
-        bredByExhibitor:      false,
-        gradeScaleId:         FCI_GRADE_SCALE_ID,
-        awardTypeIds:         [FCI_AWARD_CACIB, FCI_AWARD_RES_CACIB],
+        bredByExhibitor: false,
+        gradeScaleId: FCI_GRADE_SCALE_ID,
+        awardTypeIds: [FCI_AWARD_CACIB, FCI_AWARD_RES_CACIB],
     },
     // -----------------------------------------------------------------------
     // Open — Section 5a; compulsory; CACIB
     // -----------------------------------------------------------------------
     {
-        id:                   asClassId('open'),
-        name:                 'Open Class',
-        fromAgeMonths:        15,
-        lessThanAgeMonths:    undefined,
+        id: asClassId('open'),
+        name: 'Open Class',
+        fromAgeMonths: 15,
+        lessThanAgeMonths: undefined,
         requiredCertificates: [],
-        bredByExhibitor:      false,
-        gradeScaleId:         FCI_GRADE_SCALE_ID,
-        awardTypeIds:         [FCI_AWARD_CACIB, FCI_AWARD_RES_CACIB],
+        bredByExhibitor: false,
+        gradeScaleId: FCI_GRADE_SCALE_ID,
+        awardTypeIds: [FCI_AWARD_CACIB, FCI_AWARD_RES_CACIB],
     },
     // -----------------------------------------------------------------------
     // Bred by Exhibitor — Section 5a; compulsory from 2027-01-01; CACIB.
     // Handler must be the breeder (or co-breeder) of the dog.
     // -----------------------------------------------------------------------
     {
-        id:                   asClassId('bred-by-exhibitor'),
-        name:                 'Bred by Exhibitor Class',
-        fromAgeMonths:        15,
-        lessThanAgeMonths:    undefined,
+        id: asClassId('bred-by-exhibitor'),
+        name: 'Bred by Exhibitor Class',
+        fromAgeMonths: 15,
+        lessThanAgeMonths: undefined,
         requiredCertificates: [],
-        bredByExhibitor:      true,
-        gradeScaleId:         FCI_GRADE_SCALE_ID,
-        awardTypeIds:         [FCI_AWARD_CACIB, FCI_AWARD_RES_CACIB],
+        bredByExhibitor: true,
+        gradeScaleId: FCI_GRADE_SCALE_ID,
+        awardTypeIds: [FCI_AWARD_CACIB, FCI_AWARD_RES_CACIB],
     },
     // -----------------------------------------------------------------------
     // Working — Section 5a; compulsory; CACIB; working breeds only
     // -----------------------------------------------------------------------
     {
-        id:                   asClassId('working'),
-        name:                 'Working Class',
-        fromAgeMonths:        15,
-        lessThanAgeMonths:    undefined,
+        id: asClassId('working'),
+        name: 'Working Class',
+        fromAgeMonths: 15,
+        lessThanAgeMonths: undefined,
         requiredCertificates: [CertificateKind.WorkingCertificate],
-        bredByExhibitor:      false,
-        gradeScaleId:         FCI_GRADE_SCALE_ID,
-        awardTypeIds:         [FCI_AWARD_CACIB, FCI_AWARD_RES_CACIB],
+        bredByExhibitor: false,
+        gradeScaleId: FCI_GRADE_SCALE_ID,
+        awardTypeIds: [FCI_AWARD_CACIB, FCI_AWARD_RES_CACIB],
     },
     // -----------------------------------------------------------------------
     // Champion — Section 5a; compulsory; CACIB; requires champion title
     // -----------------------------------------------------------------------
     {
-        id:                   asClassId('champion'),
-        name:                 'Champion Class',
-        fromAgeMonths:        15,
-        lessThanAgeMonths:    undefined,
+        id: asClassId('champion'),
+        name: 'Champion Class',
+        fromAgeMonths: 15,
+        lessThanAgeMonths: undefined,
         requiredCertificates: [CertificateKind.ChampionCertificate],
-        bredByExhibitor:      false,
-        gradeScaleId:         FCI_GRADE_SCALE_ID,
-        awardTypeIds:         [FCI_AWARD_CACIB, FCI_AWARD_RES_CACIB],
+        bredByExhibitor: false,
+        gradeScaleId: FCI_GRADE_SCALE_ID,
+        awardTypeIds: [FCI_AWARD_CACIB, FCI_AWARD_RES_CACIB],
     },
     // -----------------------------------------------------------------------
     // Veteran — Section 5b; compulsory; CACIB-V; 8 years = 96 months
     // -----------------------------------------------------------------------
     {
-        id:                   asClassId('veteran'),
-        name:                 'Veteran Class',
-        fromAgeMonths:        96,
-        lessThanAgeMonths:    undefined,
+        id: asClassId('veteran'),
+        name: 'Veteran Class',
+        fromAgeMonths: 96,
+        lessThanAgeMonths: undefined,
         requiredCertificates: [],
-        bredByExhibitor:      false,
-        gradeScaleId:         FCI_GRADE_SCALE_ID,
-        awardTypeIds:         [FCI_AWARD_CACIB_V],
+        bredByExhibitor: false,
+        gradeScaleId: FCI_GRADE_SCALE_ID,
+        awardTypeIds: [FCI_AWARD_CACIB_V],
     },
     // -----------------------------------------------------------------------
     // Honour — included per issue spec; no CACIB.
@@ -373,14 +373,14 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // See docs/research/fci-ruleset.md D6 for context.
     // -----------------------------------------------------------------------
     {
-        id:                   asClassId('honour'),
-        name:                 'Honour Class',
-        fromAgeMonths:        undefined,
-        lessThanAgeMonths:    undefined,
+        id: asClassId('honour'),
+        name: 'Honour Class',
+        fromAgeMonths: undefined,
+        lessThanAgeMonths: undefined,
         requiredCertificates: [],
-        bredByExhibitor:      false,
-        gradeScaleId:         FCI_GRADE_SCALE_ID,
-        awardTypeIds:         [],
+        bredByExhibitor: false,
+        gradeScaleId: FCI_GRADE_SCALE_ID,
+        awardTypeIds: [],
     },
 ];
 
@@ -390,7 +390,7 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
 
 const fciShowTypes: ReadonlyArray<ShowType> = [
     {
-        id:   asShowTypeId('cacib-show'),
+        id: asShowTypeId('cacib-show'),
         name: 'CAC-CACIB Show',
         availableAwardTypeIds: [
             FCI_AWARD_CACIB,
@@ -431,11 +431,11 @@ const fciShowTypes: ReadonlyArray<ShowType> = [
  * `kmsh-ruleset-layer.ts`) to obtain a national show's Effective Ruleset.
  */
 export const fciLayer: RulesetLayer = {
-    id:               FCI_LAYER_ID,
-    name:             'FCI',
-    parentLayerId:    undefined,
+    id: FCI_LAYER_ID,
+    name: 'FCI',
+    parentLayerId: undefined,
     classDefinitions: fciClassDefinitions,
-    gradeScales:      [fciAdultGradeScale, fciPuppyGradeScale],
-    awardTypes:       fciAwardTypes,
-    showTypes:        fciShowTypes,
+    gradeScales: [fciAdultGradeScale, fciPuppyGradeScale],
+    awardTypes: fciAwardTypes,
+    showTypes: fciShowTypes,
 };
