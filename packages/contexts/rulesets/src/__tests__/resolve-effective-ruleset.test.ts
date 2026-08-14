@@ -79,6 +79,7 @@ function makeShowType(id: string): ShowType {
         id: asShowTypeId(id),
         name: `ShowType ${id}`,
         availableAwardTypeIds: [],
+        availableCollectiveCompetitions: [],
     };
 }
 

@@ -51,7 +51,7 @@ The ruleset-owned definition of a single honour that can be proposed in a judgin
 _Avoid_: Award category
 
 **Award Scope Level**:
-One of four levels at which Awards are decided in FCI competition, in ascending order: **per-sex** (within one sex of a breed, across all its eligible classes), **breed** (BOB / BOS, from per-sex title-winners of both sexes), **group** (BIG, from the BOB winners of all breeds in the group), **show** (BIS, from the BIG winners). Each Award Type belongs to exactly one scope level. The Award Policy gates which types may be proposed at each level.
+One of four levels at which individual-dog Awards are decided in FCI competition, in ascending order: **per-sex** (within one sex of a breed, across all its eligible classes), **breed** (BOB / BOS, from per-sex title-winners of both sexes), **group** (BIG, from the BOB winners of all breeds in the group), **show** (BIS, from the BIG winners). Each Award Type belongs to exactly one scope level. The Award Policy gates which types may be proposed at each level. Collective competition awards (Best Brace/Couple, Best Breeders' Group, Best Progeny Group) exist outside this four-level hierarchy — they are governed by the **Collective Award Policy** and use a distinct **collective** scope.
 _Avoid_: Judging Round, Judging Phase
 
 **Award Policy**:
@@ -191,7 +191,7 @@ The ordinal ranking (1st–4th) a Dog receives within its Class, among Dogs meet
 _Avoid_: Rank, Position
 
 **Award**:
-A discrete honour proposed or won at a single Show — e.g. CAC, Reserve CAC, CACIB, Reserve CACIB, CACIB-J/-V, Best of Breed, Best of Opposite Sex, Best in Group, Best in Show, Best Junior, Best Veteran, Best Puppy, Best Minor Puppy. The set of Award types is ruleset-owned. Some Awards require a specific Grade/Placement (e.g. Excellent-1st for CACIB); which types may be proposed at each **Award Scope Level** and whether proposed choices are valid is governed by the **Award Policy** (both Rulesets). International Awards such as the CACIB are **proposals** at show time, subject to later confirmation by the FCI or NCO.
+A discrete honour proposed or won at a single Show — e.g. CAC, Reserve CAC, CACIB, Reserve CACIB, CACIB-J/-V, Best of Breed, Best of Opposite Sex, Best in Group, Best in Show, Best Junior, Best Veteran, Best Puppy, Best Minor Puppy; and for collective competitions: Best Brace/Couple, Best Breeders' Group, Best Progeny Group. The set of Award types is ruleset-owned. Some Awards require a specific Grade/Placement (e.g. Excellent-1st for CACIB); which types may be proposed at each **Award Scope Level** and whether proposed choices are valid is governed by the **Award Policy** (both Rulesets). International Awards such as the CACIB are **proposals** at show time, subject to later confirmation by the FCI or NCO.
 _Avoid_: Prize, Certificate (when a Champion Certificate is meant)
 
 ## Catalogue & Publishing

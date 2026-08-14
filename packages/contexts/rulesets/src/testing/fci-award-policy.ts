@@ -212,10 +212,11 @@ export class FciAwardPolicy implements AwardPolicy {
      * or `undefined` when either the scale or the grade cannot be found.
      */
     private resolveGrade(
-        gradeId: GradeId,
+        gradeId: GradeId | undefined,
         gradeScaleId: GradeScaleId,
         ruleset: EffectiveRuleset,
     ): Grade | undefined {
+        if (gradeId === undefined) return undefined;
         return ruleset.gradeScales
             .find((gs) => gs.id === gradeScaleId)
             ?.grades.find((g) => g.id === gradeId);
@@ -234,6 +235,7 @@ export class FciAwardPolicy implements AwardPolicy {
         const breedAwardTypes = ruleset.awardTypes.filter((at) => at.scope === 'breed');
         const firstBreed = breedAwardTypes[0];
         if (!firstBreed) return false;
+        if (firstBreed.minimumGradeId === undefined) return false;
 
         const gradeScale = ruleset.gradeScales.find((gs) =>
             gs.grades.some((g) => g.id === firstBreed.minimumGradeId),
