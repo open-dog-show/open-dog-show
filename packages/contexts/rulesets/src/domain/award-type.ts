@@ -12,7 +12,6 @@ export type AwardScope = 'per-sex' | 'breed' | 'group' | 'show' | 'collective';
  */
 export interface AwardType {
     readonly id: AwardTypeId;
-    readonly name: string;
     /**
      * Minimum Grade a Dog must receive to be eligible for this Award.
      * `undefined` for collective competition awards (Brace/Couple,

@@ -6,7 +6,6 @@ import type { GradeId, GradeScaleId, SpecialOutcomeId } from './domain-ids.js';
 /** An ordinal quality grade within a {@link GradeScale} (e.g. Excellent, Very Good). */
 export interface Grade {
     readonly id: GradeId;
-    readonly name: string;
     /** Lower ordinal = better grade; 0 is the best grade on the scale. */
     readonly ordinal: number;
 }
@@ -17,7 +16,6 @@ export interface Grade {
  */
 export interface SpecialOutcome {
     readonly id: SpecialOutcomeId;
-    readonly name: string;
 }
 
 /**
@@ -26,7 +24,6 @@ export interface SpecialOutcome {
  */
 export interface GradeScale {
     readonly id: GradeScaleId;
-    readonly name: string;
     /** All grades on this scale, ordered best-first (lowest ordinal first). */
     readonly grades: ReadonlyArray<Grade>;
     /** Minimum grade for a Dog to be eligible for an ordinal Placement. */

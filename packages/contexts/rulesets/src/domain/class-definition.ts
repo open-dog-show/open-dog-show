@@ -13,7 +13,6 @@ import type { CertificateKind } from './certificate-kind.js';
  */
 export interface ClassDefinition {
     readonly id: ClassId;
-    readonly name: string;
     /** Minimum age in whole months on show day (FCI: "from X months"). Undefined = no lower bound. */
     readonly fromAgeMonths: number | undefined;
     /** Exclusive upper age in whole months on show day (FCI: "less than Y months"). Undefined = no upper bound. */

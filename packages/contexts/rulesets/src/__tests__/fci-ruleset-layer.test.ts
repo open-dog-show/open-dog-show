@@ -2,7 +2,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, it, expect } from 'vitest';
-import { fciLayer, FCI_LAYER_ID, FCI_PUPPY_GRADE_SCALE_ID } from '../testing/fci-ruleset-layer.js';
+import {
+    fciLayer,
+    FCI_LAYER_ID,
+    FCI_PUPPY_GRADE_SCALE_ID,
+    FCI_GRADE_EXCELLENT,
+    FCI_GRADE_VERY_GOOD,
+    FCI_GRADE_GOOD,
+    FCI_GRADE_SUFFICIENT,
+    FCI_GRADE_VERY_PROMISING,
+    FCI_GRADE_PROMISING,
+    FCI_GRADE_LESS_PROMISING,
+    FCI_OUTCOME_DISQUALIFIED,
+    FCI_OUTCOME_CANNOT_BE_JUDGED,
+} from '../testing/fci-ruleset-layer.js';
 import {
     kmshLayer,
     KMSH_LAYER_ID,
@@ -34,23 +47,28 @@ describe('fciLayer — grade scales', () => {
             expect(adultScale().grades.map((g) => g.ordinal)).toEqual([0, 1, 2, 3]);
         });
 
-        it('grade names are Excellent, Very Good, Good, Sufficient (FCI Section 6)', () => {
-            const names = adultScale().grades.map((g) => g.name);
-            expect(names).toEqual(['Excellent', 'Very Good', 'Good', 'Sufficient']);
+        it('grade ids are excellent, very-good, good, sufficient (FCI Section 6)', () => {
+            const ids = adultScale().grades.map((g) => g.id);
+            expect(ids).toEqual([
+                FCI_GRADE_EXCELLENT,
+                FCI_GRADE_VERY_GOOD,
+                FCI_GRADE_GOOD,
+                FCI_GRADE_SUFFICIENT,
+            ]);
         });
 
         it('placeable threshold is Very Good (ordinal 1)', () => {
             const scale = adultScale();
             const threshold = scale.grades.find((g) => g.id === scale.placeableThresholdId);
             expect(threshold?.ordinal).toBe(1);
-            expect(threshold?.name).toBe('Very Good');
+            expect(threshold?.id).toBe(FCI_GRADE_VERY_GOOD);
         });
 
         it('has two special outcomes: Disqualified and Cannot Be Judged', () => {
             expect(adultScale().specialOutcomes).toHaveLength(2);
-            const names = adultScale().specialOutcomes.map((o) => o.name);
-            expect(names).toContain('Disqualified');
-            expect(names).toContain('Cannot Be Judged');
+            const ids = adultScale().specialOutcomes.map((o) => o.id);
+            expect(ids).toContain(FCI_OUTCOME_DISQUALIFIED);
+            expect(ids).toContain(FCI_OUTCOME_CANNOT_BE_JUDGED);
         });
     });
 
@@ -63,8 +81,12 @@ describe('fciLayer — grade scales', () => {
         });
 
         it('has three grades: Very Promising, Promising, Less Promising', () => {
-            const names = puppyScale().grades.map((g) => g.name);
-            expect(names).toEqual(['Very Promising', 'Promising', 'Less Promising']);
+            const ids = puppyScale().grades.map((g) => g.id);
+            expect(ids).toEqual([
+                FCI_GRADE_VERY_PROMISING,
+                FCI_GRADE_PROMISING,
+                FCI_GRADE_LESS_PROMISING,
+            ]);
         });
 
         it('placeable threshold is Very Promising (ordinal 0)', () => {
@@ -332,10 +354,6 @@ describe('kmshLayer — structure', () => {
         expect(kmshLayer.parentLayerId).toBe(FCI_LAYER_ID);
     });
 
-    it('layer name is bilingual KMSH / SRSH', () => {
-        expect(kmshLayer.name).toBe('KMSH / SRSH');
-    });
-
     it('overrides Minor Puppy class with fromAgeMonths=3 (KMSH ART.23)', () => {
         const cls = kmshLayer.classDefinitions.find((c) => c.id === 'minor-puppy');
         expect(cls).toBeDefined();
@@ -371,16 +389,14 @@ describe('kmshLayer — structure', () => {
         expect(at!.minimumPlacement).toBeUndefined();
     });
 
-    it('overrides grade scale names to bilingual Dutch/French', () => {
+    it('KMSH layer adds no grade scale overrides (language is not a rule difference, ADR-0010)', () => {
         // Grade scales are NOT overridden by KMSH — language is not a rule
         // difference (ADR-0010). The KMSH layer leaves gradeScales empty.
         expect(kmshLayer.gradeScales).toHaveLength(0);
     });
 
-    it('puppy grade scale override adds special outcomes', () => {
+    it('puppy scale has no special outcomes in the KMSH layer (no grade scale overrides)', () => {
         // Not applicable — KMSH does not override grade scales (ADR-0010).
-        // The puppy special outcomes (Diskwalificatie / Kan niet gekeurd worden)
-        // will be handled by the Multilingual Label refactor.
         expect(kmshLayer.gradeScales).toHaveLength(0);
     });
 });
@@ -423,9 +439,8 @@ describe('resolveEffectiveRuleset with FCI + KMSH layers', () => {
 
     it('both FCI grade scales are unchanged (KMSH adds no grade scale overrides per ADR-0010)', () => {
         expect(ruleset.gradeScales).toHaveLength(2);
-        // FCI English names are intact — KMSH has no grade scale overrides
         const adult = ruleset.gradeScales.find((s) => s.id === 'fci-adult');
-        expect(adult!.grades[0]!.name).toBe('Excellent');
+        expect(adult!.grades[0]!.id).toBe(FCI_GRADE_EXCELLENT);
     });
 
     it('all original FCI classes are present', () => {

@@ -11,7 +11,6 @@ import type { CollectiveCompetitionKind } from './collective-competition-results
  */
 export interface ShowType {
     readonly id: ShowTypeId;
-    readonly name: string;
     readonly availableAwardTypeIds: ReadonlyArray<AwardTypeId>;
     /** Collective competitions (Brace/Couple, Breeders\u2019 Group, Progeny Group)
      *  offered at this show type. Empty when none are available. */
