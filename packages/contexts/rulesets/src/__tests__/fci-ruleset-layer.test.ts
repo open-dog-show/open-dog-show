@@ -15,14 +15,14 @@ import {
     FCI_GRADE_LESS_PROMISING,
     FCI_OUTCOME_DISQUALIFIED,
     FCI_OUTCOME_CANNOT_BE_JUDGED,
-} from '../testing/fci-ruleset-layer.js';
+} from '../layers/fci-ruleset-layer.js';
 import {
     kmshLayer,
     KMSH_LAYER_ID,
     KMSH_AWARD_CAC,
     KMSH_AWARD_RCAC,
     KMSH_CLASS_FOKKERSKLAS,
-} from '../testing/kmsh-ruleset-layer.js';
+} from '../layers/kmsh-ruleset-layer.js';
 import { resolveEffectiveRuleset } from '../domain/resolve-effective-ruleset.js';
 import { CertificateKind } from '../domain/certificate-kind.js';
 import type { LocalDate } from '../domain/local-date.js';
