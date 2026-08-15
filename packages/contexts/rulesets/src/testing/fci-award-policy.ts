@@ -161,7 +161,7 @@ export class FciAwardPolicy implements AwardPolicy {
             if (!classDef.awardTypeIds.includes(assignment.awardTypeId)) {
                 return {
                     valid: false,
-                    reason: `Award type '${awardType.name}' is not available for dogs in class '${classDef.name}'`,
+                    reason: `Award type '${awardType.id}' is not available for dogs in class '${classDef.id}'`,
                 };
             }
 
@@ -181,14 +181,14 @@ export class FciAwardPolicy implements AwardPolicy {
             if (!minGrade) {
                 return {
                     valid: false,
-                    reason: `Award type '${awardType.name}' references unknown minimum grade '${awardType.minimumGradeId}'`,
+                    reason: `Award type '${awardType.id}' references unknown minimum grade '${awardType.minimumGradeId}'`,
                 };
             }
 
             if (!this.gradeAtLeast(dogGrade, minGrade)) {
                 return {
                     valid: false,
-                    reason: `Dog '${assignment.dogRef}' received grade '${placement.gradeId}' but '${awardType.name}' requires at least '${awardType.minimumGradeId}'`,
+                    reason: `Dog '${assignment.dogRef}' received grade '${placement.gradeId}' but '${awardType.id}' requires at least '${awardType.minimumGradeId}'`,
                 };
             }
 
@@ -199,7 +199,7 @@ export class FciAwardPolicy implements AwardPolicy {
             ) {
                 return {
                     valid: false,
-                    reason: `Dog '${assignment.dogRef}' has placement ${String(placement.placement)} but '${awardType.name}' requires placement ${String(awardType.minimumPlacement)} or better`,
+                    reason: `Dog '${assignment.dogRef}' has placement ${String(placement.placement)} but '${awardType.id}' requires placement ${String(awardType.minimumPlacement)} or better`,
                 };
             }
         }

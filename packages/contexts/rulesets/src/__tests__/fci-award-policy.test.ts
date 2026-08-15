@@ -51,10 +51,9 @@ const VETERAN_CLASS_ID = asClassId('veteran');
 
 const gradeScale: GradeScale = {
     id: GRADE_SCALE_ID,
-    name: 'FCI Standard',
     grades: [
-        { id: EXCELLENT, name: 'Excellent', ordinal: 0 },
-        { id: VERY_GOOD, name: 'Very Good', ordinal: 1 },
+        { id: EXCELLENT, ordinal: 0 },
+        { id: VERY_GOOD, ordinal: 1 },
     ],
     placeableThresholdId: VERY_GOOD,
     specialOutcomes: [],
@@ -63,7 +62,6 @@ const gradeScale: GradeScale = {
 const awardTypes: ReadonlyArray<AwardType> = [
     {
         id: CACIB_ID,
-        name: 'CACIB',
         minimumGradeId: EXCELLENT,
         minimumPlacement: 1,
         isDiscretionary: true,
@@ -71,7 +69,6 @@ const awardTypes: ReadonlyArray<AwardType> = [
     },
     {
         id: CACIB_J_ID,
-        name: 'CACIB-J',
         minimumGradeId: EXCELLENT,
         minimumPlacement: 1,
         isDiscretionary: true,
@@ -79,7 +76,6 @@ const awardTypes: ReadonlyArray<AwardType> = [
     },
     {
         id: CACIB_V_ID,
-        name: 'CACIB-V',
         minimumGradeId: EXCELLENT,
         minimumPlacement: 1,
         isDiscretionary: true,
@@ -87,7 +83,6 @@ const awardTypes: ReadonlyArray<AwardType> = [
     },
     {
         id: BOB_ID,
-        name: 'Best of Breed',
         minimumGradeId: EXCELLENT,
         minimumPlacement: undefined,
         isDiscretionary: false,
@@ -95,7 +90,6 @@ const awardTypes: ReadonlyArray<AwardType> = [
     },
     {
         id: BOS_ID,
-        name: 'Best of Sex',
         minimumGradeId: EXCELLENT,
         minimumPlacement: undefined,
         isDiscretionary: false,
@@ -103,7 +97,6 @@ const awardTypes: ReadonlyArray<AwardType> = [
     },
     {
         id: BIG_ID,
-        name: 'Best in Group',
         minimumGradeId: EXCELLENT,
         minimumPlacement: undefined,
         isDiscretionary: false,
@@ -111,7 +104,6 @@ const awardTypes: ReadonlyArray<AwardType> = [
     },
     {
         id: BIS_ID,
-        name: 'Best in Show',
         minimumGradeId: EXCELLENT,
         minimumPlacement: undefined,
         isDiscretionary: false,
@@ -122,7 +114,6 @@ const awardTypes: ReadonlyArray<AwardType> = [
 const classDefinitions: ReadonlyArray<ClassDefinition> = [
     {
         id: OPEN_CLASS_ID,
-        name: 'Open',
         fromAgeMonths: 15,
         lessThanAgeMonths: undefined,
         requiredCertificates: [],
@@ -132,7 +123,6 @@ const classDefinitions: ReadonlyArray<ClassDefinition> = [
     },
     {
         id: JUNIOR_CLASS_ID,
-        name: 'Junior',
         fromAgeMonths: 6,
         lessThanAgeMonths: 18,
         requiredCertificates: [],
@@ -142,7 +132,6 @@ const classDefinitions: ReadonlyArray<ClassDefinition> = [
     },
     {
         id: VETERAN_CLASS_ID,
-        name: 'Veteran',
         fromAgeMonths: 96,
         lessThanAgeMonths: undefined,
         requiredCertificates: [],

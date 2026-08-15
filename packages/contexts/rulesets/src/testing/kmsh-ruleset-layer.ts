@@ -74,22 +74,19 @@ export const KMSH_CLASS_FOKKERSKLAS = asClassId('fokkersklas');
  *   Excellent-1st (Bijlage 1 §1a; toekennen niet verplicht in België).
  * - **RCAC** — Reserve CAC, per-sex, discretionary (Bijlage 1 §1a).
  *
- * Note: grade scale names are single strings pending the Multilingual Label
- * refactor (ADR-0010). The KMSH layer intentionally does NOT override the
- * FCI grade scales — language is not a rule difference.
+ * The KMSH layer intentionally does NOT override the FCI grade scales —
+ * language is not a rule difference (ADR-0010).
  *
  * Compose as `resolveEffectiveRuleset([fciLayer, kmshLayer], date)`.
  */
 export const kmshLayer: RulesetLayer = {
     id: KMSH_LAYER_ID,
-    name: 'KMSH / SRSH',
     parentLayerId: FCI_LAYER_ID,
     classDefinitions: [
         // Override Minor Puppy: KMSH ART.23 specifies minimum 3 months
         // ("minimum 3 tot 6 maanden"), unlike FCI which has no numeric floor.
         {
             id: asClassId('minor-puppy'),
-            name: 'Minor Puppyklas',
             fromAgeMonths: 3,
             lessThanAgeMonths: 6,
             requiredCertificates: [CertificateKind.Vaccination],
@@ -100,7 +97,6 @@ export const kmshLayer: RulesetLayer = {
         // Fokkersklas (ART.24): available at breed-specific shows; feeds CAC + RCAC.
         {
             id: KMSH_CLASS_FOKKERSKLAS,
-            name: 'Fokkersklas',
             fromAgeMonths: 15,
             lessThanAgeMonths: undefined,
             requiredCertificates: [],
@@ -113,7 +109,6 @@ export const kmshLayer: RulesetLayer = {
     awardTypes: [
         {
             id: KMSH_AWARD_CAC,
-            name: 'CAC',
             minimumGradeId: FCI_GRADE_EXCELLENT,
             minimumPlacement: 1,
             isDiscretionary: true,
@@ -123,7 +118,6 @@ export const kmshLayer: RulesetLayer = {
             // Bijlage 1 §1a: remaining dogs + 2nd-placed dog from the class
             // where CAC was awarded compete for RCAC (eventueel = not mandatory).
             id: KMSH_AWARD_RCAC,
-            name: 'RCAC',
             minimumGradeId: FCI_GRADE_EXCELLENT,
             minimumPlacement: undefined,
             isDiscretionary: true,
@@ -133,7 +127,6 @@ export const kmshLayer: RulesetLayer = {
     showTypes: [
         {
             id: asShowTypeId('kmsh-national-show'),
-            name: 'Nationale Tentoonstelling',
             availableAwardTypeIds: [
                 KMSH_AWARD_CAC,
                 KMSH_AWARD_RCAC,

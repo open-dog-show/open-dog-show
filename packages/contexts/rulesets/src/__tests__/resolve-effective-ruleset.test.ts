@@ -26,11 +26,10 @@ const TEST_DATE: LocalDate = { year: 2026, month: 8, day: 4 };
 
 function makeLayer(
     id: string,
-    overrides: Partial<Omit<RulesetLayer, 'id' | 'name' | 'parentLayerId'>> = {},
+    overrides: Partial<Omit<RulesetLayer, 'id' | 'parentLayerId'>> = {},
 ): RulesetLayer {
     return {
         id: asRulesetLayerId(id),
-        name: `Layer ${id}`,
         parentLayerId: undefined,
         classDefinitions: [],
         gradeScales: [],
@@ -40,11 +39,10 @@ function makeLayer(
     };
 }
 
-function makeClass(id: string, name?: string): ClassDefinition {
+function makeClass(id: string, fromAgeMonths?: number): ClassDefinition {
     return {
         id: asClassId(id),
-        name: name ?? `Class ${id}`,
-        fromAgeMonths: undefined,
+        fromAgeMonths: fromAgeMonths,
         lessThanAgeMonths: undefined,
         requiredCertificates: [],
         bredByExhibitor: false,
@@ -56,7 +54,6 @@ function makeClass(id: string, name?: string): ClassDefinition {
 function makeGradeScale(id: string): GradeScale {
     return {
         id: asGradeScaleId(id),
-        name: `Scale ${id}`,
         grades: [],
         placeableThresholdId: asGradeId('placeholder'),
         specialOutcomes: [],
@@ -66,7 +63,6 @@ function makeGradeScale(id: string): GradeScale {
 function makeAwardType(id: string): AwardType {
     return {
         id: asAwardTypeId(id),
-        name: `Award ${id}`,
         minimumGradeId: asGradeId('g1'),
         minimumPlacement: undefined,
         isDiscretionary: false,
@@ -77,7 +73,6 @@ function makeAwardType(id: string): AwardType {
 function makeShowType(id: string): ShowType {
     return {
         id: asShowTypeId(id),
-        name: `ShowType ${id}`,
         availableAwardTypeIds: [],
         availableCollectiveCompetitions: [],
     };
@@ -117,29 +112,29 @@ describe('resolveEffectiveRuleset', () => {
     describe('override', () => {
         it('second layer with same ClassId replaces the base-layer ClassDefinition wholly', () => {
             const base = makeLayer('fci', {
-                classDefinitions: [makeClass('c-1', 'FCI Puppy')],
+                classDefinitions: [makeClass('c-1', 9)],
             });
             const national = makeLayer('srsh', {
-                classDefinitions: [makeClass('c-1', 'SRSH Puppy Override')],
+                classDefinitions: [makeClass('c-1', 3)],
             });
 
             const result = resolveEffectiveRuleset([base, national], TEST_DATE);
 
             expect(result.classDefinitions).toHaveLength(1);
-            expect(result.classDefinitions[0]?.name).toBe('SRSH Puppy Override');
+            expect(result.classDefinitions[0]?.fromAgeMonths).toBe(3);
         });
     });
 
     describe('layer ordering', () => {
         it('last array element wins when two layers share the same ClassId', () => {
-            const layer1 = makeLayer('l1', { classDefinitions: [makeClass('c-1', 'First')] });
-            const layer2 = makeLayer('l2', { classDefinitions: [makeClass('c-1', 'Second')] });
-            const layer3 = makeLayer('l3', { classDefinitions: [makeClass('c-1', 'Third')] });
+            const layer1 = makeLayer('l1', { classDefinitions: [makeClass('c-1', 9)] });
+            const layer2 = makeLayer('l2', { classDefinitions: [makeClass('c-1', 15)] });
+            const layer3 = makeLayer('l3', { classDefinitions: [makeClass('c-1', 18)] });
 
             const result = resolveEffectiveRuleset([layer1, layer2, layer3], TEST_DATE);
 
             expect(result.classDefinitions).toHaveLength(1);
-            expect(result.classDefinitions[0]?.name).toBe('Third');
+            expect(result.classDefinitions[0]?.fromAgeMonths).toBe(18);
         });
     });
 

@@ -64,18 +64,14 @@ export const FCI_AWARD_BEST_PROGENY_GROUP = asAwardTypeId('best-progeny-group');
 
 const fciAdultGradeScale: GradeScale = {
     id: FCI_GRADE_SCALE_ID,
-    name: 'FCI Adult',
     grades: [
-        { id: FCI_GRADE_EXCELLENT, name: 'Excellent', ordinal: 0 },
-        { id: FCI_GRADE_VERY_GOOD, name: 'Very Good', ordinal: 1 },
-        { id: FCI_GRADE_GOOD, name: 'Good', ordinal: 2 },
-        { id: FCI_GRADE_SUFFICIENT, name: 'Sufficient', ordinal: 3 },
+        { id: FCI_GRADE_EXCELLENT, ordinal: 0 },
+        { id: FCI_GRADE_VERY_GOOD, ordinal: 1 },
+        { id: FCI_GRADE_GOOD, ordinal: 2 },
+        { id: FCI_GRADE_SUFFICIENT, ordinal: 3 },
     ],
     placeableThresholdId: FCI_GRADE_VERY_GOOD,
-    specialOutcomes: [
-        { id: FCI_OUTCOME_DISQUALIFIED, name: 'Disqualified' },
-        { id: FCI_OUTCOME_CANNOT_BE_JUDGED, name: 'Cannot Be Judged' },
-    ],
+    specialOutcomes: [{ id: FCI_OUTCOME_DISQUALIFIED }, { id: FCI_OUTCOME_CANNOT_BE_JUDGED }],
 };
 
 /**
@@ -84,11 +80,10 @@ const fciAdultGradeScale: GradeScale = {
  */
 const fciPuppyGradeScale: GradeScale = {
     id: FCI_PUPPY_GRADE_SCALE_ID,
-    name: 'FCI Puppy',
     grades: [
-        { id: FCI_GRADE_VERY_PROMISING, name: 'Very Promising', ordinal: 0 },
-        { id: FCI_GRADE_PROMISING, name: 'Promising', ordinal: 1 },
-        { id: FCI_GRADE_LESS_PROMISING, name: 'Less Promising', ordinal: 2 },
+        { id: FCI_GRADE_VERY_PROMISING, ordinal: 0 },
+        { id: FCI_GRADE_PROMISING, ordinal: 1 },
+        { id: FCI_GRADE_LESS_PROMISING, ordinal: 2 },
     ],
     placeableThresholdId: FCI_GRADE_VERY_PROMISING,
     specialOutcomes: [], // FCI Section 6 defines no separate special outcomes for the puppy scale
@@ -101,7 +96,6 @@ const fciPuppyGradeScale: GradeScale = {
 const fciAwardTypes: ReadonlyArray<AwardType> = [
     {
         id: FCI_AWARD_CACIB,
-        name: 'CACIB',
         minimumGradeId: FCI_GRADE_EXCELLENT,
         minimumPlacement: 1,
         isDiscretionary: true,
@@ -111,7 +105,6 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
         // Section 7: awarded to the second-best EXCELLENT dog from the CACIB-eligible
         // classes. Not compulsory. No equivalent reserve exists for CACIB-J or CACIB-V.
         id: FCI_AWARD_RES_CACIB,
-        name: 'Reserve CACIB',
         minimumGradeId: FCI_GRADE_EXCELLENT,
         minimumPlacement: undefined, // selection logic lives in AwardPolicy, not here
         isDiscretionary: true,
@@ -119,7 +112,6 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
     },
     {
         id: FCI_AWARD_CACIB_J,
-        name: 'CACIB-J',
         minimumGradeId: FCI_GRADE_EXCELLENT,
         minimumPlacement: 1,
         isDiscretionary: true,
@@ -127,7 +119,6 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
     },
     {
         id: FCI_AWARD_CACIB_V,
-        name: 'CACIB-V',
         minimumGradeId: FCI_GRADE_EXCELLENT,
         minimumPlacement: 1,
         isDiscretionary: true,
@@ -135,7 +126,6 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
     },
     {
         id: FCI_AWARD_BOB,
-        name: 'Best of Breed',
         minimumGradeId: FCI_GRADE_EXCELLENT,
         minimumPlacement: undefined,
         isDiscretionary: false,
@@ -143,7 +133,6 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
     },
     {
         id: FCI_AWARD_BOS,
-        name: 'Best of Opposite Sex',
         minimumGradeId: FCI_GRADE_EXCELLENT,
         minimumPlacement: undefined,
         isDiscretionary: false,
@@ -151,7 +140,6 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
     },
     {
         id: FCI_AWARD_BIG,
-        name: 'Best in Group',
         minimumGradeId: FCI_GRADE_EXCELLENT,
         minimumPlacement: undefined,
         isDiscretionary: false,
@@ -159,7 +147,6 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
     },
     {
         id: FCI_AWARD_BIS,
-        name: 'Best in Show',
         minimumGradeId: FCI_GRADE_EXCELLENT,
         minimumPlacement: undefined,
         isDiscretionary: false,
@@ -173,7 +160,6 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
     // -----------------------------------------------------------------------
     {
         id: FCI_AWARD_BEST_JUNIOR,
-        name: 'Best Junior in Show',
         minimumGradeId: FCI_GRADE_EXCELLENT, // from CACIB-J winners
         minimumPlacement: undefined,
         isDiscretionary: false,
@@ -181,7 +167,6 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
     },
     {
         id: FCI_AWARD_BEST_VETERAN,
-        name: 'Best Veteran in Show',
         minimumGradeId: FCI_GRADE_EXCELLENT, // from CACIB-V winners
         minimumPlacement: undefined,
         isDiscretionary: false,
@@ -189,7 +174,6 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
     },
     {
         id: FCI_AWARD_BEST_PUPPY,
-        name: 'Best Puppy in Show',
         minimumGradeId: FCI_GRADE_VERY_PROMISING, // Very Promising 1st from Puppy class
         minimumPlacement: undefined,
         isDiscretionary: false,
@@ -197,7 +181,6 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
     },
     {
         id: FCI_AWARD_BEST_MINOR_PUPPY,
-        name: 'Best Minor Puppy in Show',
         minimumGradeId: FCI_GRADE_VERY_PROMISING, // Very Promising 1st from Minor Puppy class
         minimumPlacement: undefined,
         isDiscretionary: false,
@@ -210,7 +193,6 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
     // -----------------------------------------------------------------------
     {
         id: FCI_AWARD_BEST_BRACE,
-        name: 'Best Brace/Couple',
         minimumGradeId: undefined,
         minimumPlacement: undefined,
         isDiscretionary: false,
@@ -218,7 +200,6 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
     },
     {
         id: FCI_AWARD_BEST_BREEDERS_GROUP,
-        name: 'Best Breeders\u2019 Group',
         minimumGradeId: undefined,
         minimumPlacement: undefined,
         isDiscretionary: false,
@@ -226,7 +207,6 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
     },
     {
         id: FCI_AWARD_BEST_PROGENY_GROUP,
-        name: 'Best Progeny Group',
         minimumGradeId: undefined,
         minimumPlacement: undefined,
         isDiscretionary: false,
@@ -254,7 +234,6 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // -----------------------------------------------------------------------
     {
         id: asClassId('minor-puppy'),
-        name: 'Minor Puppy Class',
         fromAgeMonths: undefined,
         lessThanAgeMonths: 6,
         requiredCertificates: [CertificateKind.Vaccination],
@@ -267,7 +246,6 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // -----------------------------------------------------------------------
     {
         id: asClassId('puppy'),
-        name: 'Puppy Class',
         fromAgeMonths: 6,
         lessThanAgeMonths: 9,
         requiredCertificates: [],
@@ -280,7 +258,6 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // -----------------------------------------------------------------------
     {
         id: asClassId('junior'),
-        name: 'Junior Class',
         fromAgeMonths: 9,
         lessThanAgeMonths: 18,
         requiredCertificates: [],
@@ -293,7 +270,6 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // -----------------------------------------------------------------------
     {
         id: asClassId('intermediate'),
-        name: 'Intermediate Class',
         fromAgeMonths: 15,
         lessThanAgeMonths: 24,
         requiredCertificates: [],
@@ -306,7 +282,6 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // -----------------------------------------------------------------------
     {
         id: asClassId('open'),
-        name: 'Open Class',
         fromAgeMonths: 15,
         lessThanAgeMonths: undefined,
         requiredCertificates: [],
@@ -320,7 +295,6 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // -----------------------------------------------------------------------
     {
         id: asClassId('bred-by-exhibitor'),
-        name: 'Bred by Exhibitor Class',
         fromAgeMonths: 15,
         lessThanAgeMonths: undefined,
         requiredCertificates: [],
@@ -333,7 +307,6 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // -----------------------------------------------------------------------
     {
         id: asClassId('working'),
-        name: 'Working Class',
         fromAgeMonths: 15,
         lessThanAgeMonths: undefined,
         requiredCertificates: [CertificateKind.WorkingCertificate],
@@ -346,7 +319,6 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // -----------------------------------------------------------------------
     {
         id: asClassId('champion'),
-        name: 'Champion Class',
         fromAgeMonths: 15,
         lessThanAgeMonths: undefined,
         requiredCertificates: [CertificateKind.ChampionCertificate],
@@ -359,7 +331,6 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // -----------------------------------------------------------------------
     {
         id: asClassId('veteran'),
-        name: 'Veteran Class',
         fromAgeMonths: 96,
         lessThanAgeMonths: undefined,
         requiredCertificates: [],
@@ -374,7 +345,6 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // -----------------------------------------------------------------------
     {
         id: asClassId('honour'),
-        name: 'Honour Class',
         fromAgeMonths: undefined,
         lessThanAgeMonths: undefined,
         requiredCertificates: [],
@@ -391,7 +361,6 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
 const fciShowTypes: ReadonlyArray<ShowType> = [
     {
         id: asShowTypeId('cacib-show'),
-        name: 'CAC-CACIB Show',
         availableAwardTypeIds: [
             FCI_AWARD_CACIB,
             FCI_AWARD_RES_CACIB,
@@ -432,7 +401,6 @@ const fciShowTypes: ReadonlyArray<ShowType> = [
  */
 export const fciLayer: RulesetLayer = {
     id: FCI_LAYER_ID,
-    name: 'FCI',
     parentLayerId: undefined,
     classDefinitions: fciClassDefinitions,
     gradeScales: [fciAdultGradeScale, fciPuppyGradeScale],

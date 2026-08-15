@@ -28,7 +28,6 @@ const BORN_OVER_3M: LocalDate = { year: 2026, month: 5, day: 3 };
 function makeClass(overrides: Partial<ClassDefinition> = {}): ClassDefinition {
     return {
         id: asClassId('test-class'),
-        name: 'Test Class',
         fromAgeMonths: undefined,
         lessThanAgeMonths: undefined,
         requiredCertificates: [],

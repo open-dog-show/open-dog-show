@@ -15,7 +15,6 @@ import type { ShowType } from './show-type.js';
  */
 export interface RulesetLayer {
     readonly id: RulesetLayerId;
-    readonly name: string;
     /** Parent layer this one extends. Undefined for the FCI base layer. */
     readonly parentLayerId: RulesetLayerId | undefined;
     readonly classDefinitions: ReadonlyArray<ClassDefinition>;
