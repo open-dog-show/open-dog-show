@@ -188,27 +188,21 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
     },
     // -----------------------------------------------------------------------
     // Collective competition awards (Section 7) — awarded to the winning group.
-    // minimumGradeId is undefined: structural validity is determined by
-    // CollectiveAwardPolicy, not by an individual dog grade.
+    // CollectiveAwardType has no minimumGradeId or minimumPlacement — structural
+    // validity is determined by CollectiveAwardPolicy, not individual dog grade.
     // -----------------------------------------------------------------------
     {
         id: FCI_AWARD_BEST_BRACE,
-        minimumGradeId: undefined,
-        minimumPlacement: undefined,
         isDiscretionary: false,
         scope: 'collective',
     },
     {
         id: FCI_AWARD_BEST_BREEDERS_GROUP,
-        minimumGradeId: undefined,
-        minimumPlacement: undefined,
         isDiscretionary: false,
         scope: 'collective',
     },
     {
         id: FCI_AWARD_BEST_PROGENY_GROUP,
-        minimumGradeId: undefined,
-        minimumPlacement: undefined,
         isDiscretionary: false,
         scope: 'collective',
     },

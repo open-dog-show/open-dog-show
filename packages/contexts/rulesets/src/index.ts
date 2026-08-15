@@ -33,7 +33,12 @@ export type { DogEligibilityProfile } from './domain/dog-eligibility-profile.js'
 export type { ClassEligibilityPolicy } from './domain/class-eligibility-policy.js';
 export type { Grade, SpecialOutcome, GradeScale } from './domain/grade-scale.js';
 export type { ClassDefinition } from './domain/class-definition.js';
-export type { AwardScope, AwardType } from './domain/award-type.js';
+export type {
+    AwardScope,
+    AwardType,
+    IndividualAwardType,
+    CollectiveAwardType,
+} from './domain/award-type.js';
 export type { RecognitionStatus, Breed, Variety, Group } from './domain/breed.js';
 export type { ShowType } from './domain/show-type.js';
 export type { EffectiveRuleset } from './domain/effective-ruleset.js';

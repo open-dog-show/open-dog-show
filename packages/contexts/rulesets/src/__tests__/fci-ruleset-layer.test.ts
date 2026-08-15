@@ -26,6 +26,7 @@ import {
 import { resolveEffectiveRuleset } from '../domain/resolve-effective-ruleset.js';
 import { CertificateKind } from '../domain/certificate-kind.js';
 import type { LocalDate } from '../domain/local-date.js';
+import type { IndividualAwardType } from '../domain/award-type.js';
 
 const RESOLVE_DATE: LocalDate = { year: 2026, month: 8, day: 11 };
 
@@ -194,7 +195,7 @@ describe('fciLayer — award types', () => {
     });
 
     it('CACIB is per-sex, discretionary, Excellent-1st', () => {
-        const at = fciLayer.awardTypes.find((a) => a.id === 'cacib');
+        const at = fciLayer.awardTypes.find((a): a is IndividualAwardType => a.id === 'cacib');
         expect(at).toBeDefined();
         expect(at!.scope).toBe('per-sex');
         expect(at!.isDiscretionary).toBe(true);
@@ -205,7 +206,7 @@ describe('fciLayer — award types', () => {
     });
 
     it('Reserve CACIB is per-sex, discretionary, Excellent, no placement requirement', () => {
-        const at = fciLayer.awardTypes.find((a) => a.id === 'res-cacib');
+        const at = fciLayer.awardTypes.find((a): a is IndividualAwardType => a.id === 'res-cacib');
         expect(at).toBeDefined();
         expect(at!.scope).toBe('per-sex');
         expect(at!.isDiscretionary).toBe(true);
@@ -213,7 +214,7 @@ describe('fciLayer — award types', () => {
     });
 
     it('CACIB-J is per-sex, discretionary, Excellent-1st', () => {
-        const at = fciLayer.awardTypes.find((a) => a.id === 'cacib-j');
+        const at = fciLayer.awardTypes.find((a): a is IndividualAwardType => a.id === 'cacib-j');
         expect(at).toBeDefined();
         expect(at!.scope).toBe('per-sex');
         expect(at!.isDiscretionary).toBe(true);
@@ -221,7 +222,7 @@ describe('fciLayer — award types', () => {
     });
 
     it('CACIB-V is per-sex, discretionary, Excellent-1st', () => {
-        const at = fciLayer.awardTypes.find((a) => a.id === 'cacib-v');
+        const at = fciLayer.awardTypes.find((a): a is IndividualAwardType => a.id === 'cacib-v');
         expect(at).toBeDefined();
         expect(at!.scope).toBe('per-sex');
         expect(at!.isDiscretionary).toBe(true);
@@ -267,7 +268,7 @@ describe('fciLayer — award types', () => {
     });
 
     it('Best Puppy in Show is show scope, not discretionary, Very Promising', () => {
-        const at = fciLayer.awardTypes.find((a) => a.id === 'best-puppy');
+        const at = fciLayer.awardTypes.find((a): a is IndividualAwardType => a.id === 'best-puppy');
         expect(at).toBeDefined();
         expect(at!.scope).toBe('show');
         expect(at!.isDiscretionary).toBe(false);
@@ -275,7 +276,9 @@ describe('fciLayer — award types', () => {
     });
 
     it('Best Minor Puppy in Show is show scope, not discretionary, Very Promising', () => {
-        const at = fciLayer.awardTypes.find((a) => a.id === 'best-minor-puppy');
+        const at = fciLayer.awardTypes.find(
+            (a): a is IndividualAwardType => a.id === 'best-minor-puppy',
+        );
         expect(at).toBeDefined();
         expect(at!.scope).toBe('show');
         expect(at!.isDiscretionary).toBe(false);
@@ -287,7 +290,7 @@ describe('fciLayer — award types', () => {
         expect(at).toBeDefined();
         expect(at!.scope).toBe('collective');
         expect(at!.isDiscretionary).toBe(false);
-        expect(at!.minimumGradeId).toBeUndefined();
+        expect('minimumGradeId' in at!).toBe(false);
     });
 
     it('Best Breeders\u2019 Group is collective scope', () => {
@@ -382,7 +385,9 @@ describe('kmshLayer — structure', () => {
     });
 
     it('adds the RCAC award type', () => {
-        const at = kmshLayer.awardTypes.find((a) => a.id === KMSH_AWARD_RCAC);
+        const at = kmshLayer.awardTypes.find(
+            (a): a is IndividualAwardType => a.id === KMSH_AWARD_RCAC,
+        );
         expect(at).toBeDefined();
         expect(at!.scope).toBe('per-sex');
         expect(at!.isDiscretionary).toBe(true);
