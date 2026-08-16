@@ -4,8 +4,8 @@
 export type { DomainEvent, EventScope, CreateDomainEventParams } from './domain/domain-event.js';
 export { createDomainEvent } from './domain/domain-event.js';
 export type { Clock, IdGenerator } from './domain/domain-ports.js';
-export type { ShowId, DogId, TenantId, ExhibitorId, AccountId } from './domain/domain-ids.js';
-export { asShowId, asDogId, asTenantId, asExhibitorId, asAccountId } from './domain/domain-ids.js';
+export type { ShowId, DogId, TenantId, ExhibitorId, UserId } from './domain/domain-ids.js';
+export { asShowId, asDogId, asTenantId, asExhibitorId, asUserId } from './domain/domain-ids.js';
 export type { DomainEventJson } from './domain/domain-event-codec.js';
 export { encodeDomainEvent, decodeDomainEvent } from './domain/domain-event-codec.js';
 export type { OutboxAppender } from './domain/outbox-port.js';
