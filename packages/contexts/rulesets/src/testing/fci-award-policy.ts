@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { AwardTypeId, GradeScaleId, GradeId } from '../domain/domain-ids.js';
+import type { IndividualAwardType } from '../domain/award-type.js';
 import type { EffectiveRuleset } from '../domain/effective-ruleset.js';
 import type { Grade } from '../domain/grade-scale.js';
 import type {
@@ -103,6 +104,7 @@ export class FciAwardPolicy implements AwardPolicy {
             for (const awardTypeId of classDef.awardTypeIds) {
                 const awardType = ruleset.awardTypes.find((at) => at.id === awardTypeId);
                 if (!awardType) continue;
+                if (awardType.scope === 'collective') continue;
 
                 const minGrade = this.resolveGrade(
                     awardType.minimumGradeId,
@@ -139,6 +141,12 @@ export class FciAwardPolicy implements AwardPolicy {
                 return {
                     valid: false,
                     reason: `Unknown award type '${assignment.awardTypeId}'`,
+                };
+            }
+            if (awardType.scope === 'collective') {
+                return {
+                    valid: false,
+                    reason: `Collective award type '${awardType.id}' cannot be proposed in a per-sex scope`,
                 };
             }
 
@@ -232,10 +240,11 @@ export class FciAwardPolicy implements AwardPolicy {
         candidate: CandidateEntry,
         ruleset: EffectiveRuleset,
     ): boolean {
-        const breedAwardTypes = ruleset.awardTypes.filter((at) => at.scope === 'breed');
+        const breedAwardTypes = ruleset.awardTypes.filter(
+            (at): at is IndividualAwardType => at.scope === 'breed',
+        );
         const firstBreed = breedAwardTypes[0];
         if (!firstBreed) return false;
-        if (firstBreed.minimumGradeId === undefined) return false;
 
         const gradeScale = ruleset.gradeScales.find((gs) =>
             gs.grades.some((g) => g.id === firstBreed.minimumGradeId),

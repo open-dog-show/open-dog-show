@@ -47,7 +47,7 @@ The dog-side snapshot — date of birth and held certificates — that the Entri
 _Avoid_: Dog snapshot, Eligibility data
 
 **Award Type**:
-The ruleset-owned definition of a single honour that can be proposed in a judging unit — specifying the minimum grade and placement required (e.g. Excellent-1st for CACIB), whether the award is discretionary, and the **Award Scope Level** at which it is determined. Award Types are published as part of the Effective Ruleset.
+The ruleset-owned definition of a single honour that can be proposed in a judging unit. **Individual award types** (scopes: per-sex, breed, group, show) carry a required minimum grade and optional minimum placement (e.g. Excellent-1st for CACIB). **Collective award types** (scope: collective — Best Brace, Best Breeders' Group, Best Progeny Group) carry no grade or placement requirement; their structural validity is governed by the **Collective Award Policy**. Award Types are published as part of the Effective Ruleset.
 _Avoid_: Award category
 
 **Award Scope Level**:
