@@ -18,18 +18,18 @@ import type { DomainEvent } from '../domain/domain-event.js';
  *
  * Variables set:
  *   - `app.tenant_id`  — UUID string, or empty string when not applicable.
- *   - `app.account_id` — UUID string, or empty string when not applicable.
+ *   - `app.user_id` — UUID string, or empty string when not applicable.
  *
- * RLS policies read them via `nullif(current_setting('app.tenant_id', true), '')::uuid`
+ * RLS policies read them via `nullif(current_setting('app.user_id', true), '')::uuid`
  * so an empty string safely evaluates to NULL (= no rows match the policy predicate).
  *
  * The parameterised query form prevents any SQL injection through scope values.
  */
 async function setRlsSessionVars(client: pg.PoolClient, scope: TransactionScope): Promise<void> {
     const tenantId = scope.kind === 'tenant' ? scope.tenantId : '';
-    const accountId = scope.kind !== 'platform' ? scope.accountId : '';
+    const userId = scope.kind !== 'platform' ? scope.userId : '';
     await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantId]);
-    await client.query(`SELECT set_config('app.account_id', $1, true)`, [accountId]);
+    await client.query(`SELECT set_config('app.user_id', $1, true)`, [userId]);
 }
 
 /**

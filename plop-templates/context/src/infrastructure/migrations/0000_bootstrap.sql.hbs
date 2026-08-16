@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS {{snakeCase name}}.outbox (
   occurred_at   TIMESTAMPTZ NOT NULL,
   scope         TEXT        NOT NULL,
   tenant_id     UUID,
-  account_id    UUID,
+  user_id       UUID,
   aggregate_id  TEXT        NOT NULL,
   payload       JSONB       NOT NULL,
   dispatched_at TIMESTAMPTZ

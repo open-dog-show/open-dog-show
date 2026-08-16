@@ -32,7 +32,7 @@ GRANT USAGE ON SCHEMA sample TO app_user;
 --   hybrid   — Club-owned but exhibitor-readable; disjunctive predicate
 --   USING (
 --     tenant_id  = nullif(current_setting('app.tenant_id',  true), '')::uuid
---     OR account_id = nullif(current_setting('app.account_id', true), '')::uuid
+--     OR user_id = nullif(current_setting('app.user_id', true), '')::uuid
 --   )
 --
 --   platform — reference/operator data; no policy (role-gated or RLS-exempt).
@@ -69,7 +69,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON sample.shows TO app_user;
 CREATE TABLE IF NOT EXISTS sample.entries (
   id         UUID NOT NULL PRIMARY KEY,
   tenant_id  UUID NOT NULL,
-  account_id UUID NOT NULL,
+  user_id    UUID NOT NULL,
   show_id    UUID NOT NULL REFERENCES sample.shows(id),
   dog_name   TEXT NOT NULL
 );
@@ -81,7 +81,7 @@ CREATE POLICY entries_hybrid ON sample.entries
   AS PERMISSIVE FOR ALL TO app_user
   USING (
     tenant_id  = nullif(current_setting('app.tenant_id',  true), '')::uuid
-    OR account_id = nullif(current_setting('app.account_id', true), '')::uuid
+    OR user_id = nullif(current_setting('app.user_id', true), '')::uuid
   );
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON sample.entries TO app_user;
@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS sample.outbox (
   occurred_at   TIMESTAMPTZ NOT NULL,
   scope         TEXT        NOT NULL,
   tenant_id     UUID,
-  account_id    UUID,
+  user_id       UUID,
   aggregate_id  TEXT        NOT NULL,
   payload       JSONB       NOT NULL,
   dispatched_at TIMESTAMPTZ

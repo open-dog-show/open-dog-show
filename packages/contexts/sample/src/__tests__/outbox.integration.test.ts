@@ -9,7 +9,7 @@ import { PostgresHarness, runMigrations } from '@ods/test-kit';
 import {
     withOutboxTransaction,
     asTenantId,
-    asAccountId,
+    asUserId,
     createDomainEvent,
     FakeClock,
     FakeIdGenerator,
@@ -31,12 +31,12 @@ const EVENT_ID = '00000000-0000-4000-8000-000000000041';
 const scope = {
     kind: 'tenant' as const,
     tenantId: asTenantId(TENANT_ID),
-    accountId: asAccountId(ACCOUNT_ID),
+    userId: asUserId(ACCOUNT_ID),
 };
 const entry = {
     id: ENTRY_ID,
     tenantId: asTenantId(TENANT_ID),
-    accountId: asAccountId(ACCOUNT_ID),
+    userId: asUserId(ACCOUNT_ID),
     showId: SHOW_ID,
     dogName: 'Fido',
 };

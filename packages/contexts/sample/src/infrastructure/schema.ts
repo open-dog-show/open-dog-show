@@ -14,7 +14,7 @@ export const showsTable = schema.table('shows', {
 export const entriesTable = schema.table('entries', {
     id: uuid('id').primaryKey(),
     tenantId: uuid('tenant_id').notNull(),
-    accountId: uuid('account_id').notNull(),
+    userId: uuid('user_id').notNull(),
     showId: uuid('show_id').notNull(),
     dogName: text('dog_name').notNull(),
 });

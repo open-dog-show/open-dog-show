@@ -6,7 +6,7 @@ import pg from 'pg';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PostgresHarness, runMigrations } from '@ods/test-kit';
-import { withTransaction, asTenantId, asAccountId } from '@ods/kernel';
+import { withTransaction, asTenantId, asUserId } from '@ods/kernel';
 import { DrizzleShowRepository } from '../infrastructure/drizzle-show-repository.js';
 import { DrizzleEntryRepository } from '../infrastructure/drizzle-entry-repository.js';
 
@@ -54,7 +54,7 @@ describe('RLS isolation — sample context', () => {
             );
             // Hybrid entry: owned by Tenant A, submitted by Account A.
             await superClient.query(
-                `INSERT INTO sample.entries (id, tenant_id, account_id, show_id, dog_name) VALUES
+                `INSERT INTO sample.entries (id, tenant_id, user_id, show_id, dog_name) VALUES
                    ($1, $2, $3, $4, 'Fido')`,
                 [ENTRY_HYBRID_ID, TENANT_A_ID, ACCOUNT_A_ID, SHOW_A_ID],
             );
@@ -75,7 +75,7 @@ describe('RLS isolation — sample context', () => {
                 {
                     kind: 'tenant',
                     tenantId: asTenantId(TENANT_A_ID),
-                    accountId: asAccountId(ACCOUNT_A_ID),
+                    userId: asUserId(ACCOUNT_A_ID),
                 },
                 async (client) => {
                     const repo = new DrizzleShowRepository(client);
@@ -92,7 +92,7 @@ describe('RLS isolation — sample context', () => {
                 {
                     kind: 'tenant',
                     tenantId: asTenantId(TENANT_B_ID),
-                    accountId: asAccountId(ACCOUNT_B_ID),
+                    userId: asUserId(ACCOUNT_B_ID),
                 },
                 async (client) => {
                     const repo = new DrizzleShowRepository(client);
@@ -111,7 +111,7 @@ describe('RLS isolation — sample context', () => {
                 {
                     kind: 'tenant',
                     tenantId: asTenantId(TENANT_A_ID),
-                    accountId: asAccountId(ACCOUNT_A_ID),
+                    userId: asUserId(ACCOUNT_A_ID),
                 },
                 async (client) => {
                     const repo = new DrizzleEntryRepository(client);
@@ -125,7 +125,7 @@ describe('RLS isolation — sample context', () => {
         it('exhibitor-A scope sees the hybrid entry (matched by account_id)', async () => {
             await withTransaction(
                 appPool,
-                { kind: 'exhibitor', accountId: asAccountId(ACCOUNT_A_ID) },
+                { kind: 'exhibitor', userId: asUserId(ACCOUNT_A_ID) },
                 async (client) => {
                     const repo = new DrizzleEntryRepository(client);
                     const entries = await repo.findAll();
@@ -141,7 +141,7 @@ describe('RLS isolation — sample context', () => {
                 {
                     kind: 'tenant',
                     tenantId: asTenantId(TENANT_B_ID),
-                    accountId: asAccountId(ACCOUNT_B_ID),
+                    userId: asUserId(ACCOUNT_B_ID),
                 },
                 async (client) => {
                     const repo = new DrizzleEntryRepository(client);
