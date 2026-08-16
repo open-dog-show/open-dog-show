@@ -414,8 +414,7 @@ describe('kmshLayer — structure', () => {
 
     it('adds the RCAC award type', () => {
         const at = kmshLayer.awardTypes.find(
-            (a): a is IndividualAwardType =>
-                a.id === KMSH_AWARD_RCAC && a.scope !== 'collective',
+            (a): a is IndividualAwardType => a.id === KMSH_AWARD_RCAC && a.scope !== 'collective',
         );
         expect(at).toBeDefined();
         expect(at!.scope).toBe('per-sex');
