@@ -21,8 +21,8 @@ export type DogId = Brand<string, 'DogId'>;
 export type TenantId = Brand<string, 'TenantId'>;
 /** Branded string that uniquely identifies an exhibitor. */
 export type ExhibitorId = Brand<string, 'ExhibitorId'>;
-/** Branded string that uniquely identifies a user account. */
-export type AccountId = Brand<string, 'AccountId'>;
+/** Branded string that uniquely identifies a user. */
+export type UserId = Brand<string, 'UserId'>;
 
 /**
  * Casts a raw string to a {@link ShowId}.
@@ -40,5 +40,5 @@ export const asDogId = (id: string): DogId => id as DogId;
 export const asTenantId = (id: string): TenantId => id as TenantId;
 /** Casts a raw string to an {@link ExhibitorId}. See {@link asShowId}. */
 export const asExhibitorId = (id: string): ExhibitorId => id as ExhibitorId;
-/** Casts a raw string to an {@link AccountId}. See {@link asShowId}. */
-export const asAccountId = (id: string): AccountId => id as AccountId;
+/** Casts a raw string to a {@link UserId}. See {@link asShowId}. */
+export const asUserId = (id: string): UserId => id as UserId;

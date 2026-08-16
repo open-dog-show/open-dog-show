@@ -12,7 +12,7 @@ import type { TransactionScope } from '../domain/transaction-scope.js';
  *
  * Expects a table in `<schema>.outbox` with columns:
  *   `event_id` UUID UNIQUE, `type` TEXT, `occurred_at` TIMESTAMPTZ,
- *   `scope` TEXT, `tenant_id` UUID, `account_id` UUID,
+ *   `scope` TEXT, `tenant_id` UUID, `user_id` UUID,
  *   `aggregate_id` TEXT, `payload` JSONB, `dispatched_at` TIMESTAMPTZ
  *
  * The `ON CONFLICT (event_id) DO NOTHING` guard makes writes idempotent so
@@ -35,12 +35,12 @@ export class PgOutboxWriter implements OutboxWriter {
         scope: TransactionScope,
     ): Promise<void> {
         const tenantId = scope.kind === 'tenant' ? scope.tenantId : null;
-        const accountId = scope.kind !== 'platform' ? scope.accountId : null;
+        const userId = scope.kind !== 'platform' ? scope.userId : null;
 
         for (const event of events) {
             await client.query(
                 `INSERT INTO ${this.quotedSchema}.outbox
-                   (event_id, type, occurred_at, scope, tenant_id, account_id,
+                   (event_id, type, occurred_at, scope, tenant_id, user_id,
                     aggregate_id, payload)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                  ON CONFLICT (event_id) DO NOTHING`,
@@ -50,7 +50,7 @@ export class PgOutboxWriter implements OutboxWriter {
                     event.occurredAt.toISOString(),
                     event.scope,
                     tenantId,
-                    accountId,
+                    userId,
                     event.aggregateId,
                     JSON.stringify(event.payload),
                 ],

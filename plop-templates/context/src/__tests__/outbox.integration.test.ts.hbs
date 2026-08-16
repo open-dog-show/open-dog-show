@@ -9,7 +9,7 @@ import { PostgresHarness, runMigrations } from '@ods/test-kit';
 import {
     withOutboxTransaction,
     asTenantId,
-    asAccountId,
+    asUserId,
     createDomainEvent,
     FakeClock,
     FakeIdGenerator,
@@ -23,14 +23,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Fixed deterministic IDs.
 const TENANT_ID = '00000000-0000-4000-8000-000000000001';
-const ACCOUNT_ID = '00000000-0000-4000-8000-000000000011';
+const USER_ID = '00000000-0000-4000-8000-000000000011';
 const ITEM_ID = '00000000-0000-4000-8000-000000000031';
 const EVENT_ID = '00000000-0000-4000-8000-000000000041';
 
 const scope = {
     kind: 'tenant' as const,
     tenantId: asTenantId(TENANT_ID),
-    accountId: asAccountId(ACCOUNT_ID),
+    userId: asUserId(USER_ID),
 };
 const item = {
     id: ITEM_ID,
