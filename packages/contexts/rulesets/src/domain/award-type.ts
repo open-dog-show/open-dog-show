@@ -1,4 +1,4 @@
-﻿// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { AwardTypeId, GradeId } from './domain-ids.js';
