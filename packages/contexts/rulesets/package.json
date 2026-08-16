@@ -1,0 +1,20 @@
+{
+    "name": "@ods/rulesets",
+    "version": "0.0.1",
+    "private": true,
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "import": "./src/index.ts"
+        },
+        "./testing": {
+            "types": "./src/testing/index.ts",
+            "import": "./src/testing/index.ts"
+        },
+        "./layers": {
+            "types": "./src/layers/index.ts",
+            "import": "./src/layers/index.ts"
+        }
+    }
+}
