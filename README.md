@@ -18,15 +18,16 @@ Domain-model-first, DDD + clean architecture, framework-agnostic ("don't marry t
 
 Domain-model spec complete. Foundation build phase complete.
 
-| #   | Task                                                                         | State     |
-| --- | ---------------------------------------------------------------------------- | --------- |
-| T1  | Monorepo bootstrap — pnpm workspace, TypeScript/ESLint/Vitest config         | ✅ merged |
-| T2  | REUSE/SPDX compliance — SPDX headers + `REUSE.toml` bulk declarations        | ✅ merged |
-| T3  | Test-kit — Postgres harness and migration runner                             | ✅ merged |
-| T4  | `withTransaction`, RLS scaffold, and sample bounded context (`entry`/`show`) | ✅ merged |
-| T5  | Transactional outbox and polling dispatcher (`@ods/kernel`)                  | ✅ merged |
-| T6  | Boundary-lint enforcement — ESLint layer and context-zone rules              | ✅ merged |
-| T7  | Context generator — `pnpm new:context <name>` (Plop)                         | ✅ merged |
+| #   | Task                                                                                        | State     |
+| --- | ------------------------------------------------------------------------------------------- | --------- |
+| T1  | Monorepo bootstrap — pnpm workspace, TypeScript/ESLint/Vitest config                        | ✅ merged |
+| T2  | REUSE/SPDX compliance — SPDX headers + `REUSE.toml` bulk declarations                       | ✅ merged |
+| T3  | Test-kit — Postgres harness and migration runner                                            | ✅ merged |
+| T4  | `withTransaction`, RLS scaffold, and sample bounded context (`entry`/`show`)                | ✅ merged |
+| T5  | Transactional outbox and polling dispatcher (`@ods/kernel`)                                 | ✅ merged |
+| T6  | Boundary-lint enforcement — ESLint layer and context-zone rules                             | ✅ merged |
+| T7  | Context generator — `pnpm new:context <name>` (Plop)                                        | ✅ merged |
+| T8  | Rulesets bounded context (`@ods/rulesets`) — domain types, policy ports, Published Language | ✅ merged |
 
 Additional work merged on `main`:
 
