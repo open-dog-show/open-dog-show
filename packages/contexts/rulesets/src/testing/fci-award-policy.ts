@@ -106,12 +106,12 @@ export class FciAwardPolicy implements AwardPolicy {
                 if (!awardType) continue;
                 if (awardType.scope === 'collective') continue;
 
-                // awardType.minimumGradeId is GradeId (IndividualAwardType), never undefined
                 const minGrade = this.resolveGrade(
                     awardType.minimumGradeId,
                     classDef.gradeScaleId,
                     ruleset,
-                )!;
+                );
+                if (!minGrade) continue;
 
                 if (!this.gradeAtLeast(dogGrade, minGrade)) continue;
 
