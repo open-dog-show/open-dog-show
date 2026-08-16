@@ -24,6 +24,7 @@ The rules that must always hold, per bounded context. Grounded in the FCI Regula
 
 - A Dog may be judged only if it has a `Confirmed` Entry and appears in the **Catalogue** (barring a committee error).
 - **Placement (1st–4th) only among Dogs meeting the ruleset's minimum Grade** (≥ Very Good for FCI).
+- **Individual award types always carry a required minimum grade; collective award types never do.** A Grade requirement belongs only to per-sex/breed/group/show award types — collective competition awards (Best Brace, Breeders' Group, Progeny Group) are evaluated structurally by the Collective Award Policy, not by individual dog grades.
 - **One CACIB per breed/sex/variety per Show**, and only to an **Excellent-1st** in an award-eligible Class. The judge's grant is **discretionary** and is **validated (not computed)** by `AwardPolicy`.
 - Awards are recorded as **proposals** where the ruleset says so (FCI "subject to confirmation").
 - A Judge may judge only breeds they are authorised for; the Judge is the sole authority in the ring.
