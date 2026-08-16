@@ -220,11 +220,15 @@ _Avoid_: Transaction, Charge
 
 ## Identity & Access
 
-Owns platform accounts and permissions; a generic context behind an anticorruption layer to an external identity provider.
+Owns platform accounts and role grants; a generic context behind an anticorruption layer to an external identity provider.
 
 **User**:
-An authenticated platform account. Domain roles (Exhibitor, Show Secretary, Judge, Platform Administrator) are granted to Users as permissions; one person may hold several roles.
+An authenticated platform account, created automatically on first login through the external identity provider. Carries a normalized display name and email sourced from the provider and refreshed on each login. Has account status: **Active** (default on creation) or **Suspended** (set by Platform Administrator). Any Active User holds the Exhibitor capability by default — no Role Grant required.
 _Avoid_: Account (acceptable synonym), Login
+
+**Role Grant**:
+An explicit, revocable record that a User holds a named domain role within a stated scope: tenant-scoped (**Show Secretary** — within one Club/tenant) or platform-global (**Judge**, **Platform Administrator**). Created and revoked only by a Platform Administrator. The Exhibitor capability is not a Role Grant. Each downstream context's ACL adapter translates a User's Role Grants into a context-specific identity type; domain layers never inspect Role Grants directly.
+_Avoid_: Permission (use Role Grant), Role Assignment
 
 ## Platform Administration
 
