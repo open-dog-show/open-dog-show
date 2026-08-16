@@ -26,8 +26,8 @@ GRANT USAGE ON SCHEMA sample TO app_user;
 --   tenant   — rows owned by one Club; key = tenant_id
 --   USING (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)
 --
---   exhibitor — cross-tenant participant data; key = account_id
---   USING (account_id = nullif(current_setting('app.account_id', true), '')::uuid)
+--   exhibitor — cross-tenant participant data; key = user_id
+--   USING (user_id = nullif(current_setting('app.user_id', true), '')::uuid)
 --
 --   hybrid   — Club-owned but exhibitor-readable; disjunctive predicate
 --   USING (
@@ -63,7 +63,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON sample.shows TO app_user;
 -- ---------------------------------------------------------------------------
 -- Entries table — hybrid (template: hybrid)
 -- Visible to the owning Club (by tenant_id) OR to the submitting exhibitor
--- (by account_id).
+-- (by user_id).
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS sample.entries (

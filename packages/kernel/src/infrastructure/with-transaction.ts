@@ -20,7 +20,7 @@ import type { DomainEvent } from '../domain/domain-event.js';
  *   - `app.tenant_id`  — UUID string, or empty string when not applicable.
  *   - `app.user_id` — UUID string, or empty string when not applicable.
  *
- * RLS policies read them via `nullif(current_setting('app.user_id', true), '')::uuid`
+ * RLS policies read them via `nullif(current_setting('app.tenant_id'/'app.user_id', true), '')::uuid`
  * so an empty string safely evaluates to NULL (= no rows match the policy predicate).
  *
  * The parameterised query form prevents any SQL injection through scope values.

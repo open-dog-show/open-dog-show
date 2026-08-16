@@ -23,7 +23,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Fixed deterministic IDs.
 const TENANT_ID = '00000000-0000-4000-8000-000000000001';
-const ACCOUNT_ID = '00000000-0000-4000-8000-000000000011';
+const USER_ID = '00000000-0000-4000-8000-000000000011';
 const SHOW_ID = '00000000-0000-4000-8000-000000000021';
 const ENTRY_ID = '00000000-0000-4000-8000-000000000031';
 const EVENT_ID = '00000000-0000-4000-8000-000000000041';
@@ -31,12 +31,12 @@ const EVENT_ID = '00000000-0000-4000-8000-000000000041';
 const scope = {
     kind: 'tenant' as const,
     tenantId: asTenantId(TENANT_ID),
-    userId: asUserId(ACCOUNT_ID),
+    userId: asUserId(USER_ID),
 };
 const entry = {
     id: ENTRY_ID,
     tenantId: asTenantId(TENANT_ID),
-    userId: asUserId(ACCOUNT_ID),
+    userId: asUserId(USER_ID),
     showId: SHOW_ID,
     dogName: 'Fido',
 };

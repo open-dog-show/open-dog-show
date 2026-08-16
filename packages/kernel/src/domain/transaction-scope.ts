@@ -13,7 +13,7 @@ import type { TenantId, UserId } from './domain-ids.js';
  *
  * - `tenant` — a Club admin acting on behalf of a Club: both `tenantId` and `userId` are set.
  * - `exhibitor` — a dog owner acting cross-tenant: only `userId` is set.
- * - `platform` — a platform operator acting globally: no tenant or account isolation.
+ * - `platform` — a platform operator acting globally: no tenant or user isolation.
  */
 export type TransactionScope =
     | { readonly kind: 'tenant'; readonly tenantId: TenantId; readonly userId: UserId }

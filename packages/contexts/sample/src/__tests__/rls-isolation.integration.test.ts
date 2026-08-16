@@ -52,7 +52,7 @@ describe('RLS isolation — sample context', () => {
                    ($3, $4, 'Tenant B Show')`,
                 [SHOW_A_ID, TENANT_A_ID, SHOW_B_ID, TENANT_B_ID],
             );
-            // Hybrid entry: owned by Tenant A, submitted by Account A.
+            // Hybrid entry: owned by Tenant A, submitted by User A.
             await superClient.query(
                 `INSERT INTO sample.entries (id, tenant_id, user_id, show_id, dog_name) VALUES
                    ($1, $2, $3, $4, 'Fido')`,
@@ -122,7 +122,7 @@ describe('RLS isolation — sample context', () => {
             );
         });
 
-        it('exhibitor-A scope sees the hybrid entry (matched by account_id)', async () => {
+        it('exhibitor-A scope sees the hybrid entry (matched by user_id)', async () => {
             await withTransaction(
                 appPool,
                 { kind: 'exhibitor', userId: asUserId(ACCOUNT_A_ID) },
