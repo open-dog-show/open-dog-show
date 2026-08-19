@@ -6,8 +6,7 @@ import type { TenantId, UserId } from '@ods/kernel';
 export type DomainRole = 'ShowSecretary' | 'Judge' | 'PlatformAdministrator';
 
 export type RoleScope =
-    | { readonly kind: 'tenant'; readonly tenantId: TenantId }
-    | { readonly kind: 'platform' };
+    { readonly kind: 'tenant'; readonly tenantId: TenantId } | { readonly kind: 'platform' };
 
 export interface RoleGrant {
     readonly userId: UserId;
@@ -40,7 +39,7 @@ function grantsMatch(a: RoleGrant, b: Pick<RoleGrant, 'userId' | 'role' | 'scope
  * Throws {@link DuplicateRoleGrantError} when the same userId + role + scope already exists.
  */
 export function grantRole(grants: readonly RoleGrant[], newGrant: RoleGrant): readonly RoleGrant[] {
-    if (grants.some(g => grantsMatch(g, newGrant))) {
+    if (grants.some((g) => grantsMatch(g, newGrant))) {
         throw new DuplicateRoleGrantError(newGrant);
     }
     return [...grants, newGrant];
@@ -54,7 +53,7 @@ export function revokeRoleGrant(
     grants: readonly RoleGrant[],
     target: Pick<RoleGrant, 'userId' | 'role' | 'scope'>,
 ): readonly RoleGrant[] {
-    return grants.filter(g => !grantsMatch(g, target));
+    return grants.filter((g) => !grantsMatch(g, target));
 }
 
 /**
@@ -70,5 +69,5 @@ export function hasRoleGrant(
     role: DomainRole,
     scope: RoleScope,
 ): boolean {
-    return grants.some(g => grantsMatch(g, { userId, role, scope }));
+    return grants.some((g) => grantsMatch(g, { userId, role, scope }));
 }
