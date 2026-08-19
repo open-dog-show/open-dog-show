@@ -16,6 +16,8 @@ Domain-model-first, DDD + clean architecture, framework-agnostic ("don't marry t
 
 ## Status
 
+### Foundation build phase (issue #22)
+
 Domain-model spec complete. Foundation build phase complete.
 
 | #   | Task                                                                         | State     |
@@ -27,6 +29,21 @@ Domain-model spec complete. Foundation build phase complete.
 | T5  | Transactional outbox and polling dispatcher (`@ods/kernel`)                  | ✅ merged |
 | T6  | Boundary-lint enforcement — ESLint layer and context-zone rules              | ✅ merged |
 | T7  | Context generator — `pnpm new:context <name>` (Plop)                         | ✅ merged |
+
+### Rulesets context (issue #14)
+
+| Issue | Task                                                                     | PR  | State     |
+| ----- | ------------------------------------------------------------------------ | --- | --------- |
+| #55   | Domain-model update: CONTEXT.md + ADR-0001/ADR-0007 amendments           | #56 | ✅ merged |
+| #50   | T1 — scaffold `@ods/rulesets` and define all domain data types           | #57 | ✅ merged |
+| #51   | T2 — `resolveEffectiveRuleset`: compose layers into a versioned snapshot | #58 | ✅ merged |
+| #52   | T3 — `ClassEligibilityPolicy` port and FCI in-memory implementation      | #60 | ✅ merged |
+| #53   | T4 — `AwardPolicy` port, `JudgingScopeResults` union, FCI in-memory      | #61 | ✅ merged |
+| #54   | T5 — `CollectiveAwardPolicy` port and FCI in-memory implementation       | #63 | ✅ merged |
+| #62   | FCI and KMSH `RulesetLayer` data implementations                         | #65 | ✅ merged |
+| #64   | Remove `name: string` from domain types (i18n owns all display names)    | #70 | ✅ merged |
+| #66   | Extract layer data into `@ods/rulesets/layers` sub-path export           | #71 | ✅ merged |
+| #67   | Split `AwardType` into `IndividualAwardType \| CollectiveAwardType`      | #72 | ✅ merged |
 
 Additional work merged on `main`:
 
