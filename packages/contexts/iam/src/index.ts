@@ -4,3 +4,6 @@
 export type { User, UserStatus } from './domain/user.js';
 export { suspendUser, reactivateUser } from './domain/user.js';
 export type { UserRepository } from './domain/user-repository.js';
+export type { DomainRole, RoleScope, RoleGrant } from './domain/role-grant.js';
+export { grantRole, revokeRoleGrant, hasRoleGrant, DuplicateRoleGrantError } from './domain/role-grant.js';
+export type { RoleGrantRepository } from './domain/role-grant-repository.js';
