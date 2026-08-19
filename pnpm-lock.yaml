@@ -57,7 +57,11 @@ importers:
         specifier: ^3.0.4
         version: 3.2.7(@types/node@26.1.2)(supports-color@7.2.0)(yaml@2.9.0)
 
-  packages/contexts/iam: {}
+  packages/contexts/iam:
+    dependencies:
+      '@ods/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
 
   packages/contexts/rulesets: {}
 
