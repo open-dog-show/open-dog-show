@@ -4,6 +4,9 @@
 export type { User, UserStatus } from './domain/user.js';
 export { suspendUser, reactivateUser } from './domain/user.js';
 export type { UserRepository } from './domain/user-repository.js';
+export type { IdentityClaims, IdentityProvider } from './domain/identity-provider.js';
+export { authenticate } from './domain/authenticate.js';
+export { UserSuspendedError } from './domain/user-suspended-error.js';
 export type {
     DomainRole,
     TenantScope,
