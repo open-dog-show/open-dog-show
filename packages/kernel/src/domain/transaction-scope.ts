@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { TenantId, UserId } from './domain-ids.js';
+import type { TenantId, ActorId } from './domain-ids.js';
 
 /**
  * The data-ownership scope carried into a unit-of-work transaction — see
@@ -11,11 +11,16 @@ import type { TenantId, UserId } from './domain-ids.js';
  * fact_; `TransactionScope` describes _who is acting_ so that the correct RLS
  * session variables can be set.
  *
- * - `tenant`   — a Club admin acting on behalf of a Club: `tenantId` + `userId`.
- * - `exhibitor` — an Exhibitor acting cross-tenant: `userId` only.
+ * `actorId` is a context-neutral {@link ActorId} rather than a `UserId` so
+ * the RLS mechanism does not couple every context to the IAM identity model
+ * (ADR-0011).  The composition root casts the authenticated user's ID to
+ * `ActorId` before opening a transaction.
+ *
+ * - `tenant`   — a Club admin acting on behalf of a Club: `tenantId` + `actorId`.
+ * - `exhibitor` — an Exhibitor acting cross-tenant: `actorId` only.
  * - `platform` — a platform operator acting globally: no isolation keys.
  */
 export type TransactionScope =
-    | { readonly kind: 'tenant'; readonly tenantId: TenantId; readonly userId: UserId }
-    | { readonly kind: 'exhibitor'; readonly userId: UserId }
+    | { readonly kind: 'tenant'; readonly tenantId: TenantId; readonly actorId: ActorId }
+    | { readonly kind: 'exhibitor'; readonly actorId: ActorId }
     | { readonly kind: 'platform' };

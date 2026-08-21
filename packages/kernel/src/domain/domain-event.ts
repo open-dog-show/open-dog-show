@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { Clock, IdGenerator } from './domain-ports.js';
+import { type DomainEventId, type EventTypeName, asDomainEventId } from './domain-ids.js';
 
 /**
  * The data-ownership scope of a recorded domain event — see `CONTEXT.md`
@@ -27,16 +28,7 @@ export type EventScope = 'tenant' | 'exhibitor' | 'platform';
  *
  * @typeParam TPayload - The structured data specific to this event type.
  */
-/**
- * The branded identifier of an aggregate root.
- *
- * Use a context-specific branded ID (e.g. `ShowId`, `EntryId`) as the type
- * argument — e.g. `DomainEvent<EntrySubmittedPayload, EntryId>`.
- * The default `string` keeps existing untyped usage working.
- */
-export type AggregateId = string;
-
-export interface DomainEvent<TPayload, TId extends string = AggregateId> {
+export interface DomainEvent<TPayload, TId extends string = string> {
     /**
      * Stable, globally-unique identifier for this event occurrence.
      *
@@ -46,9 +38,9 @@ export interface DomainEvent<TPayload, TId extends string = AggregateId> {
      * duplicate outbox row.  A freshly constructed event carries a different
      * `eventId` and the conflict guard offers no protection.
      */
-    readonly eventId: string;
-    /** Fully-qualified event type name, e.g. `'show.EntrySubmitted'`. */
-    readonly type: string;
+    readonly eventId: DomainEventId;
+    /** Fully-qualified event type name, e.g. `'entries.EntrySubmitted'`. */
+    readonly type: EventTypeName;
     /** Wall-clock instant at which the fact occurred. */
     readonly occurredAt: Date;
     /** Ownership classification — see {@link EventScope}. */
@@ -71,13 +63,13 @@ export interface DomainEvent<TPayload, TId extends string = AggregateId> {
  * `eventId` and `occurredAt` are optional so that tests can supply
  * deterministic values without going through the ports.
  */
-export interface CreateDomainEventParams<TPayload, TId extends string = AggregateId> {
-    readonly type: string;
+export interface CreateDomainEventParams<TPayload, TId extends string = string> {
+    readonly type: EventTypeName;
     readonly scope: EventScope;
     readonly aggregateId: TId;
     readonly payload: TPayload;
     /** Override the generated ID (useful in tests). */
-    readonly eventId?: string | undefined;
+    readonly eventId?: DomainEventId | undefined;
     /** Override the timestamp (useful in tests). */
     readonly occurredAt?: Date | undefined;
 }
@@ -94,12 +86,12 @@ export interface CreateDomainEventParams<TPayload, TId extends string = Aggregat
  *   `occurredAt` may be omitted and will be resolved via `deps`.
  * @param deps   - Injected {@link Clock} and {@link IdGenerator} ports.
  */
-export function createDomainEvent<TPayload, TId extends string = AggregateId>(
+export function createDomainEvent<TPayload, TId extends string = string>(
     params: CreateDomainEventParams<TPayload, TId>,
     deps: { readonly clock: Clock; readonly idGenerator: IdGenerator },
 ): DomainEvent<TPayload, TId> {
     return {
-        eventId: params.eventId ?? deps.idGenerator.generate(),
+        eventId: params.eventId ?? asDomainEventId(deps.idGenerator.generate()),
         type: params.type,
         occurredAt: params.occurredAt ?? deps.clock.now(),
         scope: params.scope,

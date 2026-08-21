@@ -27,7 +27,7 @@ import type { DomainEvent } from '../domain/domain-event.js';
  */
 async function setRlsSessionVars(client: pg.PoolClient, scope: TransactionScope): Promise<void> {
     const tenantId = scope.kind === 'tenant' ? scope.tenantId : '';
-    const userId = scope.kind !== 'platform' ? scope.userId : '';
+    const userId = scope.kind !== 'platform' ? scope.actorId : '';
     await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantId]);
     await client.query(`SELECT set_config('app.user_id', $1, true)`, [userId]);
 }

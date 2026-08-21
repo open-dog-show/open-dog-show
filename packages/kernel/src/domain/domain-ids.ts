@@ -19,10 +19,26 @@ export type ShowId = Brand<string, 'ShowId'>;
 export type DogId = Brand<string, 'DogId'>;
 /** Branded string that uniquely identifies a kennel-club tenant. */
 export type TenantId = Brand<string, 'TenantId'>;
-/** Branded string that uniquely identifies an exhibitor. */
+/**
+ * Branded string for cross-context reference to an Exhibitor (Entries & Registration).
+ * Reference-only cross-context ID per ADR-0006 — not the Entries context's identity port.
+ */
 export type ExhibitorId = Brand<string, 'ExhibitorId'>;
-/** Branded string that uniquely identifies a user. */
+/** Branded string that uniquely identifies a user in the Identity & Access context. */
 export type UserId = Brand<string, 'UserId'>;
+/** Branded event-occurrence identifier; doubles as the outbox idempotency key. */
+export type DomainEventId = Brand<string, 'DomainEventId'>;
+/** Branded fully-qualified event type name, e.g. `'entries.EntrySubmitted'`. */
+export type EventTypeName = Brand<string, 'EventTypeName'>;
+/**
+ * Context-neutral RLS isolation key carried in {@link TransactionScope}.
+ *
+ * Using `ActorId` rather than `UserId` decouples the transaction-scoping
+ * mechanism from the IAM context's identity model (ADR-0011).  At the
+ * composition root the same underlying UUID is cast to both `ActorId`
+ * (for RLS) and `UserId` (for domain data fields) from the same source.
+ */
+export type ActorId = Brand<string, 'ActorId'>;
 
 /**
  * Casts a raw string to a {@link ShowId}.
@@ -42,3 +58,9 @@ export const asTenantId = (id: string): TenantId => id as TenantId;
 export const asExhibitorId = (id: string): ExhibitorId => id as ExhibitorId;
 /** Casts a raw string to a {@link UserId}. See {@link asShowId}. */
 export const asUserId = (id: string): UserId => id as UserId;
+/** Casts a raw string to a {@link DomainEventId}. See {@link asShowId}. */
+export const asDomainEventId = (id: string): DomainEventId => id as DomainEventId;
+/** Casts a raw string to an {@link EventTypeName}. See {@link asShowId}. */
+export const asEventTypeName = (name: string): EventTypeName => name as EventTypeName;
+/** Casts a raw string to an {@link ActorId}. See {@link asShowId}. */
+export const asActorId = (id: string): ActorId => id as ActorId;

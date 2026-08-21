@@ -37,7 +37,10 @@ workaround.
 ## Architecture (ADR-0004 / ADR-0006)
 
 ```
-packages/kernel/          @ods/kernel       domain primitives only, no infra
+packages/kernel/          @ods/kernel       domain primitives, ports, and shared infra scaffold
+                                            - @ods/kernel        → domain types + ports only
+                                            - @ods/kernel/pg     → outbox/transaction infra (no ORM, no context-specific code)
+                                            - @ods/kernel/testing → test doubles
 packages/contexts/<name>/ @ods/<name>       src/domain / application / infrastructure
 apps/api/                 @ods/api          composition root
 ```

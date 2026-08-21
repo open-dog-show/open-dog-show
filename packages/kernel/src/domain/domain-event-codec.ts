@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { DomainEvent, EventScope } from './domain-event.js';
+import { asDomainEventId, asEventTypeName } from './domain-ids.js';
 
 /** The serialised (JSON-safe) form of a {@link DomainEvent}. */
 export interface DomainEventJson {
@@ -38,8 +39,8 @@ export function encodeDomainEvent<TPayload>(event: DomainEvent<TPayload>): Domai
  */
 export function decodeDomainEvent<TPayload>(json: DomainEventJson): DomainEvent<TPayload> {
     return {
-        eventId: json.eventId,
-        type: json.type,
+        eventId: asDomainEventId(json.eventId),
+        type: asEventTypeName(json.type),
         occurredAt: new Date(json.occurredAt),
         scope: json.scope,
         aggregateId: json.aggregateId,

@@ -6,7 +6,7 @@ import pg from 'pg';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PostgresHarness, runMigrations } from '@ods/test-kit';
-import { asTenantId, asUserId, createDomainEvent, type DomainEvent } from '@ods/kernel';
+import { asTenantId, asUserId, asActorId, asEventTypeName, asDomainEventId, createDomainEvent, type DomainEvent } from '@ods/kernel';
 import { withOutboxTransaction, PgOutboxWriter, PgPollingDispatcher } from '@ods/kernel/pg';
 import { FakeClock, FakeIdGenerator } from '@ods/kernel/testing';
 import { DrizzleEntryRepository } from '../infrastructure/drizzle-entry-repository.js';
@@ -23,7 +23,7 @@ const EVENT_ID = '00000000-0000-4000-8000-000000000041';
 const scope = {
     kind: 'tenant' as const,
     tenantId: asTenantId(TENANT_ID),
-    userId: asUserId(USER_ID),
+    actorId: asActorId(USER_ID),
 };
 const entry = {
     id: ENTRY_ID,
@@ -78,11 +78,11 @@ describe('Transactional outbox — sample context', () => {
     function makeEvent(): DomainEvent<unknown> {
         return createDomainEvent(
             {
-                type: 'sample.EntrySubmitted',
+                type: asEventTypeName('sample.EntrySubmitted'),
                 scope: 'tenant',
                 aggregateId: ENTRY_ID,
                 payload: { dogName: 'Fido' },
-                eventId: EVENT_ID,
+                eventId: asDomainEventId(EVENT_ID),
             },
             {
                 clock: new FakeClock(new Date('2026-08-01T12:00:00.000Z')),

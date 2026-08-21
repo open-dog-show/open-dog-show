@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { decodeDomainEvent, encodeDomainEvent } from '../domain/domain-event-codec.js';
 import type { DomainEvent } from '../domain/domain-event.js';
+import { asDomainEventId, asEventTypeName } from '../domain/domain-ids.js';
 
 interface OrderedPayload {
     dogId: string;
@@ -12,8 +13,8 @@ interface OrderedPayload {
 
 describe('encodeDomainEvent', () => {
     const event: DomainEvent<OrderedPayload> = {
-        eventId: '00000000-0000-4000-8000-000000000001',
-        type: 'entries.EntrySubmitted',
+        eventId: asDomainEventId('00000000-0000-4000-8000-000000000001'),
+        type: asEventTypeName('entries.EntrySubmitted'),
         occurredAt: new Date('2026-08-01T12:00:00.000Z'),
         scope: 'tenant',
         aggregateId: 'entry-abc',
@@ -72,8 +73,8 @@ describe('decodeDomainEvent', () => {
 describe('encode → JSON.stringify → JSON.parse → decode round-trip', () => {
     it('round-trips an event with Date payload field losslessly', () => {
         const original: DomainEvent<{ label: string }> = {
-            eventId: '00000000-0000-4000-8000-000000000099',
-            type: 'shows.ShowScheduled',
+            eventId: asDomainEventId('00000000-0000-4000-8000-000000000099'),
+            type: asEventTypeName('shows.ShowScheduled'),
             occurredAt: new Date('2026-12-25T09:00:00.000Z'),
             scope: 'platform',
             aggregateId: 'show-1',

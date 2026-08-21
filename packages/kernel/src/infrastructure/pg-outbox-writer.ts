@@ -35,7 +35,7 @@ export class PgOutboxWriter implements OutboxWriter {
         scope: TransactionScope,
     ): Promise<void> {
         const tenantId = scope.kind === 'tenant' ? scope.tenantId : null;
-        const userId = scope.kind !== 'platform' ? scope.userId : null;
+        const userId = scope.kind !== 'platform' ? scope.actorId : null;
 
         for (const event of events) {
             await client.query(

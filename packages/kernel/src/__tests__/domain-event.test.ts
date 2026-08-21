@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { createDomainEvent } from '../domain/domain-event.js';
 import type { Clock, IdGenerator } from '../domain/domain-ports.js';
+import { asDomainEventId, asEventTypeName } from '../domain/domain-ids.js';
 
 describe('createDomainEvent', () => {
     const FIXED_DATE = new Date('2026-08-01T12:00:00.000Z');
@@ -15,7 +16,7 @@ describe('createDomainEvent', () => {
     it('creates an event envelope with injected clock and id-generator', () => {
         const event = createDomainEvent(
             {
-                type: 'entries.EntrySubmitted',
+                type: asEventTypeName('entries.EntrySubmitted'),
                 scope: 'tenant',
                 aggregateId: 'entry-1',
                 payload: { dogId: 'dog-1' },
@@ -39,11 +40,11 @@ describe('createDomainEvent', () => {
 
         const event = createDomainEvent(
             {
-                type: 'rulesets.RulesetPublished',
+                type: asEventTypeName('rulesets.RulesetPublished'),
                 scope: 'platform',
                 aggregateId: 'ruleset-1',
                 payload: null,
-                eventId: explicitId,
+                eventId: asDomainEventId(explicitId),
                 occurredAt: explicitDate,
             },
             { clock, idGenerator },
@@ -55,7 +56,12 @@ describe('createDomainEvent', () => {
 
     it('uses platform scope for operator-owned events', () => {
         const event = createDomainEvent(
-            { type: 'admin.ClubOnboarded', scope: 'platform', aggregateId: 'club-1', payload: {} },
+            {
+                type: asEventTypeName('admin.ClubOnboarded'),
+                scope: 'platform',
+                aggregateId: 'club-1',
+                payload: {},
+            },
             { clock, idGenerator },
         );
 
@@ -65,7 +71,7 @@ describe('createDomainEvent', () => {
     it('uses exhibitor scope for cross-tenant events', () => {
         const event = createDomainEvent(
             {
-                type: 'entries.DogRegistered',
+                type: asEventTypeName('entries.DogRegistered'),
                 scope: 'exhibitor',
                 aggregateId: 'dog-1',
                 payload: {},
