@@ -11,7 +11,11 @@ export type DomainRole = 'ShowSecretary' | 'Judge' | 'PlatformAdministrator';
 
 export type RoleGrant =
     | { readonly userId: UserId; readonly role: 'ShowSecretary'; readonly scope: TenantScope }
-    | { readonly userId: UserId; readonly role: 'Judge' | 'PlatformAdministrator'; readonly scope: PlatformScope };
+    | {
+          readonly userId: UserId;
+          readonly role: 'Judge' | 'PlatformAdministrator';
+          readonly scope: PlatformScope;
+      };
 
 /** Role+scope lookup key for hasRoleGrant. Preserves the role/scope correlation from RoleGrant. */
 export type RoleGrantKey =
@@ -60,7 +64,10 @@ export function grantRole(grants: readonly RoleGrant[], newGrant: RoleGrant): re
  * Returns a new collection with the matching grant removed.
  * No-op when no matching grant exists — the desired state (grant absent) is already met.
  */
-export function revokeRoleGrant(grants: readonly RoleGrant[], target: RoleGrant): readonly RoleGrant[] {
+export function revokeRoleGrant(
+    grants: readonly RoleGrant[],
+    target: RoleGrant,
+): readonly RoleGrant[] {
     return grants.filter((g) => !grantsMatch(g, target));
 }
 

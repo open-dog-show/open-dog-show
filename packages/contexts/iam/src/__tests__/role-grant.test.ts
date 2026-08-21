@@ -156,52 +156,80 @@ describe('hasRoleGrant', () => {
     // ShowSecretary is tenant-scoped: a grant is tied to one specific TenantId
     describe('ShowSecretary (tenant-scoped)', () => {
         it('returns true for the correct tenant', () => {
-            expect(hasRoleGrant(grants, ALICE_ID, { role: 'ShowSecretary', scope: tenantAScope })).toBe(true);
+            expect(
+                hasRoleGrant(grants, ALICE_ID, { role: 'ShowSecretary', scope: tenantAScope }),
+            ).toBe(true);
         });
 
         it('returns false for a different tenant', () => {
-            expect(hasRoleGrant(grants, ALICE_ID, { role: 'ShowSecretary', scope: tenantBScope })).toBe(false);
+            expect(
+                hasRoleGrant(grants, ALICE_ID, { role: 'ShowSecretary', scope: tenantBScope }),
+            ).toBe(false);
         });
 
         it('returns false when the user does not hold the role', () => {
-            expect(hasRoleGrant(grants, BOB_ID, { role: 'ShowSecretary', scope: tenantAScope })).toBe(false);
+            expect(
+                hasRoleGrant(grants, BOB_ID, { role: 'ShowSecretary', scope: tenantAScope }),
+            ).toBe(false);
         });
 
         it('type system rejects ShowSecretary at platform scope', () => {
-            // @ts-expect-error â€” ShowSecretary requires TenantScope; PlatformScope is structurally invalid here
-            const _: RoleGrant = { userId: ALICE_ID, role: 'ShowSecretary', scope: platformScope };
+            void ({
+                userId: ALICE_ID,
+                role: 'ShowSecretary',
+                scope: platformScope,
+                // @ts-expect-error — ShowSecretary requires TenantScope; PlatformScope is structurally invalid here
+            } satisfies RoleGrant);
         });
     });
 
     // Judge is platform-scoped: no TenantId is involved
     describe('Judge (platform-scoped)', () => {
         it('returns true when granted', () => {
-            expect(hasRoleGrant(grants, ALICE_ID, { role: 'Judge', scope: platformScope })).toBe(true);
+            expect(hasRoleGrant(grants, ALICE_ID, { role: 'Judge', scope: platformScope })).toBe(
+                true,
+            );
         });
 
         it('returns false when not granted', () => {
-            expect(hasRoleGrant(grants, BOB_ID, { role: 'Judge', scope: platformScope })).toBe(false);
+            expect(hasRoleGrant(grants, BOB_ID, { role: 'Judge', scope: platformScope })).toBe(
+                false,
+            );
         });
 
         it('type system rejects Judge at tenant scope', () => {
-            // @ts-expect-error â€” Judge requires PlatformScope; TenantScope is structurally invalid here
-            const _: RoleGrant = { userId: ALICE_ID, role: 'Judge', scope: tenantAScope };
+            // @ts-expect-error — Judge requires PlatformScope; TenantScope is structurally invalid here
+            void ({ userId: ALICE_ID, role: 'Judge', scope: tenantAScope } satisfies RoleGrant);
         });
     });
 
     // PlatformAdministrator is platform-scoped: no TenantId is involved
     describe('PlatformAdministrator (platform-scoped)', () => {
         it('returns true when granted', () => {
-            expect(hasRoleGrant(grants, BOB_ID, { role: 'PlatformAdministrator', scope: platformScope })).toBe(true);
+            expect(
+                hasRoleGrant(grants, BOB_ID, {
+                    role: 'PlatformAdministrator',
+                    scope: platformScope,
+                }),
+            ).toBe(true);
         });
 
         it('returns false when not granted', () => {
-            expect(hasRoleGrant(grants, ALICE_ID, { role: 'PlatformAdministrator', scope: platformScope })).toBe(false);
+            expect(
+                hasRoleGrant(grants, ALICE_ID, {
+                    role: 'PlatformAdministrator',
+                    scope: platformScope,
+                }),
+            ).toBe(false);
         });
 
         it('type system rejects PlatformAdministrator at tenant scope', () => {
-            // @ts-expect-error â€” PlatformAdministrator requires PlatformScope; TenantScope is structurally invalid here
-            const _: RoleGrant = { userId: ALICE_ID, role: 'PlatformAdministrator', scope: tenantAScope };
+            void ({
+                userId: ALICE_ID,
+                role: 'PlatformAdministrator',
+                scope: tenantAScope,
+                // @ts-expect-error — PlatformAdministrator requires PlatformScope; TenantScope is structurally invalid here
+            } satisfies RoleGrant);
         });
     });
 
@@ -224,9 +252,13 @@ describe('Exhibitor boundary', () => {
     it('an Active User with zero RoleGrants is still an Exhibitor â€” no grant required', () => {
         const grants: RoleGrant[] = [];
 
-        expect(hasRoleGrant(grants, ALICE_ID, { role: 'ShowSecretary', scope: tenantAScope })).toBe(false);
+        expect(hasRoleGrant(grants, ALICE_ID, { role: 'ShowSecretary', scope: tenantAScope })).toBe(
+            false,
+        );
         expect(hasRoleGrant(grants, ALICE_ID, { role: 'Judge', scope: platformScope })).toBe(false);
-        expect(hasRoleGrant(grants, ALICE_ID, { role: 'PlatformAdministrator', scope: platformScope })).toBe(false);
+        expect(
+            hasRoleGrant(grants, ALICE_ID, { role: 'PlatformAdministrator', scope: platformScope }),
+        ).toBe(false);
         // Zero grants â†’ zero explicit roles, but Exhibitor capability is still present
         // via user.status === 'Active' â€” no RoleGrant entry is needed or exists.
     });
