@@ -21,7 +21,7 @@ So a single uniform `tenant_id` key is wrong: different data has different owner
 Data isolation is **scope-per-table**, not one universal `tenant_id`. There are **three active scopes**:
 
 - **`tenant` (Club)** — data owned by one organising Club: Shows, rings, classes, catalogues, per-show ring results. RLS key `tenant_id`.
-- **`exhibitor` (cross-tenant participant)** — the owner's durable "dog administration": `Dog`, `Ownership`, `Pedigree` reference, `Title`. RLS key `account_id` (the owning account); shared across Clubs.
+- **`exhibitor` (cross-tenant participant)** — the owner's durable "dog administration": `Dog`, `Ownership`, `Pedigree` reference, `Title`. RLS key `user_id`; shared across Clubs.
 - **`platform` (global)** — reference and operator data no Club owns: `Ruleset`, `Ruleset Catalog`, Platform Administration config, `User`. Not Club-isolated.
 
 Two further scopes are **latent and deferred** — documented, not built:
@@ -33,12 +33,12 @@ Two further scopes are **latent and deferred** — documented, not built:
 
 ```sql
 USING (tenant_id = current_setting('app.tenant_id')::uuid
-   OR  account_id = current_setting('app.account_id')::uuid)
+   OR  user_id = current_setting('app.user_id')::uuid)
 ```
 
 **Two distinct concepts, not one.** _Who a fact belongs to_ (the event's `EventScope` — `{ tenant | exhibitor | platform }` on the domain event / outbox row) is **not** the same as _who may read a row_ (the RLS predicate). Hybrid rows carry a single ownership scope but a wider read predicate.
 
-**Mechanism.** The request identity reaches RLS through session variables (`SET LOCAL app.tenant_id`, `SET LOCAL app.account_id`) set once per transaction in the shared `withTransaction(scope, fn)` unit-of-work; policies read them via `current_setting(..., true)`. The runtime application connects as a **non-owner Postgres role with RLS enforced** — never as a superuser or table owner, for whom RLS is bypassed. `platform` tables are RLS-exempt (or role-gated). The `Catalogue`'s time-gated public-read predicate is authored by Catalogue & Publishing, not the shared scaffold.
+**Mechanism.** The request identity reaches RLS through session variables (`SET LOCAL app.tenant_id`, `SET LOCAL app.user_id`) set once per transaction in the shared `withTransaction(scope, fn)` unit-of-work; policies read them via `current_setting(..., true)`. The runtime application connects as a **non-owner Postgres role with RLS enforced** — never as a superuser or table owner, for whom RLS is bypassed. `platform` tables are RLS-exempt (or role-gated). The `Catalogue`'s time-gated public-read predicate is authored by Catalogue & Publishing, not the shared scaffold.
 
 ## Considered options
 

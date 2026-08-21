@@ -27,7 +27,16 @@ export type EventScope = 'tenant' | 'exhibitor' | 'platform';
  *
  * @typeParam TPayload - The structured data specific to this event type.
  */
-export interface DomainEvent<TPayload> {
+/**
+ * The branded identifier of an aggregate root.
+ *
+ * Use a context-specific branded ID (e.g. `ShowId`, `EntryId`) as the type
+ * argument — e.g. `DomainEvent<EntrySubmittedPayload, EntryId>`.
+ * The default `string` keeps existing untyped usage working.
+ */
+export type AggregateId = string;
+
+export interface DomainEvent<TPayload, TId extends string = AggregateId> {
     /**
      * Stable, globally-unique identifier for this event occurrence.
      *
@@ -45,7 +54,7 @@ export interface DomainEvent<TPayload> {
     /** Ownership classification — see {@link EventScope}. */
     readonly scope: EventScope;
     /** ID of the aggregate root that produced this event. */
-    readonly aggregateId: string;
+    readonly aggregateId: TId;
     /**
      * Event-type-specific structured data.
      *
@@ -62,10 +71,10 @@ export interface DomainEvent<TPayload> {
  * `eventId` and `occurredAt` are optional so that tests can supply
  * deterministic values without going through the ports.
  */
-export interface CreateDomainEventParams<TPayload> {
+export interface CreateDomainEventParams<TPayload, TId extends string = AggregateId> {
     readonly type: string;
     readonly scope: EventScope;
-    readonly aggregateId: string;
+    readonly aggregateId: TId;
     readonly payload: TPayload;
     /** Override the generated ID (useful in tests). */
     readonly eventId?: string | undefined;
@@ -85,10 +94,10 @@ export interface CreateDomainEventParams<TPayload> {
  *   `occurredAt` may be omitted and will be resolved via `deps`.
  * @param deps   - Injected {@link Clock} and {@link IdGenerator} ports.
  */
-export function createDomainEvent<TPayload>(
-    params: CreateDomainEventParams<TPayload>,
+export function createDomainEvent<TPayload, TId extends string = AggregateId>(
+    params: CreateDomainEventParams<TPayload, TId>,
     deps: { readonly clock: Clock; readonly idGenerator: IdGenerator },
-): DomainEvent<TPayload> {
+): DomainEvent<TPayload, TId> {
     return {
         eventId: params.eventId ?? deps.idGenerator.generate(),
         type: params.type,
