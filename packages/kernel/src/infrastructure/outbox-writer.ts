@@ -11,7 +11,7 @@ import type { TransactionScope } from '../domain/transaction-scope.js';
  *
  * This is **not** a domain port — it carries a `pg.PoolClient` dependency
  * and belongs exclusively in the infrastructure layer.  The domain-layer
- * equivalent is {@link OutboxAppender}, which accumulates events without
+ * equivalent is {@link DomainEventCollector}, which records events without
  * knowing about the transport.
  *
  * The scope columns (`tenant_id`, `user_id`) are flattened from the

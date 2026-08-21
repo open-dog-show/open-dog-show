@@ -4,12 +4,12 @@
 import type { Clock, IdGenerator } from './domain-ports.js';
 
 /**
- * Ownership classification of a past fact.
+ * The data-ownership scope of a recorded domain event — see `CONTEXT.md`
+ * **Data-Ownership Scope** and ADR-0005.
  *
- * Declares which data-ownership scope produced the event:
- * - `'tenant'`    — the fact belongs to a kennel-club tenant.
- * - `'exhibitor'` — the fact belongs to an individual exhibitor.
- * - `'platform'`  — the fact is platform-wide and has no single owner.
+ * - `'tenant'`    — fact belongs to one Club; carries `tenant_id` + `user_id`.
+ * - `'exhibitor'` — fact belongs to an Exhibitor acting cross-tenant; carries `user_id` only.
+ * - `'platform'`  — fact is platform-scoped; no tenant or user isolation.
  *
  * This is **not** the same as `TransactionScope`, which describes the
  * database-transaction context.  An event's `EventScope` is immutable once
@@ -46,7 +46,13 @@ export interface DomainEvent<TPayload> {
     readonly scope: EventScope;
     /** ID of the aggregate root that produced this event. */
     readonly aggregateId: string;
-    /** Event-type-specific structured data. */
+    /**
+     * Event-type-specific structured data.
+     *
+     * Concrete event types should use a named domain type for `TPayload`
+     * rather than an anonymous object — e.g. `DomainEvent<EntrySubmittedData>`
+     * rather than `DomainEvent<{ dogId: string }>`.
+     */
     readonly payload: TPayload;
 }
 

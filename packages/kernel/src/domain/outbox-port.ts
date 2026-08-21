@@ -4,11 +4,12 @@
 import type { DomainEvent } from './domain-event.js';
 
 /**
- * Accumulates domain events during a unit-of-work transaction.
+ * Records domain events raised during a unit-of-work transaction.
  *
- * Passed as the second argument to the `withOutboxTransaction` callback so callers
- * can queue events for atomic outbox-write without coupling to the transport.
+ * Passed as the second argument to the `withOutboxTransaction` callback so
+ * callers can raise events for atomic outbox-write without coupling to the
+ * transport.
  */
-export interface OutboxAppender {
-    append(...events: DomainEvent<unknown>[]): void;
+export interface DomainEventCollector {
+    collect(...events: DomainEvent<unknown>[]): void;
 }

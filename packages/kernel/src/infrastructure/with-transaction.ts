@@ -3,7 +3,7 @@
 
 import type pg from 'pg';
 import type { TransactionScope } from '../domain/transaction-scope.js';
-import type { OutboxAppender } from '../domain/outbox-port.js';
+import type { DomainEventCollector } from '../domain/outbox-port.js';
 import type { OutboxWriter } from './outbox-writer.js';
 import type { DomainEvent } from '../domain/domain-event.js';
 
@@ -74,25 +74,26 @@ export function withTransaction<T>(
  * before committing (or rolls back on error).
  *
  * Use this for units of work that emit domain events.  `writer` is required;
- * the callback receives `(client, outbox: OutboxAppender)`.  Events are written
- * to the outbox table in the same transaction, immediately before `COMMIT`.
- * On rollback neither the aggregate change nor the outbox rows are persisted.
+ * the callback receives `(client, collector: DomainEventCollector)`.  Events
+ * are written to the outbox table in the same transaction, immediately before
+ * `COMMIT`.  On rollback neither the aggregate change nor the outbox rows are
+ * persisted.
  */
 export function withOutboxTransaction<T>(
     pool: pg.Pool,
     scope: TransactionScope,
     writer: OutboxWriter,
-    fn: (client: pg.PoolClient, outbox: OutboxAppender) => Promise<T>,
+    fn: (client: pg.PoolClient, collector: DomainEventCollector) => Promise<T>,
 ): Promise<T> {
     const pending: DomainEvent<unknown>[] = [];
-    const appender: OutboxAppender = {
-        append(...events) {
+    const collector: DomainEventCollector = {
+        collect(...events) {
             pending.push(...events);
         },
     };
 
     return runInTransaction(pool, scope, async (client) => {
-        const result = await fn(client, appender);
+        const result = await fn(client, collector);
         if (pending.length > 0) {
             await writer.write(client, pending, scope);
         }

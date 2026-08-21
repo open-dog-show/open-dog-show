@@ -8,5 +8,5 @@ export type { ShowId, DogId, TenantId, ExhibitorId, UserId } from './domain/doma
 export { asShowId, asDogId, asTenantId, asExhibitorId, asUserId } from './domain/domain-ids.js';
 export type { DomainEventJson } from './domain/domain-event-codec.js';
 export { encodeDomainEvent, decodeDomainEvent } from './domain/domain-event-codec.js';
-export type { OutboxAppender } from './domain/outbox-port.js';
+export type { DomainEventCollector } from './domain/outbox-port.js';
 export type { TransactionScope } from './domain/transaction-scope.js';

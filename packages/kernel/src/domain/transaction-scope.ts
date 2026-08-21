@@ -4,16 +4,16 @@
 import type { TenantId, UserId } from './domain-ids.js';
 
 /**
- * The identity carried into a unit-of-work transaction.
+ * The data-ownership scope carried into a unit-of-work transaction — see
+ * `CONTEXT.md` **Data-Ownership Scope** and ADR-0005.
  *
- * Distinct from {@link EventScope}: `EventScope` describes _who owns a fact_
- * (written on the domain event / outbox row); `TransactionScope` describes
- * _who is acting_ so that the correct RLS session variables can be set.
- * See ADR-0005 — "Two distinct concepts, not one."
+ * Distinct from {@link EventScope}: `EventScope` describes _who owns a recorded
+ * fact_; `TransactionScope` describes _who is acting_ so that the correct RLS
+ * session variables can be set.
  *
- * - `tenant` — a Club admin acting on behalf of a Club: both `tenantId` and `userId` are set.
- * - `exhibitor` — a dog owner acting cross-tenant: only `userId` is set.
- * - `platform` — a platform operator acting globally: no tenant or user isolation.
+ * - `tenant`   — a Club admin acting on behalf of a Club: `tenantId` + `userId`.
+ * - `exhibitor` — an Exhibitor acting cross-tenant: `userId` only.
+ * - `platform` — a platform operator acting globally: no isolation keys.
  */
 export type TransactionScope =
     | { readonly kind: 'tenant'; readonly tenantId: TenantId; readonly userId: UserId }
