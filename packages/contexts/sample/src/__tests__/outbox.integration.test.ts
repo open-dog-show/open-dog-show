@@ -6,17 +6,9 @@ import pg from 'pg';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PostgresHarness, runMigrations } from '@ods/test-kit';
-import {
-    withOutboxTransaction,
-    asTenantId,
-    asUserId,
-    createDomainEvent,
-    FakeClock,
-    FakeIdGenerator,
-    PgOutboxWriter,
-    PgPollingDispatcher,
-    type DomainEvent,
-} from '@ods/kernel';
+import { asTenantId, asUserId, createDomainEvent, type DomainEvent } from '@ods/kernel';
+import { withOutboxTransaction, PgOutboxWriter, PgPollingDispatcher } from '@ods/kernel/pg';
+import { FakeClock, FakeIdGenerator } from '@ods/kernel/testing';
 import { DrizzleEntryRepository } from '../infrastructure/drizzle-entry-repository.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

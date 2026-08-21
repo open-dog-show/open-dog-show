@@ -6,7 +6,8 @@ import pg from 'pg';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PostgresHarness, runMigrations } from '@ods/test-kit';
-import { withTransaction, asTenantId, asUserId } from '@ods/kernel';
+import { asTenantId, asUserId } from '@ods/kernel';
+import { withTransaction } from '@ods/kernel/pg';
 import { DrizzleShowRepository } from '../infrastructure/drizzle-show-repository.js';
 import { DrizzleEntryRepository } from '../infrastructure/drizzle-entry-repository.js';
 

@@ -32,23 +32,17 @@ async function setRlsSessionVars(client: pg.PoolClient, scope: TransactionScope)
     await client.query(`SELECT set_config('app.user_id', $1, true)`, [userId]);
 }
 
-/**
- * Opens a PostgreSQL transaction, sets the RLS session variables from `scope`,
- * runs `fn`, then commits (or rolls back on error).
- *
- * Use this for units of work that do **not** emit domain events.
- * The callback receives only a `pg.PoolClient`.
- */
-export async function withTransaction<T>(
+/** Shared BEGIN/COMMIT/ROLLBACK scaffold used by both exported functions. */
+async function runInTransaction<T>(
     pool: pg.Pool,
     scope: TransactionScope,
-    fn: (client: pg.PoolClient) => Promise<T>,
+    body: (client: pg.PoolClient) => Promise<T>,
 ): Promise<T> {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
         await setRlsSessionVars(client, scope);
-        const result = await fn(client);
+        const result = await body(client);
         await client.query('COMMIT');
         return result;
     } catch (err) {
@@ -61,6 +55,21 @@ export async function withTransaction<T>(
 
 /**
  * Opens a PostgreSQL transaction, sets the RLS session variables from `scope`,
+ * runs `fn`, then commits (or rolls back on error).
+ *
+ * Use this for units of work that do **not** emit domain events.
+ * The callback receives only a `pg.PoolClient`.
+ */
+export function withTransaction<T>(
+    pool: pg.Pool,
+    scope: TransactionScope,
+    fn: (client: pg.PoolClient) => Promise<T>,
+): Promise<T> {
+    return runInTransaction(pool, scope, fn);
+}
+
+/**
+ * Opens a PostgreSQL transaction, sets the RLS session variables from `scope`,
  * runs `fn`, then atomically writes any accumulated domain events via `writer`
  * before committing (or rolls back on error).
  *
@@ -69,13 +78,12 @@ export async function withTransaction<T>(
  * to the outbox table in the same transaction, immediately before `COMMIT`.
  * On rollback neither the aggregate change nor the outbox rows are persisted.
  */
-export async function withOutboxTransaction<T>(
+export function withOutboxTransaction<T>(
     pool: pg.Pool,
     scope: TransactionScope,
     writer: OutboxWriter,
     fn: (client: pg.PoolClient, outbox: OutboxAppender) => Promise<T>,
 ): Promise<T> {
-    const client = await pool.connect();
     const pending: DomainEvent<unknown>[] = [];
     const appender: OutboxAppender = {
         append(...events) {
@@ -83,19 +91,11 @@ export async function withOutboxTransaction<T>(
         },
     };
 
-    try {
-        await client.query('BEGIN');
-        await setRlsSessionVars(client, scope);
+    return runInTransaction(pool, scope, async (client) => {
         const result = await fn(client, appender);
         if (pending.length > 0) {
             await writer.write(client, pending, scope);
         }
-        await client.query('COMMIT');
         return result;
-    } catch (err) {
-        await client.query('ROLLBACK');
-        throw err;
-    } finally {
-        client.release();
-    }
+    });
 }

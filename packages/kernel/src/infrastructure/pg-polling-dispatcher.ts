@@ -5,6 +5,8 @@ import type pg from 'pg';
 import type { DomainEvent, EventScope } from '../domain/domain-event.js';
 import { decodeDomainEvent } from '../domain/domain-event-codec.js';
 
+const DEFAULT_BATCH_SIZE = 10;
+
 /**
  * Called once per outbox row.  Must be idempotent on `event.eventId` because
  * delivery is at-least-once — a crash after handler success but before
@@ -42,7 +44,7 @@ export class PgPollingDispatcher {
      *
      * @returns the number of events dispatched in this cycle.
      */
-    async poll(batchSize = 10): Promise<number> {
+    async poll(batchSize = DEFAULT_BATCH_SIZE): Promise<number> {
         let dispatched = 0;
 
         for (let i = 0; i < batchSize; i++) {

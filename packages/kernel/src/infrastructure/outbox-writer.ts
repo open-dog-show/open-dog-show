@@ -6,10 +6,15 @@ import type { DomainEvent } from '../domain/domain-event.js';
 import type { TransactionScope } from '../domain/transaction-scope.js';
 
 /**
- * Writes queued domain events to the outbox table within the current
- * PostgreSQL transaction.
+ * Infrastructure contract between {@link withOutboxTransaction} and a
+ * schema-scoped outbox table implementation.
  *
- * The scope columns (`tenant_id`, `account_id`) are flattened from the
+ * This is **not** a domain port — it carries a `pg.PoolClient` dependency
+ * and belongs exclusively in the infrastructure layer.  The domain-layer
+ * equivalent is {@link OutboxAppender}, which accumulates events without
+ * knowing about the transport.
+ *
+ * The scope columns (`tenant_id`, `user_id`) are flattened from the
  * transaction scope so the dispatcher can route events by owner without
  * re-parsing the payload.
  *
