@@ -1,14 +1,15 @@
-// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+﻿// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { asUserId, asTenantId } from '@ods/kernel';
-import type { DomainRole, RoleGrant, RoleScope } from '../domain/role-grant.js';
+import type { DomainRole, TenantScope, PlatformScope, RoleGrant } from '../domain/role-grant.js';
 import {
     grantRole,
     revokeRoleGrant,
     hasRoleGrant,
     DuplicateRoleGrantError,
+    RoleGrantOwnerMismatchError,
 } from '../domain/role-grant.js';
 import { FakeRoleGrantRepository } from '../testing/index.js';
 
@@ -17,9 +18,9 @@ const BOB_ID = asUserId('user-bob');
 const TENANT_A = asTenantId('tenant-a');
 const TENANT_B = asTenantId('tenant-b');
 
-const tenantAScope: RoleScope = { kind: 'tenant', tenantId: TENANT_A };
-const tenantBScope: RoleScope = { kind: 'tenant', tenantId: TENANT_B };
-const platformScope: RoleScope = { kind: 'platform' };
+const tenantAScope: TenantScope = { kind: 'tenant', tenantId: TENANT_A };
+const tenantBScope: TenantScope = { kind: 'tenant', tenantId: TENANT_B };
+const platformScope: PlatformScope = { kind: 'platform' };
 
 const aliceShowSecretary: RoleGrant = {
     userId: ALICE_ID,
@@ -152,32 +153,60 @@ describe('revokeRoleGrant', () => {
 describe('hasRoleGrant', () => {
     const grants = [aliceShowSecretary, aliceJudge, bobPlatformAdmin];
 
-    it('returns true for ShowSecretary in the correct tenant scope', () => {
-        expect(hasRoleGrant(grants, ALICE_ID, 'ShowSecretary', tenantAScope)).toBe(true);
+    // ShowSecretary is tenant-scoped: a grant is tied to one specific TenantId
+    describe('ShowSecretary (tenant-scoped)', () => {
+        it('returns true for the correct tenant', () => {
+            expect(hasRoleGrant(grants, ALICE_ID, { role: 'ShowSecretary', scope: tenantAScope })).toBe(true);
+        });
+
+        it('returns false for a different tenant', () => {
+            expect(hasRoleGrant(grants, ALICE_ID, { role: 'ShowSecretary', scope: tenantBScope })).toBe(false);
+        });
+
+        it('returns false when the user does not hold the role', () => {
+            expect(hasRoleGrant(grants, BOB_ID, { role: 'ShowSecretary', scope: tenantAScope })).toBe(false);
+        });
+
+        it('type system rejects ShowSecretary at platform scope', () => {
+            // @ts-expect-error â€” ShowSecretary requires TenantScope; PlatformScope is structurally invalid here
+            const _: RoleGrant = { userId: ALICE_ID, role: 'ShowSecretary', scope: platformScope };
+        });
     });
 
-    it('returns false for ShowSecretary in a different tenant scope', () => {
-        expect(hasRoleGrant(grants, ALICE_ID, 'ShowSecretary', tenantBScope)).toBe(false);
+    // Judge is platform-scoped: no TenantId is involved
+    describe('Judge (platform-scoped)', () => {
+        it('returns true when granted', () => {
+            expect(hasRoleGrant(grants, ALICE_ID, { role: 'Judge', scope: platformScope })).toBe(true);
+        });
+
+        it('returns false when not granted', () => {
+            expect(hasRoleGrant(grants, BOB_ID, { role: 'Judge', scope: platformScope })).toBe(false);
+        });
+
+        it('type system rejects Judge at tenant scope', () => {
+            // @ts-expect-error â€” Judge requires PlatformScope; TenantScope is structurally invalid here
+            const _: RoleGrant = { userId: ALICE_ID, role: 'Judge', scope: tenantAScope };
+        });
     });
 
-    it('returns true for Judge (platform-scoped)', () => {
-        expect(hasRoleGrant(grants, ALICE_ID, 'Judge', platformScope)).toBe(true);
-    });
+    // PlatformAdministrator is platform-scoped: no TenantId is involved
+    describe('PlatformAdministrator (platform-scoped)', () => {
+        it('returns true when granted', () => {
+            expect(hasRoleGrant(grants, BOB_ID, { role: 'PlatformAdministrator', scope: platformScope })).toBe(true);
+        });
 
-    it('returns true for PlatformAdministrator (platform-scoped)', () => {
-        expect(hasRoleGrant(grants, BOB_ID, 'PlatformAdministrator', platformScope)).toBe(true);
-    });
+        it('returns false when not granted', () => {
+            expect(hasRoleGrant(grants, ALICE_ID, { role: 'PlatformAdministrator', scope: platformScope })).toBe(false);
+        });
 
-    it('returns false when the user does not hold the specified role', () => {
-        expect(hasRoleGrant(grants, BOB_ID, 'Judge', platformScope)).toBe(false);
+        it('type system rejects PlatformAdministrator at tenant scope', () => {
+            // @ts-expect-error â€” PlatformAdministrator requires PlatformScope; TenantScope is structurally invalid here
+            const _: RoleGrant = { userId: ALICE_ID, role: 'PlatformAdministrator', scope: tenantAScope };
+        });
     });
 
     it('returns false for an empty grants collection', () => {
-        expect(hasRoleGrant([], ALICE_ID, 'Judge', platformScope)).toBe(false);
-    });
-
-    it('returns false when the grant belongs to a different user', () => {
-        expect(hasRoleGrant(grants, BOB_ID, 'ShowSecretary', tenantAScope)).toBe(false);
+        expect(hasRoleGrant([], ALICE_ID, { role: 'Judge', scope: platformScope })).toBe(false);
     });
 });
 
@@ -189,28 +218,29 @@ describe('Exhibitor boundary', () => {
     /**
      * The Exhibitor capability is NOT a RoleGrant.
      * Any Active User implicitly holds Exhibitor rights; ACL adapters check
-     * `user.status === 'Active'` — not a RoleGrant entry.
+     * `user.status === 'Active'` â€” not a RoleGrant entry.
      * The DomainRole union therefore does not include 'Exhibitor'.
      */
-    it('an Active User with zero RoleGrants is still an Exhibitor — no grant required', () => {
+    it('an Active User with zero RoleGrants is still an Exhibitor â€” no grant required', () => {
         const grants: RoleGrant[] = [];
 
-        expect(hasRoleGrant(grants, ALICE_ID, 'ShowSecretary', tenantAScope)).toBe(false);
-        expect(hasRoleGrant(grants, ALICE_ID, 'Judge', platformScope)).toBe(false);
-        expect(hasRoleGrant(grants, ALICE_ID, 'PlatformAdministrator', platformScope)).toBe(false);
-        // Zero grants → zero explicit roles, but Exhibitor capability is still present
-        // via user.status === 'Active' — no RoleGrant entry is needed or exists.
+        expect(hasRoleGrant(grants, ALICE_ID, { role: 'ShowSecretary', scope: tenantAScope })).toBe(false);
+        expect(hasRoleGrant(grants, ALICE_ID, { role: 'Judge', scope: platformScope })).toBe(false);
+        expect(hasRoleGrant(grants, ALICE_ID, { role: 'PlatformAdministrator', scope: platformScope })).toBe(false);
+        // Zero grants â†’ zero explicit roles, but Exhibitor capability is still present
+        // via user.status === 'Active' â€” no RoleGrant entry is needed or exists.
     });
 
-    it('Exhibitor is not part of the DomainRole union — no grant type exists for it', () => {
-        // DomainRole is the exhaustive list of explicitly-granted roles.
-        // 'Exhibitor' is intentionally absent; it is implicit for every Active User.
-        const allDomainRoles: readonly DomainRole[] = [
-            'ShowSecretary',
-            'Judge',
-            'PlatformAdministrator',
-        ];
-        expect(allDomainRoles).not.toContain('Exhibitor');
+    it('Exhibitor is not part of the DomainRole union â€” no grant type exists for it', () => {
+        // satisfies Record<DomainRole, true> makes this fixture exhaustive:
+        // if 'Exhibitor' is ever added to DomainRole, tsc errors here before the test can lie.
+        const _allDomainRoles = {
+            ShowSecretary: true,
+            Judge: true,
+            PlatformAdministrator: true,
+        } satisfies Record<DomainRole, true>;
+
+        expect(Object.keys(_allDomainRoles)).not.toContain('Exhibitor');
     });
 });
 
@@ -258,5 +288,11 @@ describe('FakeRoleGrantRepository', () => {
 
         expect(aliceGrants).toHaveLength(1);
         expect(bobGrants).toHaveLength(1);
+    });
+
+    it('saveAll throws RoleGrantOwnerMismatchError when a grant belongs to a different user', async () => {
+        await expect(repo.saveAll(ALICE_ID, [bobPlatformAdmin])).rejects.toBeInstanceOf(
+            RoleGrantOwnerMismatchError,
+        );
     });
 });

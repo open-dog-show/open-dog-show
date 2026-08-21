@@ -6,6 +6,9 @@ import type { RoleGrant } from './role-grant.js';
 
 export interface RoleGrantRepository {
     findByUser(userId: UserId): Promise<readonly RoleGrant[]>;
-    /** Replaces all grants for the user with the supplied collection. */
+    /**
+     * Replaces all grants for `userId`.
+     * Throws `RoleGrantOwnerMismatchError` if any grant's `userId` !== `userId`.
+     */
     saveAll(userId: UserId, grants: readonly RoleGrant[]): Promise<void>;
 }

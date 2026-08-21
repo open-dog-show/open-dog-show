@@ -3,16 +3,20 @@
 
 import type { TenantId, UserId } from '@ods/kernel';
 
+export type TenantScope = { readonly kind: 'tenant'; readonly tenantId: TenantId };
+export type PlatformScope = { readonly kind: 'platform' };
+export type RoleScope = TenantScope | PlatformScope;
+
 export type DomainRole = 'ShowSecretary' | 'Judge' | 'PlatformAdministrator';
 
-export type RoleScope =
-    { readonly kind: 'tenant'; readonly tenantId: TenantId } | { readonly kind: 'platform' };
+export type RoleGrant =
+    | { readonly userId: UserId; readonly role: 'ShowSecretary'; readonly scope: TenantScope }
+    | { readonly userId: UserId; readonly role: 'Judge' | 'PlatformAdministrator'; readonly scope: PlatformScope };
 
-export interface RoleGrant {
-    readonly userId: UserId;
-    readonly role: DomainRole;
-    readonly scope: RoleScope;
-}
+/** Role+scope lookup key for hasRoleGrant. Preserves the role/scope correlation from RoleGrant. */
+export type RoleGrantKey =
+    | { readonly role: 'ShowSecretary'; readonly scope: TenantScope }
+    | { readonly role: 'Judge' | 'PlatformAdministrator'; readonly scope: PlatformScope };
 
 export class DuplicateRoleGrantError extends Error {
     readonly grant: RoleGrant;
@@ -24,13 +28,20 @@ export class DuplicateRoleGrantError extends Error {
     }
 }
 
+export class RoleGrantOwnerMismatchError extends Error {
+    constructor(userId: UserId, grant: RoleGrant) {
+        super(`Grant for user ${grant.userId} passed to saveAll for user ${userId}`);
+        this.name = 'RoleGrantOwnerMismatchError';
+    }
+}
+
 function scopesEqual(a: RoleScope, b: RoleScope): boolean {
     if (a.kind !== b.kind) return false;
     if (a.kind === 'tenant' && b.kind === 'tenant') return a.tenantId === b.tenantId;
     return true;
 }
 
-function grantsMatch(a: RoleGrant, b: Pick<RoleGrant, 'userId' | 'role' | 'scope'>): boolean {
+function grantsMatch(a: RoleGrant, b: RoleGrant): boolean {
     return a.userId === b.userId && a.role === b.role && scopesEqual(a.scope, b.scope);
 }
 
@@ -49,10 +60,7 @@ export function grantRole(grants: readonly RoleGrant[], newGrant: RoleGrant): re
  * Returns a new collection with the matching grant removed.
  * No-op when no matching grant exists — the desired state (grant absent) is already met.
  */
-export function revokeRoleGrant(
-    grants: readonly RoleGrant[],
-    target: Pick<RoleGrant, 'userId' | 'role' | 'scope'>,
-): readonly RoleGrant[] {
+export function revokeRoleGrant(grants: readonly RoleGrant[], target: RoleGrant): readonly RoleGrant[] {
     return grants.filter((g) => !grantsMatch(g, target));
 }
 
@@ -66,8 +74,7 @@ export function revokeRoleGrant(
 export function hasRoleGrant(
     grants: readonly RoleGrant[],
     userId: UserId,
-    role: DomainRole,
-    scope: RoleScope,
+    grantKey: RoleGrantKey,
 ): boolean {
-    return grants.some((g) => grantsMatch(g, { userId, role, scope }));
+    return grants.some((g) => grantsMatch(g, { userId, ...grantKey } as RoleGrant));
 }

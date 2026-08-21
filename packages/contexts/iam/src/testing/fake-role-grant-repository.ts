@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { UserId } from '@ods/kernel';
-import type { RoleGrant } from '../domain/role-grant.js';
+import { type RoleGrant, RoleGrantOwnerMismatchError } from '../domain/role-grant.js';
 import type { RoleGrantRepository } from '../domain/role-grant-repository.js';
 
 export class FakeRoleGrantRepository implements RoleGrantRepository {
@@ -13,6 +13,9 @@ export class FakeRoleGrantRepository implements RoleGrantRepository {
     }
 
     async saveAll(userId: UserId, grants: readonly RoleGrant[]): Promise<void> {
+        for (const grant of grants) {
+            if (grant.userId !== userId) throw new RoleGrantOwnerMismatchError(userId, grant);
+        }
         this.store.set(userId, [...grants]);
     }
 }
