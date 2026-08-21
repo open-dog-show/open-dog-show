@@ -103,7 +103,7 @@ describe('Transactional outbox — sample context', () => {
                 withOutboxTransaction(appPool, scope, outboxWriter, async (client, collector) => {
                     const repo = new DrizzleEntryRepository(client);
                     await repo.save(entry);
-                    collector.collect(makeEvent());
+                    collector.raise(makeEvent());
                     throw new Error('simulated failure');
                 }),
             ).rejects.toThrow('simulated failure');
@@ -125,7 +125,7 @@ describe('Transactional outbox — sample context', () => {
             await withOutboxTransaction(appPool, scope, outboxWriter, async (client, collector) => {
                 const repo = new DrizzleEntryRepository(client);
                 await repo.save(entry);
-                collector.collect(makeEvent());
+                collector.raise(makeEvent());
             });
 
             const { rows: entryRows } = await superPool.query(

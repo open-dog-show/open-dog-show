@@ -3,7 +3,7 @@
 
 import type pg from 'pg';
 import type { TransactionScope } from '../domain/transaction-scope.js';
-import type { DomainEventCollector } from '../domain/outbox-port.js';
+import type { DomainEventCollector } from '../domain/domain-event-collector.js';
 import type { OutboxWriter } from './outbox-writer.js';
 import type { DomainEvent } from '../domain/domain-event.js';
 
@@ -87,7 +87,7 @@ export function withOutboxTransaction<T>(
 ): Promise<T> {
     const pending: DomainEvent<unknown>[] = [];
     const collector: DomainEventCollector = {
-        collect(...events) {
+        raise(...events) {
             pending.push(...events);
         },
     };

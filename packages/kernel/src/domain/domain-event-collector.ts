@@ -11,5 +11,5 @@ import type { DomainEvent } from './domain-event.js';
  * transport.
  */
 export interface DomainEventCollector {
-    collect(...events: DomainEvent<unknown>[]): void;
+    raise(...events: DomainEvent<unknown>[]): void;
 }

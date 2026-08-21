@@ -6,6 +6,14 @@ The domain splits into bounded contexts — see [`CONTEXT-MAP.md`](./CONTEXT-MAP
 
 Note on shared vocabulary: **Rulesets** owns the _type/definition_ of `Class`, `Grade`, `Award`, the breed taxonomy, `Show Type`, and the entry-certificate vocabulary; other contexts own the _occurrences_ (a Grade given, an Award won). A `Champion Certificate` is **owner-asserted** data on a Dog (Entries & Registration) — never computed or confirmed by the platform.
 
+## Cross-Cutting Concepts
+
+Terms that span all bounded contexts and live in the shared kernel (`@ods/kernel`).
+
+**Data-Ownership Scope**:
+The classification of who owns a recorded fact, determining RLS isolation and event routing. Three values: **tenant-scoped** (the fact belongs to one Club — carries `tenant_id` and `user_id`), **exhibitor-scoped** (the fact belongs to an individual Exhibitor acting across Clubs — carries `user_id` only), and **platform-scoped** (the fact belongs to the platform operator and has no single-tenant or single-exhibitor owner — no isolation keys). Domain events and database rows each carry one Data-Ownership Scope. See ADR-0005.
+_Avoid_: Permission scope, Data scope (too generic)
+
 ## Rulesets
 
 The upstream **Published Language**: it defines the rule vocabulary every other context conforms to.
@@ -241,10 +249,6 @@ _Avoid_: Superuser, Root, Sysadmin
 **Tenant**:
 The unit of data isolation on the hosted platform — **one per Club**. A Club's own data (its Shows, rings, classes, catalogues, ring results) is tenant-scoped, isolated by `tenant_id`. Not all data is tenant-scoped: a Dog's owner-asserted administration (`Dog`, `Ownership`, `Champion Certificate`) is **exhibitor-scoped** and reused across Clubs, and reference/operator data (`Ruleset`, `Ruleset Catalog`, `User`) is **platform-scoped**. See ADR-0005.
 _Avoid_: Account, Organisation (when the isolation unit is meant)
-
-**Data-Ownership Scope**:
-The classification of who owns a recorded fact, determining RLS isolation and event routing. Three values: **tenant-scoped** (the fact belongs to one Club — carries `tenant_id` and `user_id`), **exhibitor-scoped** (the fact belongs to an individual Exhibitor acting across Clubs — carries `user_id` only), and **platform-scoped** (the fact belongs to the platform operator and has no single-tenant or single-exhibitor owner — no isolation keys). Domain events and database rows each carry one Data-Ownership Scope. See ADR-0005.
-_Avoid_: Permission scope, Data scope (too generic)
 
 **Ruleset Catalog**:
 The curated set of Rulesets and versions installed on the platform and made available for Shows to adopt. Maintained by the Platform Administrator; drawn on by Rulesets when resolving a Show's Effective Ruleset.
