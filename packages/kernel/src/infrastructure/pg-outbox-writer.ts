@@ -5,6 +5,8 @@ import type pg from 'pg';
 import type { DomainEvent } from '../domain/domain-event.js';
 import type { OutboxWriter } from './outbox-writer.js';
 import type { TransactionScope } from '../domain/transaction-scope.js';
+import { scopeToRlsKeys } from './rls-keys.js';
+import { quoteSchemaIdent } from './schema-ident.js';
 
 /**
  * Writes domain events to a per-schema outbox table within the current
@@ -26,7 +28,7 @@ export class PgOutboxWriter implements OutboxWriter {
     private readonly quotedSchema: string;
 
     constructor(schema: string) {
-        this.quotedSchema = `"${schema.replaceAll('"', '""')}"`;
+        this.quotedSchema = quoteSchemaIdent(schema);
     }
 
     async write(
@@ -34,8 +36,12 @@ export class PgOutboxWriter implements OutboxWriter {
         events: DomainEvent<unknown>[],
         scope: TransactionScope,
     ): Promise<void> {
-        const tenantId = scope.kind === 'tenant' ? scope.tenantId : null;
-        const userId = scope.kind !== 'platform' ? scope.userId : null;
+        const { tenantId, userId } = scopeToRlsKeys(scope);
+        // The nullable `tenant_id` / `user_id` columns want NULL for the
+        // non-applicable keys; `scopeToRlsKeys` represents those as the empty
+        // string, so collapse `''` → NULL before binding.
+        const tenantIdOrNull = tenantId || null;
+        const userIdOrNull = userId || null;
 
         for (const event of events) {
             await client.query(
@@ -49,8 +55,8 @@ export class PgOutboxWriter implements OutboxWriter {
                     event.type,
                     event.occurredAt.toISOString(),
                     event.scope,
-                    tenantId,
-                    userId,
+                    tenantIdOrNull,
+                    userIdOrNull,
                     event.aggregateId,
                     JSON.stringify(event.payload),
                 ],
