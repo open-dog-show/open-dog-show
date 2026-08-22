@@ -37,7 +37,8 @@ workaround.
 ## Architecture (ADR-0004 / ADR-0006)
 
 ```
-packages/kernel/          @ods/kernel       domain primitives only, no infra
+packages/kernel/          @ods/kernel       domain primitives, ports, and shared
+                                            transactional-outbox scaffolding
 packages/contexts/<name>/ @ods/<name>       src/domain / application / infrastructure
 apps/api/                 @ods/api          composition root
 ```
@@ -47,6 +48,10 @@ apps/api/                 @ods/api          composition root
 - Contexts never import each other directly; `apps/api` composes them.
 - Ports (`Clock`, `IdGenerator`, repository interfaces) are defined in `domain/`
   and implemented in `infrastructure/`.
+- The kernel houses the shared transactional-outbox scaffolding
+  (`withTransaction`/`withOutboxTransaction`, `PgOutboxWriter`,
+  `PgPollingDispatcher`) and the `Clock`/`IdGenerator` production implementations
+  in its `infrastructure/` layer; its `domain/` layer stays ORM-free.
 
 ## Package management
 
