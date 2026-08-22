@@ -10,3 +10,5 @@ Thumbs.db
 .vscode/tasks.json
 # Generated context used only by the CI smoke test
 packages/contexts/smoke-test/
+.cline
+.scratch
