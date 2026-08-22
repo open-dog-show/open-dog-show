@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { Clock, IdGenerator } from './domain-ports.js';
+import { asEventId, type EventId, type EventType } from './domain-ids.js';
 
 /**
  * Ownership classification of a past fact.
@@ -37,9 +38,9 @@ export interface DomainEvent<TPayload> {
      * duplicate outbox row.  A freshly constructed event carries a different
      * `eventId` and the conflict guard offers no protection.
      */
-    readonly eventId: string;
-    /** Fully-qualified event type name, e.g. `'show.EntrySubmitted'`. */
-    readonly type: string;
+    readonly eventId: EventId;
+    /** Fully-qualified event type name, e.g. `'entries.EntrySubmitted'`. */
+    readonly type: EventType;
     /** Wall-clock instant at which the fact occurred. */
     readonly occurredAt: Date;
     /** Ownership classification — see {@link EventScope}. */
@@ -57,12 +58,12 @@ export interface DomainEvent<TPayload> {
  * deterministic values without going through the ports.
  */
 export interface CreateDomainEventParams<TPayload> {
-    readonly type: string;
+    readonly type: EventType;
     readonly scope: EventScope;
     readonly aggregateId: string;
     readonly payload: TPayload;
     /** Override the generated ID (useful in tests). */
-    readonly eventId?: string | undefined;
+    readonly eventId?: EventId | undefined;
     /** Override the timestamp (useful in tests). */
     readonly occurredAt?: Date | undefined;
 }
@@ -84,7 +85,7 @@ export function createDomainEvent<TPayload>(
     deps: { readonly clock: Clock; readonly idGenerator: IdGenerator },
 ): DomainEvent<TPayload> {
     return {
-        eventId: params.eventId ?? deps.idGenerator.generate(),
+        eventId: params.eventId ?? asEventId(deps.idGenerator.generate()),
         type: params.type,
         occurredAt: params.occurredAt ?? deps.clock.now(),
         scope: params.scope,

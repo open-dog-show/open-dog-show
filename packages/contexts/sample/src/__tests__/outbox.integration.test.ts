@@ -10,6 +10,8 @@ import {
     withOutboxTransaction,
     asTenantId,
     asUserId,
+    asEventId,
+    asEventType,
     createDomainEvent,
     FakeClock,
     FakeIdGenerator,
@@ -86,11 +88,11 @@ describe('Transactional outbox — sample context', () => {
     function makeEvent(): DomainEvent<unknown> {
         return createDomainEvent(
             {
-                type: 'sample.EntrySubmitted',
+                type: asEventType('sample.EntrySubmitted'),
                 scope: 'tenant',
                 aggregateId: ENTRY_ID,
                 payload: { dogName: 'Fido' },
-                eventId: EVENT_ID,
+                eventId: asEventId(EVENT_ID),
             },
             {
                 clock: new FakeClock(new Date('2026-08-01T12:00:00.000Z')),

@@ -5,6 +5,8 @@ import { execSync } from 'node:child_process';
 
 /** @param {import('plop').NodePlopAPI} plop */
 export default function (plop) {
+    plop.setHelper('eventContext', (value) => String(value).replaceAll('-', '').toLowerCase());
+
     plop.setGenerator('context', {
         description: 'Scaffold a new bounded-context package',
         prompts: [
