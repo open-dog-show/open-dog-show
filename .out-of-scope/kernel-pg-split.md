@@ -7,7 +7,7 @@ package.
 
 ## Why this is out of scope
 
-ADR-0006 (*Monorepo scaffolding and shared-kernel foundation*) deliberately houses
+ADR-0006 (_Monorepo scaffolding and shared-kernel foundation_) deliberately houses
 the shared transactional-outbox scaffolding and the `Clock` / `IdGenerator`
 production implementations in `@ods/kernel`. The kernel is the single home of the
 unit-of-work seam (`withTransaction` / `withOutboxTransaction`) that sets the RLS
