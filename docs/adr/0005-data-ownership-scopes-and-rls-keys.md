@@ -37,8 +37,10 @@ Two further scopes are **latent and deferred** — documented, not built:
 **Hybrid rows need a disjunctive predicate, not a single key.** An `Entry` (and its `Payment`) is owned by the host Club but must be visible to the exhibitor who created it:
 
 ```sql
-USING (tenant_id = current_setting('app.tenant_id')::uuid
-   OR  user_id = current_setting('app.user_id')::uuid)
+USING (
+  tenant_id  = nullif(current_setting('app.tenant_id',  true), '')::uuid
+  OR user_id = nullif(current_setting('app.user_id', true), '')::uuid
+)
 ```
 
 **Two distinct concepts, not one.** _Who a fact belongs to_ (the event's `EventScope` — `{ tenant | exhibitor | platform }` on the domain event / outbox row) is **not** the same as _who may read a row_ (the RLS predicate). Hybrid rows carry a single ownership scope but a wider read predicate.
