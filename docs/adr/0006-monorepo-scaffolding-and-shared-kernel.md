@@ -6,6 +6,11 @@ status: accepted
 
 > Implements the foundation from [ADR-0004](0004-tech-stack-typescript-modular-monolith-postgres.md) (issue #13). Records the _architectural_ scaffolding decisions and the shared-kernel shape; ordinary tooling picks (lint/test libraries) are noted but not treated as lock-in.
 
+> **Amended 2026-08-22:** the outbox scope columns are `scope` / `user_id`
+> (renamed from `scope_kind` / `account_id`, issue #76), and the kernel-role
+> note below now reflects that `@ods/kernel` houses the shared
+> transactional-outbox scaffolding. The domain layer still imports no `pg`/ORM.
+
 ## Context
 
 ADR-0004 fixed the stack (pnpm monorepo, modular monolith, transactional outbox, single Postgres with schema-per-context, Drizzle behind repository ports) but left the concrete scaffolding open: how packages are arranged and how clean architecture lives inside them, what the shared-kernel primitives look like, and how the outbox, migrations, and "add a context with one command" actually work. This ADR records those so a future reader understands the shape before touching code.
@@ -16,7 +21,7 @@ ADR-0004 fixed the stack (pnpm monorepo, modular monolith, transactional outbox,
 
 ```
 packages/
-  kernel/                  → @ods/kernel      (domain primitives + ports; no infra)
+  kernel/                  → @ods/kernel      (domain primitives, ports, and shared transactional-outbox scaffolding)
   test-kit/                → @ods/test-kit    (Testcontainers helper, fixtures)
   contexts/<name>/         → @ods/<name>      one per bounded context, each with:
     src/domain/            entities, value objects, domain events, PORT interfaces (pure)
@@ -38,7 +43,7 @@ Dependencies point **inward** (`infrastructure → application → domain`); Dri
 - **`DomainEvent` envelope:** `{ eventId, type, occurredAt, scope, aggregateId, payload }`. `type` is a context-prefixed string (`entries.EntrySubmitted`) that doubles as the schema-version key. `scope` is an extensible `EventScope` union (see ADR-0005). No correlation/causation metadata until a consumer needs it.
 - **Ports:** `Clock` and `IdGenerator` interfaces, so the core has no ambient `Date.now()`/`randomUUID()` and stays deterministically testable; real implementations are injected by `apps/api`.
 
-**Transactional outbox.** A per-context-schema `outbox` table co-located with the write model, written in the same transaction as the domain change via the shared `withTransaction(scope, fn)` seam (which also sets the RLS session vars — ADR-0005). Columns flatten the scope (`scope_kind`, nullable `tenant_id`/`account_id`) so a dispatcher can route in SQL and later map to NATS subjects; `payload` is `jsonb`; a `bigserial seq` is the dispatch cursor; dispatched rows are **soft-deleted** (`dispatched_at`) for observability and prunable later. A **polling dispatcher** (`… WHERE dispatched_at IS NULL ORDER BY seq … FOR UPDATE SKIP LOCKED`) delivers **at-least-once** to idempotent, `event_id`-keyed handlers; ordering is per-aggregate, not global. `LISTEN/NOTIFY` is a deferred latency optimisation.
+**Transactional outbox.** A per-context-schema `outbox` table co-located with the write model, written in the same transaction as the domain change via the shared `withOutboxTransaction(scope, writer, fn)` seam (the event-emitting unit of work; `withTransaction(scope, fn)` is the no-event variant) — both set the RLS session vars (ADR-0005). Columns flatten the scope (`scope`, nullable `tenant_id`/`user_id`) so a dispatcher can route in SQL and later map to NATS subjects; `payload` is `jsonb`; a `bigserial seq` is the dispatch cursor; dispatched rows are **soft-deleted** (`dispatched_at`) for observability and prunable later. A **polling dispatcher** (`… WHERE dispatched_at IS NULL ORDER BY seq … FOR UPDATE SKIP LOCKED`) delivers **at-least-once** to idempotent, `event_id`-keyed handlers; ordering is per-aggregate, not global. `LISTEN/NOTIFY` is a deferred latency optimisation.
 
 **Migrations.** Per-context migration folders owned by each context; `drizzle-kit generate` for table DDL plus **hand-written SQL** for RLS policies, roles, and `CREATE SCHEMA` (which drizzle-kit cannot model). A thin custom runner discovers all contexts' migrations and applies them as the **migration-owner role**. A `0000_` bootstrap migration (schema + outbox table + the two roles + RLS setup) is stamped into every new context.
 
