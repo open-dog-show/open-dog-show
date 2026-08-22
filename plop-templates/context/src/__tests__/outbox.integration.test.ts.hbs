@@ -71,7 +71,7 @@ describe('Transactional outbox — {{name}} context', () => {
     function makeEvent(): DomainEvent<unknown> {
         return createDomainEvent(
             {
-                type: '{{name}}.ItemSaved',
+                type: '{{eventContext name}}.ItemSaved',
                 scope: 'tenant',
                 aggregateId: ITEM_ID,
                 payload: { name: 'test-item' },
@@ -161,7 +161,7 @@ describe('Transactional outbox — {{name}} context', () => {
                  VALUES ($1, $2, $3, $4, $5, $6)`,
                 [
                     DISPATCHER_EVENT_ID,
-                    '{{name}}.ItemSaved',
+                    '{{eventContext name}}.ItemSaved',
                     '2026-08-01T12:00:00.000Z',
                     'tenant',
                     ITEM_ID,
