@@ -30,8 +30,12 @@ import { scopeToRlsKeys } from './rls-keys.js';
  */
 async function setRlsSessionVars(client: pg.PoolClient, scope: TransactionScope): Promise<void> {
     const { tenantId, userId } = scopeToRlsKeys(scope);
-    await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantId]);
-    await client.query(`SELECT set_config('app.user_id', $1, true)`, [userId]);
+    // `scopeToRlsKeys` yields `null` for non-applicable keys; `set_config` stores
+    // text, so coalesce `null` → `''` with nullish coalescing (not truthiness —
+    // an applicable `''` passes through unchanged) for the `nullif(..., '')::uuid`
+    // RLS policies.
+    await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantId ?? '']);
+    await client.query(`SELECT set_config('app.user_id', $1, true)`, [userId ?? '']);
 }
 
 /**

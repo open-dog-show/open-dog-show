@@ -16,19 +16,19 @@ describe('scopeToRlsKeys', () => {
         });
     });
 
-    it('carries only userId (tenantId empty) for an exhibitor scope', () => {
+    it('carries only userId (tenantId null) for an exhibitor scope', () => {
         const userId = asUserId('00000000-0000-4000-8000-000000000011');
 
         expect(scopeToRlsKeys({ kind: 'exhibitor', userId })).toStrictEqual({
-            tenantId: '',
+            tenantId: null,
             userId,
         });
     });
 
-    it('empties both keys for a platform scope', () => {
+    it('nulls both keys for a platform scope', () => {
         expect(scopeToRlsKeys({ kind: 'platform' })).toStrictEqual({
-            tenantId: '',
-            userId: '',
+            tenantId: null,
+            userId: null,
         });
     });
 });

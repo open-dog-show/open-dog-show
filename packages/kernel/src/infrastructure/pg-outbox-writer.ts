@@ -36,12 +36,12 @@ export class PgOutboxWriter implements OutboxWriter {
         events: DomainEvent<unknown>[],
         scope: TransactionScope,
     ): Promise<void> {
+        // `scopeToRlsKeys` yields `null` for the non-applicable keys and the
+        // actual id otherwise, so bind the values directly — nullability is a
+        // function of `scope.kind`, never of string truthiness, and an
+        // applicable-but-empty id is bound and rejected by PostgreSQL as an
+        // invalid UUID (the pre-refactor behavior).
         const { tenantId, userId } = scopeToRlsKeys(scope);
-        // The nullable `tenant_id` / `user_id` columns want NULL for the
-        // non-applicable keys; `scopeToRlsKeys` represents those as the empty
-        // string, so collapse `''` → NULL before binding.
-        const tenantIdOrNull = tenantId || null;
-        const userIdOrNull = userId || null;
 
         for (const event of events) {
             await client.query(
@@ -55,8 +55,8 @@ export class PgOutboxWriter implements OutboxWriter {
                     event.type,
                     event.occurredAt.toISOString(),
                     event.scope,
-                    tenantIdOrNull,
-                    userIdOrNull,
+                    tenantId,
+                    userId,
                     event.aggregateId,
                     JSON.stringify(event.payload),
                 ],
