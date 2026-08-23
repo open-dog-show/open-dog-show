@@ -31,4 +31,24 @@ describe('scopeToRlsKeys', () => {
             userId: null,
         });
     });
+
+    it('preserves an applicable empty tenantId and userId for a tenant scope', () => {
+        // asTenantId/asUserId are plain casts and accept ''; an applicable-but-empty
+        // id must survive verbatim (not be normalized to null) so the outbox writer
+        // binds it and PostgreSQL rejects it as an invalid UUID.
+        expect(
+            scopeToRlsKeys({
+                kind: 'tenant',
+                tenantId: asTenantId(''),
+                userId: asUserId(''),
+            }),
+        ).toStrictEqual({ tenantId: '', userId: '' });
+    });
+
+    it('preserves an applicable empty userId for an exhibitor scope', () => {
+        expect(scopeToRlsKeys({ kind: 'exhibitor', userId: asUserId('') })).toStrictEqual({
+            tenantId: null,
+            userId: '',
+        });
+    });
 });
