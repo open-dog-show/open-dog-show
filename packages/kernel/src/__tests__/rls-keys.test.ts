@@ -1,0 +1,54 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import { describe, expect, it } from 'vitest';
+import { scopeToRlsKeys } from '../infrastructure/rls-keys.js';
+import { asTenantId, asUserId } from '../domain/domain-ids.js';
+
+describe('scopeToRlsKeys', () => {
+    it('carries both tenantId and userId for a tenant scope', () => {
+        const tenantId = asTenantId('00000000-0000-4000-8000-000000000001');
+        const userId = asUserId('00000000-0000-4000-8000-000000000011');
+
+        expect(scopeToRlsKeys({ kind: 'tenant', tenantId, userId })).toStrictEqual({
+            tenantId,
+            userId,
+        });
+    });
+
+    it('carries only userId (tenantId null) for an exhibitor scope', () => {
+        const userId = asUserId('00000000-0000-4000-8000-000000000011');
+
+        expect(scopeToRlsKeys({ kind: 'exhibitor', userId })).toStrictEqual({
+            tenantId: null,
+            userId,
+        });
+    });
+
+    it('nulls both keys for a platform scope', () => {
+        expect(scopeToRlsKeys({ kind: 'platform' })).toStrictEqual({
+            tenantId: null,
+            userId: null,
+        });
+    });
+
+    it('preserves an applicable empty tenantId and userId for a tenant scope', () => {
+        // asTenantId/asUserId are plain casts and accept ''; an applicable-but-empty
+        // id must survive verbatim (not be normalized to null) so the outbox writer
+        // binds it and PostgreSQL rejects it as an invalid UUID.
+        expect(
+            scopeToRlsKeys({
+                kind: 'tenant',
+                tenantId: asTenantId(''),
+                userId: asUserId(''),
+            }),
+        ).toStrictEqual({ tenantId: '', userId: '' });
+    });
+
+    it('preserves an applicable empty userId for an exhibitor scope', () => {
+        expect(scopeToRlsKeys({ kind: 'exhibitor', userId: asUserId('') })).toStrictEqual({
+            tenantId: null,
+            userId: '',
+        });
+    });
+});
