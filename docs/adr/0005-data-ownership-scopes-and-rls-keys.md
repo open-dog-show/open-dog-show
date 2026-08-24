@@ -11,6 +11,13 @@ status: accepted
 > `account_id` (issue #76) so the ubiquitous-language term _User_ is used
 > consistently; this ADR now matches the as-built kernel.
 
+> **Amended 2026-08-24:** the TypeScript type that produces the `app.user_id` /
+> `user_id` value is `PrincipalId` — the kernel's context-neutral actor id — not
+> `UserId`; see [ADR-0013](0013-kernel-principal-id-iam-owned-user-id.md). `UserId`
+> moved to `@ods/iam` (ADR-0011). The `app.user_id` GUC and the `user_id` column
+> are unchanged on the wire; only the kernel's TS type and field names became
+> `principalId`.
+
 ## Context
 
 ADR-0004 chose row-level multi-tenancy: `tenant_id` + PostgreSQL Row-Level Security, "applied inside each context schema," with "single-tenant = one `tenant_id`." That framing assumes **every** row is owned by a tenant. The domain contradicts it:
