@@ -1,9 +1,10 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import { FakeClock } from '../testing/fake-clock.js';
-import { FakeIdGenerator } from '../testing/fake-id-generator.js';
+import { FakeEventIdGenerator } from '../testing/fake-event-id-generator.js';
+import type { EventId } from '../domain/domain-ids.js';
 
 describe('FakeClock', () => {
     it('returns the fixed date on every call', () => {
@@ -34,9 +35,9 @@ describe('FakeClock', () => {
     });
 });
 
-describe('FakeIdGenerator', () => {
+describe('FakeEventIdGenerator', () => {
     it('returns deterministic UUIDs starting from seed 1', () => {
-        const gen = new FakeIdGenerator();
+        const gen = new FakeEventIdGenerator();
 
         expect(gen.generate()).toBe('00000000-0000-4000-8000-000000000001');
         expect(gen.generate()).toBe('00000000-0000-4000-8000-000000000002');
@@ -44,7 +45,7 @@ describe('FakeIdGenerator', () => {
     });
 
     it('resets counter when reset() is called', () => {
-        const gen = new FakeIdGenerator();
+        const gen = new FakeEventIdGenerator();
 
         gen.generate();
         gen.generate();
@@ -54,9 +55,15 @@ describe('FakeIdGenerator', () => {
     });
 
     it('accepts a custom starting seed', () => {
-        const gen = new FakeIdGenerator(10);
+        const gen = new FakeEventIdGenerator(10);
 
         expect(gen.generate()).toBe('00000000-0000-4000-8000-000000000010');
         expect(gen.generate()).toBe('00000000-0000-4000-8000-000000000011');
+    });
+
+    it('returns a branded EventId that flows through the port', () => {
+        const gen = new FakeEventIdGenerator();
+
+        expectTypeOf(gen.generate()).toEqualTypeOf<EventId>();
     });
 });

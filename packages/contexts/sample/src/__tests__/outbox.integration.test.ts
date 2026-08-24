@@ -8,13 +8,14 @@ import { fileURLToPath } from 'node:url';
 import { PostgresHarness, runMigrations } from '@ods/test-kit';
 import {
     withOutboxTransaction,
+    asAggregateId,
     asTenantId,
     asUserId,
     asEventId,
     asEventType,
     createDomainEvent,
     FakeClock,
-    FakeIdGenerator,
+    FakeEventIdGenerator,
     PgOutboxWriter,
     PgPollingDispatcher,
     type DomainEvent,
@@ -90,13 +91,13 @@ describe('Transactional outbox — sample context', () => {
             {
                 type: asEventType('sample.EntrySubmitted'),
                 scope: 'tenant',
-                aggregateId: ENTRY_ID,
+                aggregateId: asAggregateId(ENTRY_ID),
                 payload: { dogName: 'Fido' },
                 eventId: asEventId(EVENT_ID),
             },
             {
                 clock: new FakeClock(new Date('2026-08-01T12:00:00.000Z')),
-                idGenerator: new FakeIdGenerator(),
+                eventIdGenerator: new FakeEventIdGenerator(),
             },
         );
     }

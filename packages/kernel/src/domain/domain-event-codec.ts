@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { DomainEvent, EventScope } from './domain-event.js';
-import { asEventId, asEventType } from './domain-ids.js';
+import { asAggregateId, asEventId, asEventType } from './domain-ids.js';
 
 /** The serialised (JSON-safe) form of a {@link DomainEvent}. */
 export interface DomainEventJson {
@@ -35,11 +35,12 @@ export function encodeDomainEvent<TPayload>(event: DomainEvent<TPayload>): Domai
 /**
  * Decode a {@link DomainEventJson} back to a {@link DomainEvent}.
  *
- * The `occurredAt` ISO-8601 string is restored to a `Date`.  The `eventId` and
- * `type` cross back from untyped JSON strings into their branded forms via
- * {@link asEventId} / {@link asEventType}; `asEventType` validates the
- * `<context>.<PascalName>` format so a malformed outbox row is rejected at the
- * boundary rather than propagated as a typed event.
+ * The `occurredAt` ISO-8601 string is restored to a `Date`.  The `eventId`,
+ * `type`, and `aggregateId` cross back from untyped JSON strings into their
+ * branded forms via {@link asEventId} / {@link asEventType} /
+ * {@link asAggregateId}; `asEventType` validates the `<context>.<PascalName>`
+ * format so a malformed outbox row is rejected at the boundary rather than
+ * propagated as a typed event.
  */
 export function decodeDomainEvent<TPayload>(json: DomainEventJson): DomainEvent<TPayload> {
     return {
@@ -47,7 +48,7 @@ export function decodeDomainEvent<TPayload>(json: DomainEventJson): DomainEvent<
         type: asEventType(json.type),
         occurredAt: new Date(json.occurredAt),
         scope: json.scope,
-        aggregateId: json.aggregateId,
+        aggregateId: asAggregateId(json.aggregateId),
         payload: json.payload as TPayload,
     };
 }

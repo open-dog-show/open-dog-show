@@ -3,7 +3,7 @@
 
 export type { DomainEvent, EventScope, CreateDomainEventParams } from './domain/domain-event.js';
 export { createDomainEvent } from './domain/domain-event.js';
-export type { Clock, IdGenerator } from './domain/domain-ports.js';
+export type { Clock, EventIdGenerator } from './domain/domain-ports.js';
 export type {
     ShowId,
     DogId,
@@ -12,6 +12,7 @@ export type {
     UserId,
     EventId,
     EventType,
+    AggregateId,
 } from './domain/domain-ids.js';
 export {
     asShowId,
@@ -21,17 +22,18 @@ export {
     asUserId,
     asEventId,
     asEventType,
+    asAggregateId,
 } from './domain/domain-ids.js';
 export type { DomainEventJson } from './domain/domain-event-codec.js';
 export { encodeDomainEvent, decodeDomainEvent } from './domain/domain-event-codec.js';
 export type { OutboxAppender } from './domain/outbox-port.js';
 export type { OutboxWriter } from './infrastructure/outbox-writer.js';
 export { SystemClock } from './infrastructure/system-clock.js';
-export { RandomIdGenerator } from './infrastructure/random-id-generator.js';
+export { RandomEventIdGenerator } from './infrastructure/random-event-id-generator.js';
 export { withTransaction, withOutboxTransaction } from './infrastructure/with-transaction.js';
 export { PgOutboxWriter } from './infrastructure/pg-outbox-writer.js';
 export { PgPollingDispatcher } from './infrastructure/pg-polling-dispatcher.js';
 export type { EventHandler } from './infrastructure/pg-polling-dispatcher.js';
 export type { TransactionScope } from './domain/transaction-scope.js';
 export { FakeClock } from './testing/fake-clock.js';
-export { FakeIdGenerator } from './testing/fake-id-generator.js';
+export { FakeEventIdGenerator } from './testing/fake-event-id-generator.js';

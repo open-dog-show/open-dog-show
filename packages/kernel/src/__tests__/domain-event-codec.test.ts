@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import { decodeDomainEvent, encodeDomainEvent } from '../domain/domain-event-codec.js';
 import type { DomainEvent } from '../domain/domain-event.js';
-import { asEventId, asEventType } from '../domain/domain-ids.js';
+import { asAggregateId, asEventId, asEventType, type AggregateId } from '../domain/domain-ids.js';
 
 interface OrderedPayload {
     dogId: string;
@@ -17,7 +17,7 @@ describe('encodeDomainEvent', () => {
         type: asEventType('entries.EntrySubmitted'),
         occurredAt: new Date('2026-08-01T12:00:00.000Z'),
         scope: 'tenant',
-        aggregateId: 'entry-abc',
+        aggregateId: asAggregateId('entry-abc'),
         payload: { dogId: 'dog-1', classNumber: 42 },
     };
 
@@ -72,6 +72,12 @@ describe('decodeDomainEvent', () => {
     it('throws TypeError when the JSON type is not a valid <context>.<PascalName>', () => {
         expect(() => decodeDomainEvent({ ...raw, type: 'bogus' })).toThrow(TypeError);
     });
+
+    it('restores aggregateId as a branded AggregateId', () => {
+        const event = decodeDomainEvent(raw);
+
+        expectTypeOf(event.aggregateId).toEqualTypeOf<AggregateId>();
+    });
 });
 
 describe('encode → JSON.stringify → JSON.parse → decode round-trip', () => {
@@ -81,7 +87,7 @@ describe('encode → JSON.stringify → JSON.parse → decode round-trip', () =>
             type: asEventType('shows.ShowScheduled'),
             occurredAt: new Date('2026-12-25T09:00:00.000Z'),
             scope: 'platform',
-            aggregateId: 'show-1',
+            aggregateId: asAggregateId('show-1'),
             payload: { label: 'Christmas Show 2026' },
         };
 

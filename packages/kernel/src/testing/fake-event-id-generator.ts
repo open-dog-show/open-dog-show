@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { IdGenerator } from '../domain/domain-ports.js';
+import type { EventIdGenerator } from '../domain/domain-ports.js';
+import { asEventId, type EventId } from '../domain/domain-ids.js';
 
 /**
- * In-memory {@link IdGenerator} implementation for use in unit tests.
+ * In-memory {@link EventIdGenerator} implementation for use in unit tests.
  *
  * Generates deterministic, human-readable UUIDs by incrementing a
  * numeric counter starting at `seed`.  The produced strings are
@@ -20,14 +21,14 @@ import type { IdGenerator } from '../domain/domain-ports.js';
  *
  * @example
  * ```ts
- * const ids = new FakeIdGenerator();
+ * const ids = new FakeEventIdGenerator();
  * ids.generate(); // '00000000-0000-4000-8000-000000000001'
  * ids.generate(); // '00000000-0000-4000-8000-000000000002'
  * ids.reset();
  * ids.generate(); // '00000000-0000-4000-8000-000000000001'
  * ```
  */
-export class FakeIdGenerator implements IdGenerator {
+export class FakeEventIdGenerator implements EventIdGenerator {
     private counter: number;
     private readonly seed: number;
 
@@ -41,10 +42,10 @@ export class FakeIdGenerator implements IdGenerator {
     }
 
     /** Returns the next deterministic UUID and increments the counter. */
-    generate(): string {
+    generate(): EventId {
         const n = this.counter++;
         const suffix = n.toString(10).padStart(12, '0');
-        return `00000000-0000-4000-8000-${suffix}`;
+        return asEventId(`00000000-0000-4000-8000-${suffix}`);
     }
 
     /**
