@@ -32,6 +32,18 @@ export type UserId = Brand<string, 'UserId'>;
  */
 export type EventId = Brand<string, 'EventId'>;
 /**
+ * Branded string that uniquely identifies an aggregate root.
+ *
+ * The kernel emits domain events for many aggregate kinds (a Show, a Dog, an
+ * Entry, …) and cannot know which context-specific brand an aggregate id
+ * carries, so this is the **context-neutral** aggregate identifier brand.
+ * Contexts may narrow it further at their own boundary (e.g. cast a `ShowId`
+ * to an `AggregateId` when handing an event to the kernel).  Structurally a
+ * plain string at runtime; the brand prevents an `AggregateId` from being
+ * passed where another branded id is expected.
+ */
+export type AggregateId = Brand<string, 'AggregateId'>;
+/**
  * Branded string naming a domain-event type, in `<context>.<PascalName>`
  * form (e.g. `'entries.EntrySubmitted'`).
  *
@@ -67,6 +79,15 @@ export const asUserId = (id: string): UserId => id as UserId;
  * outbox row or a replayed event) becomes a typed {@link EventId}.
  */
 export const asEventId = (id: string): EventId => id as EventId;
+/**
+ * Casts a raw string to an {@link AggregateId}. See {@link asShowId}.
+ *
+ * Use this at the boundary where an untyped aggregate id (e.g. from a database
+ * row or HTTP request) becomes a typed {@link AggregateId}.  A context may
+ * also widen its own narrower aggregate-id brand (e.g. `ShowId`) to an
+ * `AggregateId` when handing an event to the kernel.
+ */
+export const asAggregateId = (id: string): AggregateId => id as AggregateId;
 
 /**
  * Matches the {@link EventType} format: a lowercase `<context>` word, a dot,

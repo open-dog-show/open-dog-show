@@ -1,27 +1,37 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { describe, expect, it } from 'vitest';
-import { createDomainEvent } from '../domain/domain-event.js';
-import type { Clock, IdGenerator } from '../domain/domain-ports.js';
-import { asEventId, asEventType } from '../domain/domain-ids.js';
+import { describe, expect, expectTypeOf, it } from 'vitest';
+import {
+    createDomainEvent,
+    type CreateDomainEventParams,
+    type DomainEvent,
+} from '../domain/domain-event.js';
+import type { Clock, EventIdGenerator } from '../domain/domain-ports.js';
+import {
+    asAggregateId,
+    asEventId,
+    asEventType,
+    type AggregateId,
+    type EventId,
+} from '../domain/domain-ids.js';
 
 describe('createDomainEvent', () => {
     const FIXED_DATE = new Date('2026-08-01T12:00:00.000Z');
     const FIXED_ID = '00000000-0000-4000-8000-000000000001';
 
     const clock: Clock = { now: () => FIXED_DATE };
-    const idGenerator: IdGenerator = { generate: () => FIXED_ID };
+    const eventIdGenerator: EventIdGenerator = { generate: () => asEventId(FIXED_ID) };
 
     it('creates an event envelope with injected clock and id-generator', () => {
         const event = createDomainEvent(
             {
                 type: asEventType('entries.EntrySubmitted'),
                 scope: 'tenant',
-                aggregateId: 'entry-1',
+                aggregateId: asAggregateId('entry-1'),
                 payload: { dogId: 'dog-1' },
             },
-            { clock, idGenerator },
+            { clock, eventIdGenerator },
         );
 
         expect(event).toStrictEqual({
@@ -42,12 +52,12 @@ describe('createDomainEvent', () => {
             {
                 type: asEventType('rulesets.RulesetPublished'),
                 scope: 'platform',
-                aggregateId: 'ruleset-1',
+                aggregateId: asAggregateId('ruleset-1'),
                 payload: null,
                 eventId: asEventId(explicitId),
                 occurredAt: explicitDate,
             },
-            { clock, idGenerator },
+            { clock, eventIdGenerator },
         );
 
         expect(event.eventId).toBe(explicitId);
@@ -59,10 +69,10 @@ describe('createDomainEvent', () => {
             {
                 type: asEventType('admin.ClubOnboarded'),
                 scope: 'platform',
-                aggregateId: 'club-1',
+                aggregateId: asAggregateId('club-1'),
                 payload: {},
             },
-            { clock, idGenerator },
+            { clock, eventIdGenerator },
         );
 
         expect(event.scope).toBe('platform');
@@ -73,13 +83,31 @@ describe('createDomainEvent', () => {
             {
                 type: asEventType('entries.DogRegistered'),
                 scope: 'exhibitor',
-                aggregateId: 'dog-1',
+                aggregateId: asAggregateId('dog-1'),
                 payload: {},
             },
-            { clock, idGenerator },
+            { clock, eventIdGenerator },
         );
 
         expect(event.scope).toBe('exhibitor');
+    });
+});
+
+describe('EventIdGenerator port', () => {
+    it('generate() returns a branded EventId', () => {
+        expectTypeOf<ReturnType<EventIdGenerator['generate']>>().toEqualTypeOf<EventId>();
+    });
+});
+
+describe('DomainEvent envelope brands', () => {
+    it('types aggregateId as AggregateId on the event', () => {
+        expectTypeOf<DomainEvent<unknown>['aggregateId']>().toEqualTypeOf<AggregateId>();
+    });
+
+    it('types aggregateId as AggregateId on the create params', () => {
+        expectTypeOf<
+            CreateDomainEventParams<unknown>['aggregateId']
+        >().toEqualTypeOf<AggregateId>();
     });
 });
 
@@ -88,6 +116,38 @@ describe('asEventId', () => {
         const id = '00000000-0000-4000-8000-000000000001';
 
         expect(asEventId(id)).toBe(id);
+    });
+});
+
+describe('asAggregateId', () => {
+    it('casts a raw string through to an AggregateId-typed value', () => {
+        const id = 'entry-1';
+        const branded = asAggregateId(id);
+
+        expect(branded).toBe(id);
+        expectTypeOf(branded).toEqualTypeOf<AggregateId>();
+    });
+});
+
+describe('AggregateId brand isolation', () => {
+    it('rejects a raw string where an AggregateId is required', () => {
+        // @ts-expect-error a raw string must not satisfy AggregateId
+        const agg: AggregateId = 'entry-1';
+        expect(agg).toStrictEqual(asAggregateId('entry-1'));
+    });
+
+    it('rejects an EventId where an AggregateId is required (cross-id)', () => {
+        const eventId: EventId = asEventId('00000000-0000-4000-8000-000000000001');
+        // @ts-expect-error an EventId must not satisfy AggregateId
+        const agg: AggregateId = eventId;
+        expect(agg).toStrictEqual(asAggregateId('00000000-0000-4000-8000-000000000001'));
+    });
+
+    it('rejects an AggregateId where an EventId is required (cross-id)', () => {
+        const agg: AggregateId = asAggregateId('entry-1');
+        // @ts-expect-error an AggregateId must not satisfy EventId
+        const eventId: EventId = agg;
+        expect(eventId).toStrictEqual(asEventId('entry-1'));
     });
 });
 

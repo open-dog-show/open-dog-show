@@ -3,7 +3,7 @@
 
 import type pg from 'pg';
 import type { DomainEvent, EventScope } from '../domain/domain-event.js';
-import { asEventId, asEventType } from '../domain/domain-ids.js';
+import { asAggregateId, asEventId, asEventType } from '../domain/domain-ids.js';
 import { quoteSchemaIdent } from './schema-ident.js';
 
 /**
@@ -130,11 +130,12 @@ interface OutboxRowRaw {
  * Maps a raw outbox row to a {@link DomainEvent}.
  *
  * The `pg` driver already yields `occurred_at` as a JS `Date`, so it is passed
- * through directly — no `Date` → ISO-string → `Date` round-trip.  The `eventId`
- * and `type` cross back from untyped database strings into their branded forms
- * via {@link asEventId} / {@link asEventType}; `asEventType` validates the
- * `<context>.<PascalName>` format so a malformed outbox row is rejected at the
- * boundary rather than propagated as a typed event.
+ * through directly — no `Date` → ISO-string → `Date` round-trip.  The `eventId`,
+ * `type`, and `aggregateId` cross back from untyped database strings into their
+ * branded forms via {@link asEventId} / {@link asEventType} /
+ * {@link asAggregateId}; `asEventType` validates the `<context>.<PascalName>`
+ * format so a malformed outbox row is rejected at the boundary rather than
+ * propagated as a typed event.
  */
 function outboxRowToEvent(row: OutboxRowRaw): DomainEvent<unknown> {
     return {
@@ -142,7 +143,7 @@ function outboxRowToEvent(row: OutboxRowRaw): DomainEvent<unknown> {
         type: asEventType(row.type),
         occurredAt: row.occurred_at,
         scope: row.scope,
-        aggregateId: row.aggregate_id,
+        aggregateId: asAggregateId(row.aggregate_id),
         payload: row.payload,
     };
 }

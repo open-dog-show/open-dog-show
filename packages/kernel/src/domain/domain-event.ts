@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { Clock, IdGenerator } from './domain-ports.js';
-import { asEventId, type EventId, type EventType } from './domain-ids.js';
+import type { Clock, EventIdGenerator } from './domain-ports.js';
+import type { EventId, EventType, AggregateId } from './domain-ids.js';
 
 /**
  * Ownership classification of a past fact.
@@ -45,8 +45,15 @@ export interface DomainEvent<TPayload> {
     readonly occurredAt: Date;
     /** Ownership classification — see {@link EventScope}. */
     readonly scope: EventScope;
-    /** ID of the aggregate root that produced this event. */
-    readonly aggregateId: string;
+    /**
+     * ID of the aggregate root that produced this event.
+     *
+     * Context-neutral branded id: the kernel cannot know which
+     * context-specific brand an aggregate id carries, so a generic
+     * {@link AggregateId} is used here.  Contexts may narrow further at their
+     * own boundary.
+     */
+    readonly aggregateId: AggregateId;
     /** Event-type-specific structured data. */
     readonly payload: TPayload;
 }
@@ -60,7 +67,7 @@ export interface DomainEvent<TPayload> {
 export interface CreateDomainEventParams<TPayload> {
     readonly type: EventType;
     readonly scope: EventScope;
-    readonly aggregateId: string;
+    readonly aggregateId: AggregateId;
     readonly payload: TPayload;
     /** Override the generated ID (useful in tests). */
     readonly eventId?: EventId | undefined;
@@ -78,14 +85,14 @@ export interface CreateDomainEventParams<TPayload> {
  *
  * @param params - Static properties of the event; `eventId` and
  *   `occurredAt` may be omitted and will be resolved via `deps`.
- * @param deps   - Injected {@link Clock} and {@link IdGenerator} ports.
+ * @param deps   - Injected {@link Clock} and {@link EventIdGenerator} ports.
  */
 export function createDomainEvent<TPayload>(
     params: CreateDomainEventParams<TPayload>,
-    deps: { readonly clock: Clock; readonly idGenerator: IdGenerator },
+    deps: { readonly clock: Clock; readonly eventIdGenerator: EventIdGenerator },
 ): DomainEvent<TPayload> {
     return {
-        eventId: params.eventId ?? asEventId(deps.idGenerator.generate()),
+        eventId: params.eventId ?? deps.eventIdGenerator.generate(),
         type: params.type,
         occurredAt: params.occurredAt ?? deps.clock.now(),
         scope: params.scope,

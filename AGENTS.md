@@ -64,11 +64,11 @@ apps/api/                 @ods/api          composition root
 - Domain layer: **no ORM, no framework imports**. Drizzle lives in
   `infrastructure/` only.
 - Contexts never import each other directly; `apps/api` composes them.
-- Ports (`Clock`, `IdGenerator`, repository interfaces) are defined in `domain/`
+- Ports (`Clock`, `EventIdGenerator`, repository interfaces) are defined in `domain/`
   and implemented in `infrastructure/`.
 - The kernel houses the shared transactional-outbox scaffolding
   (`withTransaction`/`withOutboxTransaction`, `PgOutboxWriter`,
-  `PgPollingDispatcher`) and the `Clock`/`IdGenerator` production implementations
+  `PgPollingDispatcher`) and the `Clock`/`EventIdGenerator` production implementations
   in its `infrastructure/` layer; its `domain/` layer stays ORM-free.
 
 ### Package management
