@@ -157,6 +157,7 @@ _Avoid_: Steward (a different role)
 **Exhibitor**:
 The party responsible for an Entry — the account holder who enters a Dog and pays. Usually an Owner, but distinct from who owns or shows the Dog.
 _Avoid_: Entrant
+_Not to be confused with_: the `exhibitor` data-ownership scope (ADR-0005) — an RLS regime keyed by `user_id`, a different concept that shares the name.
 
 **Entry**:
 The record of entering one Dog into one Show in exactly one compulsory Class, optionally with paid extras (e.g. catalogue, parking). Belongs to exactly one Ownership.

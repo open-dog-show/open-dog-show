@@ -16,6 +16,12 @@ status: accepted
 > `RandomEventIdGenerator` (issue #95), so the names match the branded `EventId`
 > the generator now returns. The `Clock` port is unchanged.
 
+> **Amended 2026-08-24:** `UserId` moved out of the shared kernel into
+> `@ods/iam`'s domain layer, the kernel's context-neutral actor id became
+> `PrincipalId`, and the dead `ExhibitorId` brand was removed — see
+> [ADR-0013](0013-kernel-principal-id-iam-owned-user-id.md). The `app.user_id` GUC
+> and `user_id` column are unchanged on the wire.
+
 ## Context
 
 ADR-0004 fixed the stack (pnpm monorepo, modular monolith, transactional outbox, single Postgres with schema-per-context, Drizzle behind repository ports) but left the concrete scaffolding open: how packages are arranged and how clean architecture lives inside them, what the shared-kernel primitives look like, and how the outbox, migrations, and "add a context with one command" actually work. This ADR records those so a future reader understands the shape before touching code.
@@ -44,7 +50,7 @@ Dependencies point **inward** (`infrastructure → application → domain`); Dri
 
 **Shared kernel (`@ods/kernel`, domain layer).**
 
-- **Identifiers:** **UUIDv4** in native Postgres `uuid` columns, wrapped in **per-entity branded types** (`ShowId`, `DogId`, `TenantId`, `ExhibitorId`, …) so reference-by-ID across contexts is type-checked. UUIDv4 (not v7/ULID) is chosen to avoid the creation-timestamp leak a time-ordered id embeds in externally-visible identifiers.
+- **Identifiers:** **UUIDv4** in native Postgres `uuid` columns, wrapped in **per-entity branded types** (`ShowId`, `DogId`, `TenantId`, …) so reference-by-ID across contexts is type-checked. UUIDv4 (not v7/ULID) is chosen to avoid the creation-timestamp leak a time-ordered id embeds in externally-visible identifiers.
 - **`DomainEvent` envelope:** `{ eventId, type, occurredAt, scope, aggregateId, payload }`. `type` is a context-prefixed string (`entries.EntrySubmitted`) that doubles as the schema-version key. `scope` is an extensible `EventScope` union (see ADR-0005). No correlation/causation metadata until a consumer needs it.
 - **Ports:** `Clock` and `EventIdGenerator` interfaces, so the core has no ambient `Date.now()`/`randomUUID()` and stays deterministically testable; `EventIdGenerator` returns a branded `EventId` (issue #95), and real implementations are injected by `apps/api`.
 
