@@ -28,7 +28,14 @@ def fetch_log(source_repo, path, branch):
         capture_output=True, encoding="utf-8",
     )
     if r.returncode != 0:
-        return []
+        # 404 = the log does not exist yet (first run); treat as empty.
+        # Any other failure (auth, 5xx, wrong branch) must raise so the
+        # workflow does not commit a zeroed dashboard over the existing one.
+        if "404" in r.stderr:
+            return []
+        raise SystemExit(
+            f"failed to fetch usage log from {source_repo}:{branch}:{path}: {r.stderr.strip()}"
+        )
     return [json.loads(ln) for ln in r.stdout.splitlines() if ln.strip()]
 
 
