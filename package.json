@@ -12,7 +12,9 @@
         "notice-check": "node --experimental-strip-types scripts/check-notice.ts",
         "test": "vitest run",
         "test:integration": "vitest run --config vitest.integration.config.ts",
-        "typecheck": "tsc"
+        "typecheck": "tsc",
+        "skill:install": "python scripts/install-respond-pr-review.py",
+        "skill:update": "python scripts/install-respond-pr-review.py"
     },
     "devDependencies": {
         "@eslint/js": "^9.17.0",
