@@ -1,1 +1,2 @@
 ﻿
+{"consumer":"open-dog-show/open-dog-show","pr":108,"threads":{"New":1,"Awaiting":0,"Approved":0,"Pushback":0},"actions":{"proposed":1,"reproposed":0,"implemented":0,"resolved":0,"skipped":0},"metrics":{"classify_terse_chars":1217,"classify_full_chars":6938,"token_ratio":0.18},"failures":[],"ts":"2026-08-25T10:23:19+00:00"}
