@@ -57,6 +57,7 @@ Additional work merged on `main`:
 ```sh
 # Prerequisites: Node.js ≥ 22, pnpm ≥ 9
 pnpm install       # set up the workspace
+pnpm skill:install # fetch the respond-pr-review PR-review skill locally (optional dev tooling)
 pnpm lint          # ESLint + Prettier check
 pnpm test          # Vitest unit tests
 pnpm typecheck     # TypeScript type check (no emit)
