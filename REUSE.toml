@@ -17,6 +17,7 @@ path = [
   "NOTICE",
   ".gitignore",
   ".github/.gitignore",
+  ".gitmodules",
   ".prettierignore",
   "plop-templates/**/*.hbs",
 ]
