@@ -41,14 +41,20 @@ export function encodeDomainEvent<TPayload>(event: DomainEvent<TPayload>): Domai
  * {@link asAggregateId}; `asEventType` validates the `<context>.<PascalName>`
  * format so a malformed outbox row is rejected at the boundary rather than
  * propagated as a typed event.
+ *
+ * The `payload` is returned as `unknown`: the codec cannot validate a payload
+ * shape it knows nothing about, so it deliberately does **not** advertise a
+ * `<TPayload>` type parameter.  Callers narrow the payload at their own
+ * boundary — mirroring how the {@link PgPollingDispatcher} already consumes a
+ * `DomainEvent<unknown>` from the outbox.
  */
-export function decodeDomainEvent<TPayload>(json: DomainEventJson): DomainEvent<TPayload> {
+export function decodeDomainEvent(json: DomainEventJson): DomainEvent<unknown> {
     return {
         eventId: asEventId(json.eventId),
         type: asEventType(json.type),
         occurredAt: new Date(json.occurredAt),
         scope: json.scope,
         aggregateId: asAggregateId(json.aggregateId),
-        payload: json.payload as TPayload,
+        payload: json.payload,
     };
 }

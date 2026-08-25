@@ -78,6 +78,19 @@ describe('decodeDomainEvent', () => {
 
         expectTypeOf(event.aggregateId).toEqualTypeOf<AggregateId>();
     });
+
+    it('does not advertise a payload type parameter', () => {
+        const event = decodeDomainEvent(raw);
+
+        // Returning `unknown` is the safety guarantee of dropping the phantom
+        // generic — the codec cannot validate a payload shape, so it must not
+        // promise one.
+        expectTypeOf(event.payload).toEqualTypeOf<unknown>();
+
+        // @ts-expect-error decodeDomainEvent takes no type parameter.
+        const typed = decodeDomainEvent<OrderedPayload>(raw);
+        expect(typed.payload).toBeDefined();
+    });
 });
 
 describe('encode → JSON.stringify → JSON.parse → decode round-trip', () => {
