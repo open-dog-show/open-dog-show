@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+# SPDX-License-Identifier: AGPL-3.0-only
+name: skill-perf-dashboard
+on:
+    schedule:
+        - cron: '17 6 * * *'
+    workflow_dispatch:
+permissions:
+    contents: write
+jobs:
+    dashboard:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event.repository.default_branch }}
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: '3.12'
+            - name: Aggregate usage log
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  python scripts/aggregate-skill-perf.py \
+                    --source-repo ${{ github.repository }} \
+                    --branch skill-perf \
+                    --path .github/skill-perf/usage.jsonl \
+                    --out docs/skill-perf/respond-pr-review.md
+            - name: Commit dashboard
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git add docs/skill-perf/respond-pr-review.md
+                  if git diff --staged --quiet; then
+                    echo "no dashboard changes to commit"
+                    exit 0
+                  fi
+                  git commit -s -m "docs(skill-perf): refresh respond-pr-review dashboard"
+                  git push
