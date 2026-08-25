@@ -1,0 +1,3 @@
+[submodule ".github/skills/respond-pr-review"]
+	path = .github/skills/respond-pr-review
+	url = https://github.com/open-dog-show/respond-pr-review
