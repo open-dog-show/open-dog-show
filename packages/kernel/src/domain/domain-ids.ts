@@ -24,6 +24,21 @@ export type ExhibitorId = Brand<string, 'ExhibitorId'>;
 /** Branded string that uniquely identifies a user. */
 export type UserId = Brand<string, 'UserId'>;
 /**
+ * Branded string naming the context-neutral "actor in a transaction."
+ *
+ * A `PrincipalId` is the abstract access-control principal on whose behalf a
+ * unit of work runs — independent of which identity system produced it. The
+ * kernel will use it solely for RLS plumbing: `TransactionScope` will set the
+ * `app.user_id` session variable from it (ADR-0005 / ADR-0013). It is a kernel
+ * plumbing type, intentionally absent from `CONTEXT.md` (like `TenantId`).
+ *
+ * In the current system a `PrincipalId` always carries a `User.id` (the value
+ * is identical and `User → PrincipalId` is a cast, not a translation); a future
+ * non-User principal would produce a `PrincipalId` through its own adapter
+ * without the kernel changing.
+ */
+export type PrincipalId = Brand<string, 'PrincipalId'>;
+/**
  * Branded string that uniquely identifies a single domain-event occurrence.
  *
  * Acts as the idempotency key for the outbox.  Structurally a plain string
@@ -72,6 +87,16 @@ export const asTenantId = (id: string): TenantId => id as TenantId;
 export const asExhibitorId = (id: string): ExhibitorId => id as ExhibitorId;
 /** Casts a raw string to a {@link UserId}. See {@link asShowId}. */
 export const asUserId = (id: string): UserId => id as UserId;
+/**
+ * Casts a raw string to a {@link PrincipalId}. See {@link asShowId}.
+ *
+ * Intended post-migration use (ADR-0013): at the composition root an untyped
+ * actor id (e.g. a `User.id` from `@ods/iam`) is cast to the context-neutral
+ * {@link PrincipalId} the kernel will carry in `TransactionScope`. During the
+ * expand step `TransactionScope` still carries `UserId`; the migrate step
+ * switches it. Plain cast — no validation — identical in shape to {@link asTenantId}.
+ */
+export const asPrincipalId = (id: string): PrincipalId => id as PrincipalId;
 /**
  * Casts a raw string to an {@link EventId}. See {@link asShowId}.
  *
