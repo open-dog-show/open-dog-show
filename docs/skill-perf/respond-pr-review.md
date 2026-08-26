@@ -1,27 +1,27 @@
 # respond-pr-review — performance dashboard
 
-_Auto-generated from `usage.jsonl` on the `skill-perf` branch. Last run: 2026-08-25T18:19:06+00:00_
+_Auto-generated from `usage.jsonl` on the `skill-perf` branch. Last run: 2026-08-25T21:04:47+00:00_
 
 ## Summary
 
-- **Runs recorded:** 6
+- **Runs recorded:** 8
 - **Runs with ≥1 failure:** 0
-- **Approval rate:** 88% (7 implemented / 8 proposed)
-- **Mean token ratio (terse/full):** 0.09 over 6 runs
+- **Approval rate:** 91% (10 implemented / 11 proposed)
+- **Mean token ratio (terse/full):** 0.07 over 8 runs
 
 ## Action totals
 
-- proposed: 5
+- proposed: 8
 - reproposed: 3
-- implemented: 7
-- resolved: 7
+- implemented: 10
+- resolved: 10
 - skipped: 0
 
 ## Thread states seen
 
-- New: 5
+- New: 8
 - Awaiting: 0
-- Approved: 7
+- Approved: 10
 - Pushback: 3
 
 ## Failure categories
