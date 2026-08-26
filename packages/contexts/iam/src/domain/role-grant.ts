@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { TenantId, UserId } from '@ods/kernel';
+import type { TenantId } from '@ods/kernel';
+import type { UserId } from './domain-ids.js';
 
 export type TenantScope = { readonly kind: 'tenant'; readonly tenantId: TenantId };
 export type PlatformScope = { readonly kind: 'platform' };

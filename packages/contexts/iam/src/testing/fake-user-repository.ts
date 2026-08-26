@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { UserId } from '@ods/kernel';
+import type { UserId } from '../domain/domain-ids.js';
 import type { User } from '../domain/user.js';
 import type { UserRepository } from '../domain/user-repository.js';
 
