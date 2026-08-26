@@ -30,6 +30,7 @@ async function lint(code: string, virtualPath: string): Promise<string[]> {
 
 const domainPath = 'packages/contexts/sample/src/domain/check.ts';
 const infraPath = 'packages/contexts/sample/src/infrastructure/check.ts';
+const iamDomainPath = 'packages/contexts/iam/src/domain/check.ts';
 
 // ── Cross-layer violations ─────────────────────────────────────────────────
 
@@ -73,5 +74,63 @@ describe('cross-context boundary enforcement', () => {
     it('allows domain to import @ods/kernel', async () => {
         const violations = await lint(`import type { TenantId } from '@ods/kernel';\n`, domainPath);
         expect(violations, 'domain → @ods/kernel should be allowed').toHaveLength(0);
+    });
+});
+
+// ── IAM-identity ownership (ADR-0013) ───────────────────────────────────────
+// The kernel owns the context-neutral `PrincipalId`; `UserId` is owned by
+// `@ods/iam`. A downstream context domain layer must not import IAM's
+// `UserId` (or the dead `ExhibitorId` brand) from the kernel — the ownership
+// split is enforced in CI, not just by convention. The context-neutral
+// `PrincipalId` (and `TenantId`, above) remain importable from the kernel.
+
+describe('identity-ownership boundary enforcement', () => {
+    it('blocks a downstream domain layer from importing UserId from @ods/kernel', async () => {
+        const violations = await lint(`import type { UserId } from '@ods/kernel';\n`, domainPath);
+        expect(
+            violations.length,
+            'domain importing UserId from @ods/kernel should be a boundaries/dependencies violation',
+        ).toBeGreaterThan(0);
+    });
+
+    it('blocks a downstream domain layer from importing asUserId from @ods/kernel', async () => {
+        const violations = await lint(`import { asUserId } from '@ods/kernel';\n`, domainPath);
+        expect(
+            violations.length,
+            'importing the UserId caster should be blocked too',
+        ).toBeGreaterThan(0);
+    });
+
+    it('blocks a downstream domain layer from importing the dead ExhibitorId brand from @ods/kernel', async () => {
+        const violations = await lint(
+            `import type { ExhibitorId } from '@ods/kernel';\n`,
+            domainPath,
+        );
+        expect(
+            violations.length,
+            'ExhibitorId was removed from the kernel; importing it should be a boundaries/dependencies violation',
+        ).toBeGreaterThan(0);
+    });
+
+    it('still allows a downstream domain layer to import PrincipalId from @ods/kernel', async () => {
+        const violations = await lint(
+            `import type { PrincipalId } from '@ods/kernel';\n`,
+            domainPath,
+        );
+        expect(
+            violations,
+            'PrincipalId is the context-neutral actor id and remains allowed from the kernel',
+        ).toHaveLength(0);
+    });
+
+    it('allows @ods/iam domain to import UserId from its own package', async () => {
+        const violations = await lint(
+            `import type { UserId } from './domain-ids.js';\n`,
+            iamDomainPath,
+        );
+        expect(
+            violations,
+            '@ods/iam owns UserId; importing it from its own package should be allowed',
+        ).toHaveLength(0);
     });
 });

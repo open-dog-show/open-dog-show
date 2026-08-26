@@ -100,6 +100,28 @@ export default tseslint.config(
                                     },
                                 },
                             ],
+                            // ADR-0013: the kernel owns the context-neutral `PrincipalId`;
+                            // `@ods/iam` owns `UserId`. A downstream context domain layer must
+                            // not import IAM's `UserId` (or the removed `ExhibitorId` brand)
+                            // from the kernel. The specifier-level `disallow` takes precedence
+                            // over `allowKernel`, so the rest of `@ods/kernel` (`PrincipalId`,
+                            // `TenantId`, …) stays importable while the IAM-owned identifiers are
+                            // rejected at the boundary.
+                            disallow: [
+                                {
+                                    to: {
+                                        module: { origin: 'external', source: '@ods/kernel' },
+                                    },
+                                    dependency: {
+                                        specifiers: [
+                                            'UserId',
+                                            'asUserId',
+                                            'ExhibitorId',
+                                            'asExhibitorId',
+                                        ],
+                                    },
+                                },
+                            ],
                         },
                         // ── context-application ───────────────────────────────
                         // Use-cases: may depend on same-context domain layer

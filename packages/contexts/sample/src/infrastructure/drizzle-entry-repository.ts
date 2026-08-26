@@ -3,7 +3,7 @@
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
-import { asTenantId, asUserId } from '@ods/kernel';
+import { asTenantId, asPrincipalId } from '@ods/kernel';
 import { entriesTable } from './schema.js';
 import type { Entry, EntryRepository } from '../domain/entry.js';
 
@@ -19,7 +19,7 @@ export class DrizzleEntryRepository implements EntryRepository {
         return rows.map((row) => ({
             id: row.id,
             tenantId: asTenantId(row.tenantId),
-            userId: asUserId(row.userId),
+            principalId: asPrincipalId(row.principalId),
             showId: row.showId,
             dogName: row.dogName,
         }));
@@ -31,7 +31,7 @@ export class DrizzleEntryRepository implements EntryRepository {
             .values({
                 id: entry.id,
                 tenantId: entry.tenantId,
-                userId: entry.userId,
+                principalId: entry.principalId,
                 showId: entry.showId,
                 dogName: entry.dogName,
             })

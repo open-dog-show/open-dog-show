@@ -41,7 +41,7 @@ export class PgOutboxWriter implements OutboxWriter {
         // function of `scope.kind`, never of string truthiness, and an
         // applicable-but-empty id is bound and rejected by PostgreSQL as an
         // invalid UUID (the pre-refactor behavior).
-        const { tenantId, userId } = scopeToRlsKeys(scope);
+        const { tenantId, principalId } = scopeToRlsKeys(scope);
 
         for (const event of events) {
             await client.query(
@@ -56,7 +56,9 @@ export class PgOutboxWriter implements OutboxWriter {
                     event.occurredAt.toISOString(),
                     event.scope,
                     tenantId,
-                    userId,
+                    // Bound to the `user_id` column; the wire name is unchanged
+                    // (ADR-0005), only the kernel's TS type is `PrincipalId` (ADR-0013).
+                    principalId,
                     event.aggregateId,
                     JSON.stringify(event.payload),
                 ],

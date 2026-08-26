@@ -19,10 +19,6 @@ export type ShowId = Brand<string, 'ShowId'>;
 export type DogId = Brand<string, 'DogId'>;
 /** Branded string that uniquely identifies a kennel-club tenant. */
 export type TenantId = Brand<string, 'TenantId'>;
-/** Branded string that uniquely identifies an exhibitor. */
-export type ExhibitorId = Brand<string, 'ExhibitorId'>;
-/** Branded string that uniquely identifies a user. */
-export type UserId = Brand<string, 'UserId'>;
 /**
  * Branded string naming the context-neutral "actor in a transaction."
  *
@@ -83,18 +79,13 @@ export const asShowId = (id: string): ShowId => id as ShowId;
 export const asDogId = (id: string): DogId => id as DogId;
 /** Casts a raw string to a {@link TenantId}. See {@link asShowId}. */
 export const asTenantId = (id: string): TenantId => id as TenantId;
-/** Casts a raw string to an {@link ExhibitorId}. See {@link asShowId}. */
-export const asExhibitorId = (id: string): ExhibitorId => id as ExhibitorId;
-/** Casts a raw string to a {@link UserId}. See {@link asShowId}. */
-export const asUserId = (id: string): UserId => id as UserId;
 /**
  * Casts a raw string to a {@link PrincipalId}. See {@link asShowId}.
  *
- * Intended post-migration use (ADR-0013): at the composition root an untyped
- * actor id (e.g. a `User.id` from `@ods/iam`) is cast to the context-neutral
- * {@link PrincipalId} the kernel will carry in `TransactionScope`. During the
- * expand step `TransactionScope` still carries `UserId`; the migrate step
- * switches it. Plain cast — no validation — identical in shape to {@link asTenantId}.
+ * Per ADR-0013: at the composition root an untyped actor id (e.g. a `User.id`
+ * from `@ods/iam`) is cast to the context-neutral {@link PrincipalId} the
+ * kernel carries in `TransactionScope`. Plain cast — no validation — identical
+ * in shape to {@link asTenantId}.
  */
 export const asPrincipalId = (id: string): PrincipalId => id as PrincipalId;
 /**

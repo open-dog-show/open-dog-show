@@ -10,7 +10,7 @@ import {
     withOutboxTransaction,
     asAggregateId,
     asTenantId,
-    asUserId,
+    asPrincipalId,
     asEventId,
     asEventType,
     createDomainEvent,
@@ -34,12 +34,12 @@ const EVENT_ID = '00000000-0000-4000-8000-000000000041';
 const scope = {
     kind: 'tenant' as const,
     tenantId: asTenantId(TENANT_ID),
-    userId: asUserId(USER_ID),
+    principalId: asPrincipalId(USER_ID),
 };
 const entry = {
     id: ENTRY_ID,
     tenantId: asTenantId(TENANT_ID),
-    userId: asUserId(USER_ID),
+    principalId: asPrincipalId(USER_ID),
     showId: SHOW_ID,
     dogName: 'Fido',
 };

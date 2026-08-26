@@ -25,17 +25,19 @@ import { scopeToRlsKeys } from './rls-keys.js';
  * so an empty string safely evaluates to NULL (= no rows match the policy predicate).
  *
  * The key pair is derived from `scope` via the shared {@link scopeToRlsKeys}
- * helper so the scope → `(tenantId, userId)` normalisation lives in one place.
- * The parameterised query form prevents any SQL injection through scope values.
+ * helper so the scope → `(tenantId, principalId)` normalisation lives in one
+ * place. The parameterised query form prevents any SQL injection through scope values.
  */
 async function setRlsSessionVars(client: pg.PoolClient, scope: TransactionScope): Promise<void> {
-    const { tenantId, userId } = scopeToRlsKeys(scope);
+    const { tenantId, principalId } = scopeToRlsKeys(scope);
     // `scopeToRlsKeys` yields `null` for non-applicable keys; `set_config` stores
     // text, so coalesce `null` → `''` with nullish coalescing (not truthiness —
     // an applicable `''` passes through unchanged) for the `nullif(..., '')::uuid`
     // RLS policies.
     await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantId ?? '']);
-    await client.query(`SELECT set_config('app.user_id', $1, true)`, [userId ?? '']);
+    // `app.user_id` is set from the context-neutral `PrincipalId` (ADR-0013).
+    // The wire name stays `user_id`; only the kernel's TypeScript type is `PrincipalId`.
+    await client.query(`SELECT set_config('app.user_id', $1, true)`, [principalId ?? '']);
 }
 
 /**
