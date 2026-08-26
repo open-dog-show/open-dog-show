@@ -6,7 +6,7 @@ import pg from 'pg';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PostgresHarness, runMigrations } from '@ods/test-kit';
-import { withTransaction, asTenantId, asUserId } from '@ods/kernel';
+import { withTransaction, asTenantId, asPrincipalId } from '@ods/kernel';
 import { DrizzleShowRepository } from '../infrastructure/drizzle-show-repository.js';
 import { DrizzleEntryRepository } from '../infrastructure/drizzle-entry-repository.js';
 
@@ -75,7 +75,7 @@ describe('RLS isolation — sample context', () => {
                 {
                     kind: 'tenant',
                     tenantId: asTenantId(TENANT_A_ID),
-                    userId: asUserId(ACCOUNT_A_ID),
+                    principalId: asPrincipalId(ACCOUNT_A_ID),
                 },
                 async (client) => {
                     const repo = new DrizzleShowRepository(client);
@@ -92,7 +92,7 @@ describe('RLS isolation — sample context', () => {
                 {
                     kind: 'tenant',
                     tenantId: asTenantId(TENANT_B_ID),
-                    userId: asUserId(ACCOUNT_B_ID),
+                    principalId: asPrincipalId(ACCOUNT_B_ID),
                 },
                 async (client) => {
                     const repo = new DrizzleShowRepository(client);
@@ -111,7 +111,7 @@ describe('RLS isolation — sample context', () => {
                 {
                     kind: 'tenant',
                     tenantId: asTenantId(TENANT_A_ID),
-                    userId: asUserId(ACCOUNT_A_ID),
+                    principalId: asPrincipalId(ACCOUNT_A_ID),
                 },
                 async (client) => {
                     const repo = new DrizzleEntryRepository(client);
@@ -125,7 +125,7 @@ describe('RLS isolation — sample context', () => {
         it('exhibitor-A scope sees the hybrid entry (matched by user_id)', async () => {
             await withTransaction(
                 appPool,
-                { kind: 'exhibitor', userId: asUserId(ACCOUNT_A_ID) },
+                { kind: 'exhibitor', principalId: asPrincipalId(ACCOUNT_A_ID) },
                 async (client) => {
                     const repo = new DrizzleEntryRepository(client);
                     const entries = await repo.findAll();
@@ -141,7 +141,7 @@ describe('RLS isolation — sample context', () => {
                 {
                     kind: 'tenant',
                     tenantId: asTenantId(TENANT_B_ID),
-                    userId: asUserId(ACCOUNT_B_ID),
+                    principalId: asPrincipalId(ACCOUNT_B_ID),
                 },
                 async (client) => {
                     const repo = new DrizzleEntryRepository(client);

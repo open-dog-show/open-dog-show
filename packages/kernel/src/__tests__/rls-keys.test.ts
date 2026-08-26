@@ -3,52 +3,54 @@
 
 import { describe, expect, it } from 'vitest';
 import { scopeToRlsKeys } from '../infrastructure/rls-keys.js';
-import { asTenantId, asUserId } from '../domain/domain-ids.js';
+import { asTenantId, asPrincipalId } from '../domain/domain-ids.js';
 
 describe('scopeToRlsKeys', () => {
-    it('carries both tenantId and userId for a tenant scope', () => {
+    it('carries both tenantId and principalId for a tenant scope', () => {
         const tenantId = asTenantId('00000000-0000-4000-8000-000000000001');
-        const userId = asUserId('00000000-0000-4000-8000-000000000011');
+        const principalId = asPrincipalId('00000000-0000-4000-8000-000000000011');
 
-        expect(scopeToRlsKeys({ kind: 'tenant', tenantId, userId })).toStrictEqual({
+        expect(scopeToRlsKeys({ kind: 'tenant', tenantId, principalId })).toStrictEqual({
             tenantId,
-            userId,
+            principalId,
         });
     });
 
-    it('carries only userId (tenantId null) for an exhibitor scope', () => {
-        const userId = asUserId('00000000-0000-4000-8000-000000000011');
+    it('carries only principalId (tenantId null) for an exhibitor scope', () => {
+        const principalId = asPrincipalId('00000000-0000-4000-8000-000000000011');
 
-        expect(scopeToRlsKeys({ kind: 'exhibitor', userId })).toStrictEqual({
+        expect(scopeToRlsKeys({ kind: 'exhibitor', principalId })).toStrictEqual({
             tenantId: null,
-            userId,
+            principalId,
         });
     });
 
     it('nulls both keys for a platform scope', () => {
         expect(scopeToRlsKeys({ kind: 'platform' })).toStrictEqual({
             tenantId: null,
-            userId: null,
+            principalId: null,
         });
     });
 
-    it('preserves an applicable empty tenantId and userId for a tenant scope', () => {
-        // asTenantId/asUserId are plain casts and accept ''; an applicable-but-empty
+    it('preserves an applicable empty tenantId and principalId for a tenant scope', () => {
+        // asTenantId/asPrincipalId are plain casts and accept ''; an applicable-but-empty
         // id must survive verbatim (not be normalized to null) so the outbox writer
         // binds it and PostgreSQL rejects it as an invalid UUID.
         expect(
             scopeToRlsKeys({
                 kind: 'tenant',
                 tenantId: asTenantId(''),
-                userId: asUserId(''),
+                principalId: asPrincipalId(''),
             }),
-        ).toStrictEqual({ tenantId: '', userId: '' });
+        ).toStrictEqual({ tenantId: '', principalId: '' });
     });
 
-    it('preserves an applicable empty userId for an exhibitor scope', () => {
-        expect(scopeToRlsKeys({ kind: 'exhibitor', userId: asUserId('') })).toStrictEqual({
-            tenantId: null,
-            userId: '',
-        });
+    it('preserves an applicable empty principalId for an exhibitor scope', () => {
+        expect(scopeToRlsKeys({ kind: 'exhibitor', principalId: asPrincipalId('') })).toStrictEqual(
+            {
+                tenantId: null,
+                principalId: '',
+            },
+        );
     });
 });

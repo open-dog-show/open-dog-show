@@ -14,7 +14,9 @@ export const showsTable = schema.table('shows', {
 export const entriesTable = schema.table('entries', {
     id: uuid('id').primaryKey(),
     tenantId: uuid('tenant_id').notNull(),
-    userId: uuid('user_id').notNull(),
+    // The TS field is `principalId` (the kernel's context-neutral actor id,
+    // ADR-0013); the SQL column stays `user_id` (ADR-0005 wire name unchanged).
+    principalId: uuid('user_id').notNull(),
     showId: uuid('show_id').notNull(),
     dogName: text('dog_name').notNull(),
 });

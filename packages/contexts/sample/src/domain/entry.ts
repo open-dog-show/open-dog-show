@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { TenantId, UserId } from '@ods/kernel';
+import type { TenantId, PrincipalId } from '@ods/kernel';
 
 export interface Entry {
     readonly id: string;
     readonly tenantId: TenantId;
-    readonly userId: UserId;
+    readonly principalId: PrincipalId;
     readonly showId: string;
     readonly dogName: string;
 }

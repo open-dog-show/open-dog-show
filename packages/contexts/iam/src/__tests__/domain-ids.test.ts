@@ -25,10 +25,8 @@ describe('asUserId', () => {
         // IAM owns its own UserId brand (ADR-0013). It must not collapse into the
         // kernel's context-neutral PrincipalId, or the ACL cast seam — where a
         // UserId is cast to a PrincipalId at the composition root — loses its
-        // meaning. The kernel still exports its own UserId during the
-        // expand–contract window, but @ods/iam no longer references it (migrate
-        // step, #104); the permanent guard is distinctness from PrincipalId,
-        // which the kernel keeps.
+        // meaning. The kernel no longer exports a UserId (it owns only
+        // PrincipalId); this distinctness guard is the permanent invariant.
         expectTypeOf<UserId>().not.toEqualTypeOf<PrincipalId>();
     });
 });
