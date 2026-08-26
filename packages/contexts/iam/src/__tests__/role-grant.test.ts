@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { asUserId, asTenantId } from '@ods/kernel';
+import { asTenantId } from '@ods/kernel';
+import { asUserId } from '../domain/domain-ids.js';
 import type { DomainRole, TenantScope, PlatformScope, RoleGrant } from '../domain/role-grant.js';
 import {
     grantRole,

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, expectTypeOf, it } from 'vitest';
-import type { UserId as KernelUserId, PrincipalId } from '@ods/kernel';
+import type { PrincipalId } from '@ods/kernel';
 import { asUserId } from '../domain/domain-ids.js';
 import type { UserId } from '../domain/domain-ids.js';
 
@@ -21,10 +21,14 @@ describe('asUserId', () => {
         expectTypeOf(asUserId('user-bob')).toEqualTypeOf<UserId>();
     });
 
-    it('is a distinct brand from the kernel identity ids', () => {
-        // IAM owns its own UserId brand (ADR-0013); it must not collapse into the
-        // kernel's UserId or PrincipalId, or the ACL cast seam loses its meaning.
-        expectTypeOf<UserId>().not.toEqualTypeOf<KernelUserId>();
+    it('is a distinct brand from the kernel PrincipalId', () => {
+        // IAM owns its own UserId brand (ADR-0013). It must not collapse into the
+        // kernel's context-neutral PrincipalId, or the ACL cast seam — where a
+        // UserId is cast to a PrincipalId at the composition root — loses its
+        // meaning. The kernel still exports its own UserId during the
+        // expand–contract window, but @ods/iam no longer references it (migrate
+        // step, #104); the permanent guard is distinctness from PrincipalId,
+        // which the kernel keeps.
         expectTypeOf<UserId>().not.toEqualTypeOf<PrincipalId>();
     });
 });

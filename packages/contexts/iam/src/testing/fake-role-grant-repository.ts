@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { UserId } from '@ods/kernel';
+import type { UserId } from '../domain/domain-ids.js';
 import { type RoleGrant, RoleGrantOwnerMismatchError } from '../domain/role-grant.js';
 import type { RoleGrantRepository } from '../domain/role-grant-repository.js';
 

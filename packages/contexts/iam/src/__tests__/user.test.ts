@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { asUserId } from '@ods/kernel';
+import { asUserId } from '../domain/domain-ids.js';
 import type { User } from '../domain/user.js';
 import { suspendUser, reactivateUser } from '../domain/user.js';
 import { FakeUserRepository } from '../testing/index.js';
