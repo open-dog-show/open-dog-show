@@ -9,7 +9,7 @@ import { PostgresHarness, runMigrations } from '@ods/test-kit';
 import {
     withOutboxTransaction,
     asAggregateId,
-    asTenantId,
+    asClubId,
     asPrincipalId,
     asEventId,
     asEventType,
@@ -25,20 +25,20 @@ import { DrizzleEntryRepository } from '../infrastructure/drizzle-entry-reposito
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Fixed deterministic IDs.
-const TENANT_ID = '00000000-0000-4000-8000-000000000001';
+const CLUB_ID = '00000000-0000-4000-8000-000000000001';
 const USER_ID = '00000000-0000-4000-8000-000000000011';
 const SHOW_ID = '00000000-0000-4000-8000-000000000021';
 const ENTRY_ID = '00000000-0000-4000-8000-000000000031';
 const EVENT_ID = '00000000-0000-4000-8000-000000000041';
 
 const scope = {
-    kind: 'tenant' as const,
-    tenantId: asTenantId(TENANT_ID),
+    kind: 'club' as const,
+    clubId: asClubId(CLUB_ID),
     principalId: asPrincipalId(USER_ID),
 };
 const entry = {
     id: ENTRY_ID,
-    tenantId: asTenantId(TENANT_ID),
+    clubId: asClubId(CLUB_ID),
     principalId: asPrincipalId(USER_ID),
     showId: SHOW_ID,
     dogName: 'Fido',
@@ -72,8 +72,8 @@ describe('Transactional outbox — sample context', () => {
         await superClient.connect();
         try {
             await superClient.query(
-                `INSERT INTO sample.shows (id, tenant_id, name) VALUES ($1, $2, $3)`,
-                [SHOW_ID, TENANT_ID, 'Outbox Test Show'],
+                `INSERT INTO sample.shows (id, club_id, name) VALUES ($1, $2, $3)`,
+                [SHOW_ID, CLUB_ID, 'Outbox Test Show'],
             );
         } finally {
             await superClient.end();
@@ -90,7 +90,7 @@ describe('Transactional outbox — sample context', () => {
         return createDomainEvent(
             {
                 type: asEventType('sample.EntrySubmitted'),
-                scope: 'tenant',
+                scope: 'club',
                 aggregateId: asAggregateId(ENTRY_ID),
                 payload: { dogName: 'Fido' },
                 eventId: asEventId(EVENT_ID),
@@ -146,10 +146,11 @@ describe('Transactional outbox — sample context', () => {
             expect(entryRows).toHaveLength(1);
 
             const { rows: outboxRows } = await superPool.query(
-                `SELECT event_id, dispatched_at FROM sample.outbox WHERE event_id = $1`,
+                `SELECT event_id, club_id, dispatched_at FROM sample.outbox WHERE event_id = $1`,
                 [EVENT_ID],
             );
             expect(outboxRows).toHaveLength(1);
+            expect(outboxRows[0]?.club_id).toBe(CLUB_ID);
             expect(outboxRows[0]?.dispatched_at).toBeNull();
         });
     });
@@ -174,7 +175,7 @@ describe('Transactional outbox — sample context', () => {
                     DISPATCHER_EVENT_ID,
                     'sample.EntrySubmitted',
                     '2026-08-01T12:00:00.000Z',
-                    'tenant',
+                    'club',
                     ENTRY_ID,
                     JSON.stringify({ dogName: 'Fido' }),
                 ],

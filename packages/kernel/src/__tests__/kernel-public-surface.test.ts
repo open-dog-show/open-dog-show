@@ -9,7 +9,7 @@ import type { PrincipalId } from '../index.js';
  * Contract test for the identity-ownership split (ADR-0013, issue #106).
  *
  * The kernel's public surface owns the context-neutral `PrincipalId` and the
- * cross-cutting `TenantId` (RLS plumbing — ADR-0005/ADR-0013). The IAM-owned
+ * cross-cutting `ClubId` (RLS plumbing — ADR-0005/ADR-0013). The IAM-owned
  * `UserId` / `asUserId` and the dead `ExhibitorId` / `asExhibitorId` brands
  * were removed from the kernel once no caller remained (#104 / #105). This
  * test pins that invariant so it cannot regress.
@@ -18,12 +18,12 @@ import type { PrincipalId } from '../index.js';
  * by vitest's runner — re-exporting any of these symbols turns the directive
  * unused (TS2578) and fails the typecheck. The runtime `not.toHaveProperty`
  * checks add defence-in-depth for the value casters. The context-neutral
- * `PrincipalId` (and `TenantId`) remain importable from the kernel.
+ * `PrincipalId` (and `ClubId`) remain importable from the kernel.
  */
 describe('kernel public surface — identity ownership (ADR-0013)', () => {
-    it('exports the context-neutral PrincipalId and TenantId (RLS plumbing)', () => {
+    it('exports the context-neutral PrincipalId and ClubId (RLS plumbing)', () => {
         expect(kernel).toHaveProperty('asPrincipalId');
-        expect(kernel).toHaveProperty('asTenantId');
+        expect(kernel).toHaveProperty('asClubId');
         expectTypeOf(kernel.asPrincipalId('p-1')).toEqualTypeOf<PrincipalId>();
     });
 

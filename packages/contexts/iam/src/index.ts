@@ -8,7 +8,7 @@ export { suspendUser, reactivateUser } from './domain/user.js';
 export type { UserRepository } from './domain/user-repository.js';
 export type {
     DomainRole,
-    TenantScope,
+    ClubScope,
     PlatformScope,
     RoleScope,
     RoleGrant,

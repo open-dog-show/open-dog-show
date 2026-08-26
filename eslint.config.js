@@ -105,7 +105,7 @@ export default tseslint.config(
                             // not import IAM's `UserId` (or the removed `ExhibitorId` brand)
                             // from the kernel. The specifier-level `disallow` takes precedence
                             // over `allowKernel`, so the rest of `@ods/kernel` (`PrincipalId`,
-                            // `TenantId`, …) stays importable while the IAM-owned identifiers are
+                            // `ClubId`, …) stays importable while the IAM-owned identifiers are
                             // rejected at the boundary.
                             disallow: [
                                 {

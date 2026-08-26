@@ -8,7 +8,7 @@ import type { EventId, EventType, AggregateId } from './domain-ids.js';
  * Ownership classification of a past fact.
  *
  * Declares which data-ownership scope produced the event:
- * - `'tenant'`    — the fact belongs to a kennel-club tenant.
+ * - `'club'`      — the fact belongs to a kennel-club Club.
  * - `'exhibitor'` — the fact belongs to an individual exhibitor.
  * - `'platform'`  — the fact is platform-wide and has no single owner.
  *
@@ -17,7 +17,7 @@ import type { EventId, EventType, AggregateId } from './domain-ids.js';
  * recorded; `TransactionScope` is ephemeral and lives only for the duration
  * of one unit-of-work.
  */
-export type EventScope = 'tenant' | 'exhibitor' | 'platform';
+export type EventScope = 'club' | 'exhibitor' | 'platform';
 
 /**
  * An immutable record of something that has already happened in the domain.

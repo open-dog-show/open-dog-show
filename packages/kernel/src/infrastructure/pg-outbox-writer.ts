@@ -14,7 +14,7 @@ import { quoteSchemaIdent } from './schema-ident.js';
  *
  * Expects a table in `<schema>.outbox` with columns:
  *   `event_id` UUID UNIQUE, `type` TEXT, `occurred_at` TIMESTAMPTZ,
- *   `scope` TEXT, `tenant_id` UUID, `user_id` UUID,
+ *   `scope` TEXT, `club_id` UUID, `user_id` UUID,
  *   `aggregate_id` TEXT, `payload` JSONB, `dispatched_at` TIMESTAMPTZ
  *
  * The `ON CONFLICT (event_id) DO NOTHING` guard makes writes idempotent so
@@ -41,12 +41,12 @@ export class PgOutboxWriter implements OutboxWriter {
         // function of `scope.kind`, never of string truthiness, and an
         // applicable-but-empty id is bound and rejected by PostgreSQL as an
         // invalid UUID (the pre-refactor behavior).
-        const { tenantId, principalId } = scopeToRlsKeys(scope);
+        const { clubId, principalId } = scopeToRlsKeys(scope);
 
         for (const event of events) {
             await client.query(
                 `INSERT INTO ${this.quotedSchema}.outbox
-                   (event_id, type, occurred_at, scope, tenant_id, user_id,
+                   (event_id, type, occurred_at, scope, club_id, user_id,
                     aggregate_id, payload)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                  ON CONFLICT (event_id) DO NOTHING`,
@@ -55,7 +55,7 @@ export class PgOutboxWriter implements OutboxWriter {
                     event.type,
                     event.occurredAt.toISOString(),
                     event.scope,
-                    tenantId,
+                    clubId,
                     // Bound to the `user_id` column; the wire name is unchanged
                     // (ADR-0005), only the kernel's TS type is `PrincipalId` (ADR-0013).
                     principalId,

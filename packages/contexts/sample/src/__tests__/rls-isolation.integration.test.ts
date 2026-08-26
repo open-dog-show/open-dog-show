@@ -6,15 +6,15 @@ import pg from 'pg';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PostgresHarness, runMigrations } from '@ods/test-kit';
-import { withTransaction, asTenantId, asPrincipalId } from '@ods/kernel';
+import { withTransaction, asClubId, asPrincipalId } from '@ods/kernel';
 import { DrizzleShowRepository } from '../infrastructure/drizzle-show-repository.js';
 import { DrizzleEntryRepository } from '../infrastructure/drizzle-entry-repository.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Fixed IDs for deterministic test data.
-const TENANT_A_ID = '00000000-0000-4000-8000-000000000001';
-const TENANT_B_ID = '00000000-0000-4000-8000-000000000002';
+const CLUB_A_ID = '00000000-0000-4000-8000-000000000001';
+const CLUB_B_ID = '00000000-0000-4000-8000-000000000002';
 const ACCOUNT_A_ID = '00000000-0000-4000-8000-000000000011';
 const ACCOUNT_B_ID = '00000000-0000-4000-8000-000000000012';
 const SHOW_A_ID = '00000000-0000-4000-8000-000000000021';
@@ -47,16 +47,16 @@ describe('RLS isolation — sample context', () => {
         await superClient.connect();
         try {
             await superClient.query(
-                `INSERT INTO sample.shows (id, tenant_id, name) VALUES
-                   ($1, $2, 'Tenant A Show'),
-                   ($3, $4, 'Tenant B Show')`,
-                [SHOW_A_ID, TENANT_A_ID, SHOW_B_ID, TENANT_B_ID],
+                `INSERT INTO sample.shows (id, club_id, name) VALUES
+                   ($1, $2, 'Club A Show'),
+                   ($3, $4, 'Club B Show')`,
+                [SHOW_A_ID, CLUB_A_ID, SHOW_B_ID, CLUB_B_ID],
             );
-            // Hybrid entry: owned by Tenant A, submitted by User A.
+            // Hybrid entry: owned by Club A, submitted by User A.
             await superClient.query(
-                `INSERT INTO sample.entries (id, tenant_id, user_id, show_id, dog_name) VALUES
+                `INSERT INTO sample.entries (id, club_id, user_id, show_id, dog_name) VALUES
                    ($1, $2, $3, $4, 'Fido')`,
-                [ENTRY_HYBRID_ID, TENANT_A_ID, ACCOUNT_A_ID, SHOW_A_ID],
+                [ENTRY_HYBRID_ID, CLUB_A_ID, ACCOUNT_A_ID, SHOW_A_ID],
             );
         } finally {
             await superClient.end();
@@ -68,49 +68,49 @@ describe('RLS isolation — sample context', () => {
         await harness.stop();
     });
 
-    describe('tenant-scoped table isolation (shows)', () => {
-        it('tenant-A scope sees only Tenant A shows', async () => {
+    describe('Club-scoped table isolation (shows)', () => {
+        it('club-A scope sees only Club A shows', async () => {
             await withTransaction(
                 appPool,
                 {
-                    kind: 'tenant',
-                    tenantId: asTenantId(TENANT_A_ID),
+                    kind: 'club',
+                    clubId: asClubId(CLUB_A_ID),
                     principalId: asPrincipalId(ACCOUNT_A_ID),
                 },
                 async (client) => {
                     const repo = new DrizzleShowRepository(client);
                     const shows = await repo.findAll();
                     expect(shows).toHaveLength(1);
-                    expect(shows[0]?.name).toBe('Tenant A Show');
+                    expect(shows[0]?.name).toBe('Club A Show');
                 },
             );
         });
 
-        it('tenant-B scope sees only Tenant B shows, not Tenant A', async () => {
+        it('club-B scope sees only Club B shows, not Club A', async () => {
             await withTransaction(
                 appPool,
                 {
-                    kind: 'tenant',
-                    tenantId: asTenantId(TENANT_B_ID),
+                    kind: 'club',
+                    clubId: asClubId(CLUB_B_ID),
                     principalId: asPrincipalId(ACCOUNT_B_ID),
                 },
                 async (client) => {
                     const repo = new DrizzleShowRepository(client);
                     const shows = await repo.findAll();
                     expect(shows).toHaveLength(1);
-                    expect(shows[0]?.name).toBe('Tenant B Show');
+                    expect(shows[0]?.name).toBe('Club B Show');
                 },
             );
         });
     });
 
     describe('hybrid table isolation (entries)', () => {
-        it('tenant-A scope sees the hybrid entry (matched by tenant_id)', async () => {
+        it('club-A scope sees the hybrid entry (matched by club_id)', async () => {
             await withTransaction(
                 appPool,
                 {
-                    kind: 'tenant',
-                    tenantId: asTenantId(TENANT_A_ID),
+                    kind: 'club',
+                    clubId: asClubId(CLUB_A_ID),
                     principalId: asPrincipalId(ACCOUNT_A_ID),
                 },
                 async (client) => {
@@ -135,12 +135,12 @@ describe('RLS isolation — sample context', () => {
             );
         });
 
-        it('tenant-B scope cannot see the hybrid entry belonging to tenant-A', async () => {
+        it('club-B scope cannot see the hybrid entry belonging to club-A', async () => {
             await withTransaction(
                 appPool,
                 {
-                    kind: 'tenant',
-                    tenantId: asTenantId(TENANT_B_ID),
+                    kind: 'club',
+                    clubId: asClubId(CLUB_B_ID),
                     principalId: asPrincipalId(ACCOUNT_B_ID),
                 },
                 async (client) => {

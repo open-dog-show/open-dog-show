@@ -9,7 +9,7 @@ import type { TransactionScope } from '../domain/transaction-scope.js';
  * Writes queued domain events to the outbox table within the current
  * PostgreSQL transaction.
  *
- * The scope columns (`tenant_id`, `user_id`) are flattened from the
+ * The scope columns (`club_id`, `user_id`) are flattened from the
  * transaction scope so the dispatcher can route events by owner without
  * re-parsing the payload.
  *

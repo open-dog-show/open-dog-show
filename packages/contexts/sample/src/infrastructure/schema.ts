@@ -7,13 +7,13 @@ const schema = pgSchema('sample');
 
 export const showsTable = schema.table('shows', {
     id: uuid('id').primaryKey(),
-    tenantId: uuid('tenant_id').notNull(),
+    clubId: uuid('club_id').notNull(),
     name: text('name').notNull(),
 });
 
 export const entriesTable = schema.table('entries', {
     id: uuid('id').primaryKey(),
-    tenantId: uuid('tenant_id').notNull(),
+    clubId: uuid('club_id').notNull(),
     // The TS field is `principalId` (the kernel's context-neutral actor id,
     // ADR-0013); the SQL column stays `user_id` (ADR-0005 wire name unchanged).
     principalId: uuid('user_id').notNull(),

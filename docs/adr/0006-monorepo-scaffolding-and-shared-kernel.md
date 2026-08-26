@@ -22,6 +22,12 @@ status: accepted
 > [ADR-0013](0013-kernel-principal-id-iam-owned-user-id.md). The `app.user_id` GUC
 > and `user_id` column are unchanged on the wire.
 
+> **Amended 2026-08-26:** the `tenant` data-isolation concept was renamed to
+> `club` throughout (issue #116): the branded id `TenantId` is now `ClubId`, the
+> outbox/column key `tenant_id` is now `club_id`, and the `TransactionScope`/
+> `EventScope` literal `'tenant'` is now `'club'`. The `exhibitor` and `platform`
+> scopes are unchanged. Prior amendment notes are left intact as historical record.
+
 ## Context
 
 ADR-0004 fixed the stack (pnpm monorepo, modular monolith, transactional outbox, single Postgres with schema-per-context, Drizzle behind repository ports) but left the concrete scaffolding open: how packages are arranged and how clean architecture lives inside them, what the shared-kernel primitives look like, and how the outbox, migrations, and "add a context with one command" actually work. This ADR records those so a future reader understands the shape before touching code.
@@ -50,11 +56,11 @@ Dependencies point **inward** (`infrastructure → application → domain`); Dri
 
 **Shared kernel (`@ods/kernel`, domain layer).**
 
-- **Identifiers:** **UUIDv4** in native Postgres `uuid` columns, wrapped in **per-entity branded types** (`ShowId`, `DogId`, `TenantId`, …) so reference-by-ID across contexts is type-checked. UUIDv4 (not v7/ULID) is chosen to avoid the creation-timestamp leak a time-ordered id embeds in externally-visible identifiers.
+- **Identifiers:** **UUIDv4** in native Postgres `uuid` columns, wrapped in **per-entity branded types** (`ShowId`, `DogId`, `ClubId`, …) so reference-by-ID across contexts is type-checked. UUIDv4 (not v7/ULID) is chosen to avoid the creation-timestamp leak a time-ordered id embeds in externally-visible identifiers.
 - **`DomainEvent` envelope:** `{ eventId, type, occurredAt, scope, aggregateId, payload }`. `type` is a context-prefixed string (`entries.EntrySubmitted`) that doubles as the schema-version key. `scope` is an extensible `EventScope` union (see ADR-0005). No correlation/causation metadata until a consumer needs it.
 - **Ports:** `Clock` and `EventIdGenerator` interfaces, so the core has no ambient `Date.now()`/`randomUUID()` and stays deterministically testable; `EventIdGenerator` returns a branded `EventId` (issue #95), and real implementations are injected by `apps/api`.
 
-**Transactional outbox.** A per-context-schema `outbox` table co-located with the write model, written in the same transaction as the domain change via the shared `withOutboxTransaction(scope, writer, fn)` seam (the event-emitting unit of work; `withTransaction(scope, fn)` is the no-event variant) — both set the RLS session vars (ADR-0005). Columns flatten the scope (`scope`, nullable `tenant_id`/`user_id`) so a dispatcher can route in SQL and later map to NATS subjects; `payload` is `jsonb`; a `bigserial seq` is the dispatch cursor; dispatched rows are **soft-deleted** (`dispatched_at`) for observability and prunable later. A **polling dispatcher** (`… WHERE dispatched_at IS NULL ORDER BY seq … FOR UPDATE SKIP LOCKED`) delivers **at-least-once** to idempotent, `event_id`-keyed handlers; ordering is per-aggregate, not global. `LISTEN/NOTIFY` is a deferred latency optimisation.
+**Transactional outbox.** A per-context-schema `outbox` table co-located with the write model, written in the same transaction as the domain change via the shared `withOutboxTransaction(scope, writer, fn)` seam (the event-emitting unit of work; `withTransaction(scope, fn)` is the no-event variant) — both set the RLS session vars (ADR-0005). Columns flatten the scope (`scope`, nullable `club_id`/`user_id`) so a dispatcher can route in SQL and later map to NATS subjects; `payload` is `jsonb`; a `bigserial seq` is the dispatch cursor; dispatched rows are **soft-deleted** (`dispatched_at`) for observability and prunable later. A **polling dispatcher** (`… WHERE dispatched_at IS NULL ORDER BY seq … FOR UPDATE SKIP LOCKED`) delivers **at-least-once** to idempotent, `event_id`-keyed handlers; ordering is per-aggregate, not global. `LISTEN/NOTIFY` is a deferred latency optimisation.
 
 **Migrations.** Per-context migration folders owned by each context; `drizzle-kit generate` for table DDL plus **hand-written SQL** for RLS policies, roles, and `CREATE SCHEMA` (which drizzle-kit cannot model). A thin custom runner discovers all contexts' migrations and applies them as the **migration-owner role**. A `0000_` bootstrap migration (schema + outbox table + the two roles + RLS setup) is stamped into every new context.
 

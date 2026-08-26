@@ -16,7 +16,7 @@ describe('encodeDomainEvent', () => {
         eventId: asEventId('00000000-0000-4000-8000-000000000001'),
         type: asEventType('entries.EntrySubmitted'),
         occurredAt: new Date('2026-08-01T12:00:00.000Z'),
-        scope: 'tenant',
+        scope: 'club',
         aggregateId: asAggregateId('entry-abc'),
         payload: { dogId: 'dog-1', classNumber: 42 },
     };
@@ -48,7 +48,7 @@ describe('decodeDomainEvent', () => {
         eventId: '00000000-0000-4000-8000-000000000001',
         type: 'entries.EntrySubmitted',
         occurredAt: '2026-08-01T12:00:00.000Z',
-        scope: 'tenant' as const,
+        scope: 'club' as const,
         aggregateId: 'entry-abc',
         payload: { dogId: 'dog-1', classNumber: 42 },
     };
