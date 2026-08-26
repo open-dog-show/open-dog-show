@@ -72,7 +72,7 @@ describe('cross-context boundary enforcement', () => {
     });
 
     it('allows domain to import @ods/kernel', async () => {
-        const violations = await lint(`import type { TenantId } from '@ods/kernel';\n`, domainPath);
+        const violations = await lint(`import type { ClubId } from '@ods/kernel';\n`, domainPath);
         expect(violations, 'domain → @ods/kernel should be allowed').toHaveLength(0);
     });
 });
@@ -82,7 +82,7 @@ describe('cross-context boundary enforcement', () => {
 // `@ods/iam`. A downstream context domain layer must not import IAM's
 // `UserId` (or the dead `ExhibitorId` brand) from the kernel — the ownership
 // split is enforced in CI, not just by convention. The context-neutral
-// `PrincipalId` (and `TenantId`, above) remain importable from the kernel.
+// `PrincipalId` (and `ClubId`, above) remain importable from the kernel.
 
 describe('identity-ownership boundary enforcement', () => {
     it('blocks a downstream domain layer from importing UserId from @ods/kernel', async () => {

@@ -7,7 +7,7 @@ export type { Clock, EventIdGenerator } from './domain/domain-ports.js';
 export type {
     ShowId,
     DogId,
-    TenantId,
+    ClubId,
     PrincipalId,
     EventId,
     EventType,
@@ -16,7 +16,7 @@ export type {
 export {
     asShowId,
     asDogId,
-    asTenantId,
+    asClubId,
     asPrincipalId,
     asEventId,
     asEventType,

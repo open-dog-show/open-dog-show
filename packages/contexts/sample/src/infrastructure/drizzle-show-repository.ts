@@ -3,7 +3,7 @@
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
-import { asTenantId } from '@ods/kernel';
+import { asClubId } from '@ods/kernel';
 import { showsTable } from './schema.js';
 import type { Show, ShowRepository } from '../domain/show.js';
 
@@ -18,7 +18,7 @@ export class DrizzleShowRepository implements ShowRepository {
         const rows = await this.db.select().from(showsTable);
         return rows.map((row) => ({
             id: row.id,
-            tenantId: asTenantId(row.tenantId),
+            clubId: asClubId(row.clubId),
             name: row.name,
         }));
     }
@@ -26,7 +26,7 @@ export class DrizzleShowRepository implements ShowRepository {
     async save(show: Show): Promise<void> {
         await this.db
             .insert(showsTable)
-            .values({ id: show.id, tenantId: show.tenantId, name: show.name })
+            .values({ id: show.id, clubId: show.clubId, name: show.name })
             .onConflictDoUpdate({ target: showsTable.id, set: { name: show.name } });
     }
 }

@@ -4,17 +4,17 @@ The domain of the open-source conformation dog-show platform, split into bounded
 
 ## Contexts
 
-| Context                     | Class      | Responsibility                                                                                                                                                                 |
-| --------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Rulesets**                | Core       | Owns the rule vocabulary and the `Effective Ruleset` (data + the policy ports from ADR-0001 + catalogue-publication rules). The upstream Published Language.                   |
-| **Entries & Registration**  | Core       | Dog identity (incl. owner-asserted `Title`s), exhibitor-side people, and the online-entry loop (entry, open/close, extras).                                                    |
-| **Judging & Results**       | Core       | Per-Show ring outcomes: grades, placements, awards.                                                                                                                            |
-| **Show Organisation**       | Supporting | Club + Show Secretary set up Shows, classes, and rings. Upstream to Entries, Judging, and Catalogue.                                                                           |
-| **Catalogue & Publishing**  | Supporting | Catalogue (produced after entries close, published under ruleset timing rules) and results publication (live or post-show).                                                    |
-| **Payments**                | Generic    | Entry-fee collection. Behind an anticorruption layer to an external payment provider.                                                                                          |
-| **Identity & Access**       | Generic    | User accounts, login, permissions. Behind an anticorruption layer to an external identity provider.                                                                            |
-| **Platform Administration** | Supporting | Platform operator's back office: club/tenant onboarding, the `Ruleset Catalog` (installed rulesets + versions), and global config. Upstream to Show Organisation and Rulesets. |
-| **Membership**              | _(Fog)_    | Parked add-on; not required to enter. No model yet.                                                                                                                            |
+| Context                     | Class      | Responsibility                                                                                                                                                          |
+| --------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rulesets**                | Core       | Owns the rule vocabulary and the `Effective Ruleset` (data + the policy ports from ADR-0001 + catalogue-publication rules). The upstream Published Language.            |
+| **Entries & Registration**  | Core       | Dog identity (incl. owner-asserted `Title`s), exhibitor-side people, and the online-entry loop (entry, open/close, extras).                                             |
+| **Judging & Results**       | Core       | Per-Show ring outcomes: grades, placements, awards.                                                                                                                     |
+| **Show Organisation**       | Supporting | Club + Show Secretary set up Shows, classes, and rings. Upstream to Entries, Judging, and Catalogue.                                                                    |
+| **Catalogue & Publishing**  | Supporting | Catalogue (produced after entries close, published under ruleset timing rules) and results publication (live or post-show).                                             |
+| **Payments**                | Generic    | Entry-fee collection. Behind an anticorruption layer to an external payment provider.                                                                                   |
+| **Identity & Access**       | Generic    | User accounts, login, permissions. Behind an anticorruption layer to an external identity provider.                                                                     |
+| **Platform Administration** | Supporting | Platform operator's back office: club onboarding, the `Ruleset Catalog` (installed rulesets + versions), and global config. Upstream to Show Organisation and Rulesets. |
+| **Membership**              | _(Fog)_    | Parked add-on; not required to enter. No model yet.                                                                                                                     |
 
 ## Relationships
 
@@ -28,7 +28,7 @@ Integration is via **domain events + reference-by-ID** — contexts never share 
 - **Entries & Registration → Catalogue & Publishing**: closed entries drive catalogue generation (ruleset-timed publication).
 - **Titles are not a context** — a `Title` is owner-asserted data on the Dog (Entries & Registration); the platform never computes or confirms Titles (authoritative confirmation is external, NCO/FCI).
 - **Identity & Access → (Show Organisation, Entries, Judging, Platform Administration)**: **ACL.** Provides authenticated `User`s and `Role Grant`s; each downstream context's ACL adapter translates them into a context-specific identity type (e.g. `AuthenticatedShowSecretary`). Exhibitor is the default capability of any Active User and requires no Role Grant.
-- **Platform Administration → Show Organisation**: onboards/provisions Clubs (tenants). Emits `ClubOnboarded`.
+- **Platform Administration → Show Organisation**: onboards/provisions Clubs. Emits `ClubOnboarded`.
 - **Platform Administration → Rulesets**: curates the `Ruleset Catalog` (which rulesets/versions are available); Rulesets draws on it when resolving a Show's `Effective Ruleset`.
 
 ```mermaid

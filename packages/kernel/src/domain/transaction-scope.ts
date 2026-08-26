@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { TenantId, PrincipalId } from './domain-ids.js';
+import type { ClubId, PrincipalId } from './domain-ids.js';
 
 /**
  * The identity carried into a unit-of-work transaction.
@@ -13,11 +13,11 @@ import type { TenantId, PrincipalId } from './domain-ids.js';
  * context-neutral `PrincipalId` (the kernel's RLS-plumbing type), not IAM's
  * `UserId`; the SQL wire name `app.user_id` is unchanged.
  *
- * - `tenant` — a Club admin acting on behalf of a Club: both `tenantId` and `principalId` are set.
- * - `exhibitor` — a dog owner acting cross-tenant: only `principalId` is set.
- * - `platform` — a platform operator acting globally: no tenant or user isolation.
+ * - `club` — a Club admin acting on behalf of a Club: both `clubId` and `principalId` are set.
+ * - `exhibitor` — a dog owner acting cross-Club: only `principalId` is set.
+ * - `platform` — a platform operator acting globally: no Club or user isolation.
  */
 export type TransactionScope =
-    | { readonly kind: 'tenant'; readonly tenantId: TenantId; readonly principalId: PrincipalId }
+    | { readonly kind: 'club'; readonly clubId: ClubId; readonly principalId: PrincipalId }
     | { readonly kind: 'exhibitor'; readonly principalId: PrincipalId }
     | { readonly kind: 'platform' };

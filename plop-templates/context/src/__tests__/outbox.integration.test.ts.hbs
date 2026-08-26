@@ -9,7 +9,7 @@ import { PostgresHarness, runMigrations } from '@ods/test-kit';
 import {
     withOutboxTransaction,
     asAggregateId,
-    asTenantId,
+    asClubId,
     asPrincipalId,
     asEventId,
     asEventType,
@@ -25,19 +25,19 @@ import { DrizzleItemRepository } from '../infrastructure/drizzle-item-repository
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Fixed deterministic IDs.
-const TENANT_ID = '00000000-0000-4000-8000-000000000001';
+const CLUB_ID = '00000000-0000-4000-8000-000000000001';
 const USER_ID = '00000000-0000-4000-8000-000000000011';
 const ITEM_ID = '00000000-0000-4000-8000-000000000031';
 const EVENT_ID = '00000000-0000-4000-8000-000000000041';
 
 const scope = {
-    kind: 'tenant' as const,
-    tenantId: asTenantId(TENANT_ID),
+    kind: 'club' as const,
+    clubId: asClubId(CLUB_ID),
     principalId: asPrincipalId(USER_ID),
 };
 const item = {
     id: ITEM_ID,
-    tenantId: asTenantId(TENANT_ID),
+    clubId: asClubId(CLUB_ID),
     name: 'test-item',
 };
 
@@ -75,7 +75,7 @@ describe('Transactional outbox — {{name}} context', () => {
         return createDomainEvent(
             {
                 type: asEventType('{{eventContext name}}.ItemSaved'),
-                scope: 'tenant',
+                scope: 'club',
                 aggregateId: asAggregateId(ITEM_ID),
                 payload: { name: 'test-item' },
                 eventId: asEventId(EVENT_ID),
@@ -141,10 +141,11 @@ describe('Transactional outbox — {{name}} context', () => {
             expect(itemRows).toHaveLength(1);
 
             const { rows: outboxRows } = await superPool.query(
-                `SELECT event_id, dispatched_at FROM {{snakeCase name}}.outbox WHERE event_id = $1`,
+                `SELECT event_id, club_id, dispatched_at FROM {{snakeCase name}}.outbox WHERE event_id = $1`,
                 [EVENT_ID],
             );
             expect(outboxRows).toHaveLength(1);
+            expect(outboxRows[0]?.club_id).toBe(CLUB_ID);
             expect(outboxRows[0]?.dispatched_at).toBeNull();
         });
     });
@@ -166,7 +167,7 @@ describe('Transactional outbox — {{name}} context', () => {
                     DISPATCHER_EVENT_ID,
                     '{{eventContext name}}.ItemSaved',
                     '2026-08-01T12:00:00.000Z',
-                    'tenant',
+                    'club',
                     ITEM_ID,
                     JSON.stringify({ name: 'test-item' }),
                 ],

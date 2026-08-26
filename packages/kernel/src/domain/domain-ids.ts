@@ -17,8 +17,8 @@ type Brand<T, B> = T & { readonly [__brand]: B };
 export type ShowId = Brand<string, 'ShowId'>;
 /** Branded string that uniquely identifies a dog. */
 export type DogId = Brand<string, 'DogId'>;
-/** Branded string that uniquely identifies a kennel-club tenant. */
-export type TenantId = Brand<string, 'TenantId'>;
+/** Branded string that uniquely identifies a kennel-club Club. */
+export type ClubId = Brand<string, 'ClubId'>;
 /**
  * Branded string naming the context-neutral "actor in a transaction."
  *
@@ -26,7 +26,7 @@ export type TenantId = Brand<string, 'TenantId'>;
  * unit of work runs — independent of which identity system produced it. The
  * kernel will use it solely for RLS plumbing: `TransactionScope` will set the
  * `app.user_id` session variable from it (ADR-0005 / ADR-0013). It is a kernel
- * plumbing type, intentionally absent from `CONTEXT.md` (like `TenantId`).
+ * plumbing type, intentionally absent from `CONTEXT.md` (like `ClubId`).
  *
  * In the current system a `PrincipalId` always carries a `User.id` (the value
  * is identical and `User → PrincipalId` is a cast, not a translation); a future
@@ -77,15 +77,15 @@ export type EventType = Brand<string, 'EventType'>;
 export const asShowId = (id: string): ShowId => id as ShowId;
 /** Casts a raw string to a {@link DogId}. See {@link asShowId}. */
 export const asDogId = (id: string): DogId => id as DogId;
-/** Casts a raw string to a {@link TenantId}. See {@link asShowId}. */
-export const asTenantId = (id: string): TenantId => id as TenantId;
+/** Casts a raw string to a {@link ClubId}. See {@link asShowId}. */
+export const asClubId = (id: string): ClubId => id as ClubId;
 /**
  * Casts a raw string to a {@link PrincipalId}. See {@link asShowId}.
  *
  * Per ADR-0013: at the composition root an untyped actor id (e.g. a `User.id`
  * from `@ods/iam`) is cast to the context-neutral {@link PrincipalId} the
  * kernel carries in `TransactionScope`. Plain cast — no validation — identical
- * in shape to {@link asTenantId}.
+ * in shape to {@link asClubId}.
  */
 export const asPrincipalId = (id: string): PrincipalId => id as PrincipalId;
 /**

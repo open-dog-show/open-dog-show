@@ -23,15 +23,15 @@ GRANT USAGE ON SCHEMA sample TO app_user;
 --
 -- Three active templates are applied per table:
 --
---   tenant   — rows owned by one Club; key = tenant_id
---   USING (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid)
+--   club     — rows owned by one Club; key = club_id
+--   USING (club_id = nullif(current_setting('app.club_id', true), '')::uuid)
 --
---   exhibitor — cross-tenant participant data; key = user_id
+--   exhibitor — cross-Club participant data; key = user_id
 --   USING (user_id = nullif(current_setting('app.user_id', true), '')::uuid)
 --
 --   hybrid   — Club-owned but exhibitor-readable; disjunctive predicate
 --   USING (
---     tenant_id  = nullif(current_setting('app.tenant_id',  true), '')::uuid
+--     club_id    = nullif(current_setting('app.club_id',   true), '')::uuid
 --     OR user_id = nullif(current_setting('app.user_id', true), '')::uuid
 --   )
 --
@@ -42,33 +42,33 @@ GRANT USAGE ON SCHEMA sample TO app_user;
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
--- Shows table — tenant-scoped (template: tenant)
+-- Shows table — Club-scoped (template: club)
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS sample.shows (
-  id        UUID NOT NULL PRIMARY KEY,
-  tenant_id UUID NOT NULL,
-  name      TEXT NOT NULL
+  id       UUID NOT NULL PRIMARY KEY,
+  club_id  UUID NOT NULL,
+  name     TEXT NOT NULL
 );
 
 ALTER TABLE sample.shows ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sample.shows FORCE ROW LEVEL SECURITY;
 
-CREATE POLICY shows_tenant ON sample.shows
+CREATE POLICY shows_club ON sample.shows
   AS PERMISSIVE FOR ALL TO app_user
-  USING (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+  USING (club_id = nullif(current_setting('app.club_id', true), '')::uuid);
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON sample.shows TO app_user;
 
 -- ---------------------------------------------------------------------------
 -- Entries table — hybrid (template: hybrid)
--- Visible to the owning Club (by tenant_id) OR to the submitting exhibitor
+-- Visible to the owning Club (by club_id) OR to the submitting exhibitor
 -- (by user_id).
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS sample.entries (
   id         UUID NOT NULL PRIMARY KEY,
-  tenant_id  UUID NOT NULL,
+  club_id    UUID NOT NULL,
   user_id    UUID NOT NULL,
   show_id    UUID NOT NULL REFERENCES sample.shows(id),
   dog_name   TEXT NOT NULL
@@ -80,7 +80,7 @@ ALTER TABLE sample.entries FORCE ROW LEVEL SECURITY;
 CREATE POLICY entries_hybrid ON sample.entries
   AS PERMISSIVE FOR ALL TO app_user
   USING (
-    tenant_id  = nullif(current_setting('app.tenant_id',  true), '')::uuid
+    club_id    = nullif(current_setting('app.club_id',   true), '')::uuid
     OR user_id = nullif(current_setting('app.user_id', true), '')::uuid
   );
 
@@ -88,7 +88,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON sample.entries TO app_user;
 
 -- ---------------------------------------------------------------------------
 -- Outbox table — infrastructure (no RLS: the dispatcher is a platform-level
--- background process that reads all pending rows regardless of tenant).
+-- background process that reads all pending rows regardless of Club).
 -- app_user needs INSERT for atomic writes during transactions.
 -- ON CONFLICT DO NOTHING does not require UPDATE.
 -- The dispatcher connects as a privileged role and does not use app_user.
@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS sample.outbox (
   type          TEXT        NOT NULL,
   occurred_at   TIMESTAMPTZ NOT NULL,
   scope         TEXT        NOT NULL,
-  tenant_id     UUID,
+  club_id       UUID,
   user_id       UUID,
   aggregate_id  TEXT        NOT NULL,
   payload       JSONB       NOT NULL,

@@ -27,7 +27,7 @@ describe('createDomainEvent', () => {
         const event = createDomainEvent(
             {
                 type: asEventType('entries.EntrySubmitted'),
-                scope: 'tenant',
+                scope: 'club',
                 aggregateId: asAggregateId('entry-1'),
                 payload: { dogId: 'dog-1' },
             },
@@ -38,7 +38,7 @@ describe('createDomainEvent', () => {
             eventId: FIXED_ID,
             type: 'entries.EntrySubmitted',
             occurredAt: FIXED_DATE,
-            scope: 'tenant',
+            scope: 'club',
             aggregateId: 'entry-1',
             payload: { dogId: 'dog-1' },
         });
@@ -78,7 +78,7 @@ describe('createDomainEvent', () => {
         expect(event.scope).toBe('platform');
     });
 
-    it('uses exhibitor scope for cross-tenant events', () => {
+    it('uses exhibitor scope for cross-Club events', () => {
         const event = createDomainEvent(
             {
                 type: asEventType('entries.DogRegistered'),

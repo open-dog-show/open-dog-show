@@ -1,17 +1,17 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { TenantId } from '@ods/kernel';
+import type { ClubId } from '@ods/kernel';
 import type { UserId } from './domain-ids.js';
 
-export type TenantScope = { readonly kind: 'tenant'; readonly tenantId: TenantId };
+export type ClubScope = { readonly kind: 'club'; readonly clubId: ClubId };
 export type PlatformScope = { readonly kind: 'platform' };
-export type RoleScope = TenantScope | PlatformScope;
+export type RoleScope = ClubScope | PlatformScope;
 
 export type DomainRole = 'ShowSecretary' | 'Judge' | 'PlatformAdministrator';
 
 export type RoleGrant =
-    | { readonly userId: UserId; readonly role: 'ShowSecretary'; readonly scope: TenantScope }
+    | { readonly userId: UserId; readonly role: 'ShowSecretary'; readonly scope: ClubScope }
     | {
           readonly userId: UserId;
           readonly role: 'Judge' | 'PlatformAdministrator';
@@ -20,7 +20,7 @@ export type RoleGrant =
 
 /** Role+scope lookup key for hasRoleGrant. Preserves the role/scope correlation from RoleGrant. */
 export type RoleGrantKey =
-    | { readonly role: 'ShowSecretary'; readonly scope: TenantScope }
+    | { readonly role: 'ShowSecretary'; readonly scope: ClubScope }
     | { readonly role: 'Judge' | 'PlatformAdministrator'; readonly scope: PlatformScope };
 
 export class DuplicateRoleGrantError extends Error {
@@ -42,7 +42,7 @@ export class RoleGrantOwnerMismatchError extends Error {
 
 function scopesEqual(a: RoleScope, b: RoleScope): boolean {
     if (a.kind !== b.kind) return false;
-    if (a.kind === 'tenant' && b.kind === 'tenant') return a.tenantId === b.tenantId;
+    if (a.kind === 'club' && b.kind === 'club') return a.clubId === b.clubId;
     return true;
 }
 

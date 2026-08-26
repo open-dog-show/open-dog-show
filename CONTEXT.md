@@ -95,8 +95,8 @@ A grouping of Shows held together (typically a weekend), where each Show remains
 _Avoid_: Show Weekend, Circuit
 
 **Club**:
-The organising body responsible for running a Show. Registers on the platform and appoints a Show Secretary.
-_Avoid_: Society (acceptable synonym), Organiser
+The organising body responsible for running a Show — a local or breed club that registers on the platform and appoints a Show Secretary, running its Shows under an Effective Ruleset authored by a National Canine Organisation (NCO). Distinct from a "kennel club": the NCO/FCI is the external rule-making and sanctioning authority (judge authorisation, CAC/title confirmation), not the body that registers on the platform to run a show.
+_Avoid_: Kennel Club (the NCO/FCI rule/sanctioning authority, not the show organiser), Society (acceptable synonym), Organiser
 
 **Show Secretary**:
 The Club officer who administers a Show — configures its classes and rings, manages entries, generates the Catalogue, and records results.
@@ -228,7 +228,7 @@ An authenticated platform account, created automatically on first login through 
 _Avoid_: Account (acceptable synonym), Login
 
 **Role Grant**:
-An explicit, revocable record that a User holds a named domain role within a stated scope: tenant-scoped (**Show Secretary** — within one Club/tenant) or platform-global (**Judge**, **Platform Administrator**). Created and revoked only by a Platform Administrator. The Exhibitor capability is not a Role Grant. Each downstream context's ACL adapter translates a User's Role Grants into a context-specific identity type; domain layers never inspect Role Grants directly.
+An explicit, revocable record that a User holds a named domain role within a stated scope: Club-scoped (**Show Secretary** — within one Club) or platform-global (**Judge**, **Platform Administrator**). Created and revoked only by a Platform Administrator. The Exhibitor capability is not a Role Grant. Each downstream context's ACL adapter translates a User's Role Grants into a context-specific identity type; domain layers never inspect Role Grants directly.
 _Avoid_: Permission (use Role Grant), Role Assignment
 
 ## Platform Administration
@@ -238,10 +238,6 @@ The platform operator's back office — cross-club responsibilities no single Cl
 **Platform Administrator**:
 The operator of the platform instance. Onboards Clubs, curates the Ruleset Catalog, and manages global configuration and cross-club user administration. The highest-privilege User role.
 _Avoid_: Superuser, Root, Sysadmin
-
-**Tenant**:
-The unit of data isolation on the hosted platform — **one per Club**. A Club's own data (its Shows, rings, classes, catalogues, ring results) is tenant-scoped, isolated by `tenant_id`. Not all data is tenant-scoped: a Dog's owner-asserted administration (`Dog`, `Ownership`, `Champion Certificate`) is **exhibitor-scoped** and reused across Clubs, and reference/operator data (`Ruleset`, `Ruleset Catalog`, `User`) is **platform-global**. See ADR-0005.
-_Avoid_: Account, Organisation (when the isolation unit is meant)
 
 **Ruleset Catalog**:
 The curated set of Rulesets and versions installed on the platform and made available for Shows to adopt. Maintained by the Platform Administrator; drawn on by Rulesets when resolving a Show's Effective Ruleset.

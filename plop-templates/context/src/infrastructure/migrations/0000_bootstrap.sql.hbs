@@ -18,27 +18,27 @@ CREATE SCHEMA IF NOT EXISTS {{snakeCase name}};
 GRANT USAGE ON SCHEMA {{snakeCase name}} TO app_user;
 
 -- ---------------------------------------------------------------------------
--- Items table — tenant-scoped (template: tenant)
+-- Items table — Club-scoped (template: club)
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS {{snakeCase name}}.items (
-  id        UUID NOT NULL PRIMARY KEY,
-  tenant_id UUID NOT NULL,
-  name      TEXT NOT NULL
+  id       UUID NOT NULL PRIMARY KEY,
+  club_id  UUID NOT NULL,
+  name     TEXT NOT NULL
 );
 
 ALTER TABLE {{snakeCase name}}.items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE {{snakeCase name}}.items FORCE ROW LEVEL SECURITY;
 
-CREATE POLICY items_tenant ON {{snakeCase name}}.items
+CREATE POLICY items_club ON {{snakeCase name}}.items
   AS PERMISSIVE FOR ALL TO app_user
-  USING (tenant_id = nullif(current_setting('app.tenant_id', true), '')::uuid);
+  USING (club_id = nullif(current_setting('app.club_id', true), '')::uuid);
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON {{snakeCase name}}.items TO app_user;
 
 -- ---------------------------------------------------------------------------
 -- Outbox table — infrastructure (no RLS: the dispatcher is a platform-level
--- background process that reads all pending rows regardless of tenant).
+-- background process that reads all pending rows regardless of Club).
 -- app_user needs INSERT for atomic writes during transactions.
 -- ---------------------------------------------------------------------------
 
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS {{snakeCase name}}.outbox (
   type          TEXT        NOT NULL,
   occurred_at   TIMESTAMPTZ NOT NULL,
   scope         TEXT        NOT NULL,
-  tenant_id     UUID,
+  club_id       UUID,
   user_id       UUID,
   aggregate_id  TEXT        NOT NULL,
   payload       JSONB       NOT NULL,

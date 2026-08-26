@@ -13,7 +13,7 @@ describe('asPrincipalId', () => {
     });
 
     it('preserves an applicable empty string verbatim (no normalization)', () => {
-        // asPrincipalId is a plain cast, identical in shape to asTenantId: an
+        // asPrincipalId is a plain cast, identical in shape to asClubId: an
         // applicable-but-empty id must survive verbatim so PostgreSQL rejects it
         // as an invalid UUID rather than being silently normalized.
         expect(asPrincipalId('')).toBe('');
