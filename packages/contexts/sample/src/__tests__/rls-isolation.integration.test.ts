@@ -6,9 +6,8 @@ import pg from 'pg';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PostgresHarness, runMigrations } from '@ods/test-kit';
-import { withTransaction, asClubId, asPrincipalId } from '@ods/kernel';
-import { DrizzleShowRepository } from '../infrastructure/drizzle-show-repository.js';
-import { DrizzleEntryRepository } from '../infrastructure/drizzle-entry-repository.js';
+import { asClubId, asPrincipalId, PgOutboxWriter } from '@ods/kernel';
+import { PgSampleUnitOfWork } from '../infrastructure/pg-unit-of-work.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -24,6 +23,7 @@ const ENTRY_HYBRID_ID = '00000000-0000-4000-8000-000000000031';
 describe('RLS isolation — sample context', () => {
     const harness = new PostgresHarness();
     let appPool: pg.Pool;
+    let unitOfWork: PgSampleUnitOfWork;
 
     beforeAll(async () => {
         await harness.start();
@@ -41,6 +41,7 @@ describe('RLS isolation — sample context', () => {
             '//app_user:app_user@',
         );
         appPool = new pg.Pool({ connectionString: appUserUrl });
+        unitOfWork = new PgSampleUnitOfWork(appPool, new PgOutboxWriter('sample'));
 
         // Seed test data as superuser (bypasses RLS entirely).
         const superClient = new pg.Client({ connectionString: harness.connectionUrl });
@@ -70,16 +71,14 @@ describe('RLS isolation — sample context', () => {
 
     describe('Club-scoped table isolation (shows)', () => {
         it('club-A scope sees only Club A shows', async () => {
-            await withTransaction(
-                appPool,
+            await unitOfWork.run(
                 {
                     kind: 'club',
                     clubId: asClubId(CLUB_A_ID),
                     principalId: asPrincipalId(ACCOUNT_A_ID),
                 },
-                async (client) => {
-                    const repo = new DrizzleShowRepository(client);
-                    const shows = await repo.findAll();
+                async (ctx) => {
+                    const shows = await ctx.shows.findAll();
                     expect(shows).toHaveLength(1);
                     expect(shows[0]?.name).toBe('Club A Show');
                 },
@@ -87,16 +86,14 @@ describe('RLS isolation — sample context', () => {
         });
 
         it('club-B scope sees only Club B shows, not Club A', async () => {
-            await withTransaction(
-                appPool,
+            await unitOfWork.run(
                 {
                     kind: 'club',
                     clubId: asClubId(CLUB_B_ID),
                     principalId: asPrincipalId(ACCOUNT_B_ID),
                 },
-                async (client) => {
-                    const repo = new DrizzleShowRepository(client);
-                    const shows = await repo.findAll();
+                async (ctx) => {
+                    const shows = await ctx.shows.findAll();
                     expect(shows).toHaveLength(1);
                     expect(shows[0]?.name).toBe('Club B Show');
                 },
@@ -106,16 +103,14 @@ describe('RLS isolation — sample context', () => {
 
     describe('hybrid table isolation (entries)', () => {
         it('club-A scope sees the hybrid entry (matched by club_id)', async () => {
-            await withTransaction(
-                appPool,
+            await unitOfWork.run(
                 {
                     kind: 'club',
                     clubId: asClubId(CLUB_A_ID),
                     principalId: asPrincipalId(ACCOUNT_A_ID),
                 },
-                async (client) => {
-                    const repo = new DrizzleEntryRepository(client);
-                    const entries = await repo.findAll();
+                async (ctx) => {
+                    const entries = await ctx.entries.findAll();
                     expect(entries).toHaveLength(1);
                     expect(entries[0]?.dogName).toBe('Fido');
                 },
@@ -123,12 +118,10 @@ describe('RLS isolation — sample context', () => {
         });
 
         it('exhibitor-A scope sees the hybrid entry (matched by user_id)', async () => {
-            await withTransaction(
-                appPool,
+            await unitOfWork.run(
                 { kind: 'exhibitor', principalId: asPrincipalId(ACCOUNT_A_ID) },
-                async (client) => {
-                    const repo = new DrizzleEntryRepository(client);
-                    const entries = await repo.findAll();
+                async (ctx) => {
+                    const entries = await ctx.entries.findAll();
                     expect(entries).toHaveLength(1);
                     expect(entries[0]?.dogName).toBe('Fido');
                 },
@@ -136,16 +129,14 @@ describe('RLS isolation — sample context', () => {
         });
 
         it('club-B scope cannot see the hybrid entry belonging to club-A', async () => {
-            await withTransaction(
-                appPool,
+            await unitOfWork.run(
                 {
                     kind: 'club',
                     clubId: asClubId(CLUB_B_ID),
                     principalId: asPrincipalId(ACCOUNT_B_ID),
                 },
-                async (client) => {
-                    const repo = new DrizzleEntryRepository(client);
-                    const entries = await repo.findAll();
+                async (ctx) => {
+                    const entries = await ctx.entries.findAll();
                     expect(entries).toHaveLength(0);
                 },
             );

@@ -1,0 +1,113 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import { describe, expect, it } from 'vitest';
+import {
+    asAggregateId,
+    asClubId,
+    asPrincipalId,
+    FakeClock,
+    FakeEventIdGenerator,
+    type DomainEvent,
+    type TransactionScope,
+} from '@ods/kernel';
+import type { Item, ItemRepository } from '../domain/item.js';
+import type { ItemUnitOfWork, ItemUnitOfWorkContext } from '../domain/unit-of-work.js';
+import { SaveItemUseCase, type SaveItemInput } from '../application/save-item.js';
+
+// Fixed deterministic IDs.
+const CLUB_ID = '00000000-0000-4000-8000-000000000001';
+const USER_ID = '00000000-0000-4000-8000-000000000011';
+const ITEM_ID = '00000000-0000-4000-8000-000000000031';
+
+const clubScope: TransactionScope = {
+    kind: 'club',
+    clubId: asClubId(CLUB_ID),
+    principalId: asPrincipalId(USER_ID),
+};
+
+/**
+ * In-memory {@link ItemUnitOfWork} for unit-testing the use case without
+ * Docker. Captures saved items and appended events so assertions can observe
+ * the effect of a use-case call through the public seam.
+ */
+class FakeItemUnitOfWork implements ItemUnitOfWork {
+    readonly savedItems: Item[] = [];
+    readonly appendedEvents: DomainEvent<unknown>[] = [];
+
+    readonly items: ItemRepository = {
+        findAll: async () => [...this.savedItems],
+        save: async (item: Item) => {
+            this.savedItems.push(item);
+        },
+    };
+
+    async run<T>(scope: TransactionScope, body: (ctx: ItemUnitOfWorkContext) => Promise<T>): Promise<T> {
+        return body({
+            items: this.items,
+            appendEvents: (...events: DomainEvent<unknown>[]) => {
+                this.appendedEvents.push(...events);
+            },
+        });
+    }
+}
+
+describe('SaveItemUseCase', () => {
+    const fixedDate = new Date('2026-08-01T12:00:00.000Z');
+    const input: SaveItemInput = { id: ITEM_ID, name: 'test-item' };
+
+    it('saves the item derived from the input and the club scope', async () => {
+        const unitOfWork = new FakeItemUnitOfWork();
+        const useCase = new SaveItemUseCase(
+            unitOfWork,
+            new FakeClock(fixedDate),
+            new FakeEventIdGenerator(),
+        );
+
+        await useCase.execute(input, clubScope);
+
+        expect(unitOfWork.savedItems).toHaveLength(1);
+        expect(unitOfWork.savedItems[0]).toStrictEqual({
+            id: ITEM_ID,
+            clubId: asClubId(CLUB_ID),
+            name: 'test-item',
+        });
+    });
+
+    it('appends an ItemSaved event carrying the saved item id and name', async () => {
+        const unitOfWork = new FakeItemUnitOfWork();
+        const useCase = new SaveItemUseCase(
+            unitOfWork,
+            new FakeClock(fixedDate),
+            new FakeEventIdGenerator(),
+        );
+
+        await useCase.execute(input, clubScope);
+
+        expect(unitOfWork.appendedEvents).toHaveLength(1);
+        const event = unitOfWork.appendedEvents[0]!;
+        expect(event.type).toBe('{{eventContext name}}.ItemSaved');
+        expect(event.scope).toBe('club');
+        expect(event.aggregateId).toBe(asAggregateId(ITEM_ID));
+        expect(event.payload).toStrictEqual({ name: 'test-item' });
+        expect(event.occurredAt).toStrictEqual(fixedDate);
+        expect(event.eventId).toBe('00000000-0000-4000-8000-000000000001');
+    });
+
+    it('rejects a non-club scope because an item needs a Club owner', async () => {
+        const unitOfWork = new FakeItemUnitOfWork();
+        const useCase = new SaveItemUseCase(
+            unitOfWork,
+            new FakeClock(fixedDate),
+            new FakeEventIdGenerator(),
+        );
+        const exhibitorScope: TransactionScope = {
+            kind: 'exhibitor',
+            principalId: asPrincipalId(USER_ID),
+        };
+
+        await expect(useCase.execute(input, exhibitorScope)).rejects.toThrow(/club/);
+        expect(unitOfWork.savedItems).toHaveLength(0);
+        expect(unitOfWork.appendedEvents).toHaveLength(0);
+    });
+});

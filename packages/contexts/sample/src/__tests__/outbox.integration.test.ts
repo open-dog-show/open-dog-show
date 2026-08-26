@@ -7,7 +7,6 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PostgresHarness, runMigrations } from '@ods/test-kit';
 import {
-    withOutboxTransaction,
     asAggregateId,
     asClubId,
     asPrincipalId,
@@ -20,7 +19,7 @@ import {
     PgPollingDispatcher,
     type DomainEvent,
 } from '@ods/kernel';
-import { DrizzleEntryRepository } from '../infrastructure/drizzle-entry-repository.js';
+import { PgSampleUnitOfWork } from '../infrastructure/pg-unit-of-work.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -48,6 +47,7 @@ describe('Transactional outbox — sample context', () => {
     const harness = new PostgresHarness();
     let superPool: pg.Pool;
     let appPool: pg.Pool;
+    let unitOfWork: PgSampleUnitOfWork;
 
     beforeAll(async () => {
         await harness.start();
@@ -66,6 +66,7 @@ describe('Transactional outbox — sample context', () => {
             '//app_user:app_user@',
         );
         appPool = new pg.Pool({ connectionString: appUserUrl });
+        unitOfWork = new PgSampleUnitOfWork(appPool, new PgOutboxWriter('sample'));
 
         // Seed a show (foreign-key target for entries).
         const superClient = new pg.Client({ connectionString: harness.connectionUrl });
@@ -102,8 +103,6 @@ describe('Transactional outbox — sample context', () => {
         );
     }
 
-    const outboxWriter = new PgOutboxWriter('sample');
-
     // -------------------------------------------------------------------------
     // Seam 1: same-transaction write
     // -------------------------------------------------------------------------
@@ -111,10 +110,9 @@ describe('Transactional outbox — sample context', () => {
     describe('same-transaction write', () => {
         it('rolls back both the entry and the outbox row when the transaction fails', async () => {
             await expect(
-                withOutboxTransaction(appPool, scope, outboxWriter, async (client, outbox) => {
-                    const repo = new DrizzleEntryRepository(client);
-                    await repo.save(entry);
-                    outbox.append(makeEvent());
+                unitOfWork.run(scope, async (ctx) => {
+                    await ctx.entries.save(entry);
+                    ctx.appendEvents(makeEvent());
                     throw new Error('simulated failure');
                 }),
             ).rejects.toThrow('simulated failure');
@@ -133,10 +131,9 @@ describe('Transactional outbox — sample context', () => {
         });
 
         it('writes both the entry and the outbox row when the transaction succeeds', async () => {
-            await withOutboxTransaction(appPool, scope, outboxWriter, async (client, outbox) => {
-                const repo = new DrizzleEntryRepository(client);
-                await repo.save(entry);
-                outbox.append(makeEvent());
+            await unitOfWork.run(scope, async (ctx) => {
+                await ctx.entries.save(entry);
+                ctx.appendEvents(makeEvent());
             });
 
             const { rows: entryRows } = await superPool.query(

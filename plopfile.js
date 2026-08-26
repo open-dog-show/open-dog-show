@@ -42,6 +42,16 @@ export default function (plop) {
             },
             {
                 type: 'add',
+                path: 'packages/contexts/{{name}}/src/domain/unit-of-work.ts',
+                templateFile: 'plop-templates/context/src/domain/unit-of-work.ts.hbs',
+            },
+            {
+                type: 'add',
+                path: 'packages/contexts/{{name}}/src/application/save-item.ts',
+                templateFile: 'plop-templates/context/src/application/save-item.ts.hbs',
+            },
+            {
+                type: 'add',
                 path: 'packages/contexts/{{name}}/src/infrastructure/schema.ts',
                 templateFile: 'plop-templates/context/src/infrastructure/schema.ts.hbs',
             },
@@ -53,9 +63,19 @@ export default function (plop) {
             },
             {
                 type: 'add',
+                path: 'packages/contexts/{{name}}/src/infrastructure/pg-unit-of-work.ts',
+                templateFile: 'plop-templates/context/src/infrastructure/pg-unit-of-work.ts.hbs',
+            },
+            {
+                type: 'add',
                 path: 'packages/contexts/{{name}}/src/infrastructure/migrations/0000_bootstrap.sql',
                 templateFile:
                     'plop-templates/context/src/infrastructure/migrations/0000_bootstrap.sql.hbs',
+            },
+            {
+                type: 'add',
+                path: 'packages/contexts/{{name}}/src/__tests__/save-item.test.ts',
+                templateFile: 'plop-templates/context/src/__tests__/save-item.test.ts.hbs',
             },
             {
                 type: 'add',

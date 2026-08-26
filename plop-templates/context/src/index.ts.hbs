@@ -2,4 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 export type { Item, ItemRepository } from './domain/item.js';
+export type { ItemUnitOfWork, ItemUnitOfWorkContext } from './domain/unit-of-work.js';
+export type { SaveItemInput } from './application/save-item.js';
+export { SaveItemUseCase } from './application/save-item.js';
 export { DrizzleItemRepository } from './infrastructure/drizzle-item-repository.js';
+export { PgItemUnitOfWork } from './infrastructure/pg-unit-of-work.js';
