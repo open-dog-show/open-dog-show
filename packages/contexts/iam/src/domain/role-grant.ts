@@ -86,3 +86,26 @@ export function hasRoleGrant(
 ): boolean {
     return grants.some((g) => grantsMatch(g, { userId, ...grantKey } as RoleGrant));
 }
+
+/**
+ * Reusable domain-level check for the `RoleGrantRepository.saveAll` owner-mismatch
+ * invariant. Throws {@link RoleGrantOwnerMismatchError} when any grant in
+ * `grants` belongs to a user other than `userId`.
+ *
+ * This is the shared, repository-agnostic way to honour the `saveAll`
+ * "throws on owner mismatch" contract, so adapters reuse one check instead of
+ * re-implementing it. The interface cannot force the call and the domain suite
+ * cannot detect an adapter that omits it — each `saveAll` implementation
+ * remains responsible for invoking this (or an equivalent) check to satisfy
+ * the contract.
+ *
+ * The pure {@link grantRole} / {@link revokeRoleGrant} / {@link hasRoleGrant}
+ * helpers already operate on `readonly RoleGrant[]` and are unchanged — this
+ * function owns only the cross-grant "all grants share one owner" rule that
+ * `saveAll`'s replace-all semantics rely on.
+ */
+export function assertGrantsOwnedBy(userId: UserId, grants: readonly RoleGrant[]): void {
+    for (const grant of grants) {
+        if (grant.userId !== userId) throw new RoleGrantOwnerMismatchError(userId, grant);
+    }
+}
