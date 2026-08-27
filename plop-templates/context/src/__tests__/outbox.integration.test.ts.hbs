@@ -56,19 +56,12 @@ describe('Transactional outbox — {{name}} context', () => {
             },
         ]);
 
-        superPool = new pg.Pool({ connectionString: harness.connectionUrl });
-
-        const appUserUrl = harness.connectionUrl.replace(
-            /\/\/[^:]+:[^@]+@/,
-            '//app_user:app_user@',
-        );
-        appPool = new pg.Pool({ connectionString: appUserUrl });
+        superPool = harness.superPool;
+        appPool = harness.appUserPool;
         unitOfWork = new PgItemUnitOfWork(appPool, new PgOutboxWriter('{{snakeCase name}}'));
     }, 120_000);
 
     afterAll(async () => {
-        await superPool?.end();
-        await appPool?.end();
         await harness.stop();
     });
 
