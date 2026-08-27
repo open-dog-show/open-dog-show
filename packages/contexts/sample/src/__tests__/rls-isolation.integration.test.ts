@@ -35,37 +35,27 @@ describe('RLS isolation — sample context', () => {
             },
         ]);
 
-        // Build the app_user connection URL by swapping credentials.
-        const appUserUrl = harness.connectionUrl.replace(
-            /\/\/[^:]+:[^@]+@/,
-            '//app_user:app_user@',
-        );
-        appPool = new pg.Pool({ connectionString: appUserUrl });
+        appPool = harness.appUserPool;
         unitOfWork = new PgSampleUnitOfWork(appPool, new PgOutboxWriter('sample'));
 
         // Seed test data as superuser (bypasses RLS entirely).
-        const superClient = new pg.Client({ connectionString: harness.connectionUrl });
-        await superClient.connect();
-        try {
-            await superClient.query(
+        await harness.seed(async (client) => {
+            await client.query(
                 `INSERT INTO sample.shows (id, club_id, name) VALUES
                    ($1, $2, 'Club A Show'),
                    ($3, $4, 'Club B Show')`,
                 [SHOW_A_ID, CLUB_A_ID, SHOW_B_ID, CLUB_B_ID],
             );
             // Hybrid entry: owned by Club A, submitted by User A.
-            await superClient.query(
+            await client.query(
                 `INSERT INTO sample.entries (id, club_id, user_id, show_id, dog_name) VALUES
                    ($1, $2, $3, $4, 'Fido')`,
                 [ENTRY_HYBRID_ID, CLUB_A_ID, ACCOUNT_A_ID, SHOW_A_ID],
             );
-        } finally {
-            await superClient.end();
-        }
+        });
     }, 120_000);
 
     afterAll(async () => {
-        await appPool?.end();
         await harness.stop();
     });
 

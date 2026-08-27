@@ -59,31 +59,21 @@ describe('Transactional outbox — sample context', () => {
             },
         ]);
 
-        superPool = new pg.Pool({ connectionString: harness.connectionUrl });
-
-        const appUserUrl = harness.connectionUrl.replace(
-            /\/\/[^:]+:[^@]+@/,
-            '//app_user:app_user@',
-        );
-        appPool = new pg.Pool({ connectionString: appUserUrl });
+        superPool = harness.superPool;
+        appPool = harness.appUserPool;
         unitOfWork = new PgSampleUnitOfWork(appPool, new PgOutboxWriter('sample'));
 
-        // Seed a show (foreign-key target for entries).
-        const superClient = new pg.Client({ connectionString: harness.connectionUrl });
-        await superClient.connect();
-        try {
-            await superClient.query(
-                `INSERT INTO sample.shows (id, club_id, name) VALUES ($1, $2, $3)`,
-                [SHOW_ID, CLUB_ID, 'Outbox Test Show'],
-            );
-        } finally {
-            await superClient.end();
-        }
+        // Seed a show (foreign-key target for entries) as superuser (bypasses RLS).
+        await harness.seed(async (client) => {
+            await client.query(`INSERT INTO sample.shows (id, club_id, name) VALUES ($1, $2, $3)`, [
+                SHOW_ID,
+                CLUB_ID,
+                'Outbox Test Show',
+            ]);
+        });
     }, 120_000);
 
     afterAll(async () => {
-        await superPool?.end();
-        await appPool?.end();
         await harness.stop();
     });
 
