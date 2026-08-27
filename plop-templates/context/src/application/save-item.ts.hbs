@@ -1,0 +1,86 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import {
+    asAggregateId,
+    asEventType,
+    createDomainEvent,
+    type Clock,
+    type EventIdGenerator,
+    type TransactionScope,
+} from '@ods/kernel';
+import type { Item } from '../domain/item.js';
+import type { ItemUnitOfWork } from '../domain/unit-of-work.js';
+
+/**
+ * Inputs to {@link SaveItemUseCase.execute} that are not derivable from the
+ * transaction scope. The owning Club and the acting principal come from the
+ * `TransactionScope`; everything the caller controls lives here.
+ */
+export interface SaveItemInput {
+    /** Aggregate id of the Item to save (upserts on conflict). */
+    readonly id: string;
+    /** The Item's name. */
+    readonly name: string;
+}
+
+/**
+ * Construct the {@link Item} aggregate from the use-case input and the
+ * transaction scope.
+ *
+ * An Item is Club-owned, so only a `club` scope (which carries both the
+ * owning `ClubId` and the acting `PrincipalId`) is accepted; an `exhibitor`
+ * or `platform` scope has no Club to attribute the Item to.
+ */
+function toItem(input: SaveItemInput, scope: TransactionScope): Item {
+    if (scope.kind !== 'club') {
+        throw new Error(
+            `SaveItemUseCase requires a club-scoped transaction, received '${scope.kind}'`,
+        );
+    }
+    return { id: input.id, clubId: scope.clubId, name: input.name };
+}
+
+/**
+ * Use case: save (upsert) an Item and record the `{{eventContext name}}.ItemSaved`
+ * fact in the same transaction (ADR-0014).
+ *
+ * The transaction boundary, repository construction, and outbox write are all
+ * hidden behind the injected {@link ItemUnitOfWork} port, so this class
+ * depends only on domain types and `@ods/kernel` — it is trivially unit-testable
+ * with a fake unit of work and no Docker.
+ */
+export class SaveItemUseCase {
+    /**
+     * @param unitOfWork - The per-context unit-of-work port (transaction + repo + outbox).
+     * @param clock - Injected wall-clock port for deterministic event timestamps.
+     * @param eventIdGenerator - Injected id-generator port for deterministic event ids.
+     */
+    constructor(
+        private readonly unitOfWork: ItemUnitOfWork,
+        private readonly clock: Clock,
+        private readonly eventIdGenerator: EventIdGenerator,
+    ) {}
+
+    /**
+     * Save the Item described by `input` under `scope` and emit the
+     * `{{eventContext name}}.ItemSaved` domain event in the same transaction.
+     */
+    async execute(input: SaveItemInput, scope: TransactionScope): Promise<void> {
+        await this.unitOfWork.run(scope, async (ctx) => {
+            const item = toItem(input, scope);
+            await ctx.items.save(item);
+            ctx.appendEvents(
+                createDomainEvent(
+                    {
+                        type: asEventType('{{eventContext name}}.ItemSaved'),
+                        scope: 'club',
+                        aggregateId: asAggregateId(item.id),
+                        payload: { name: item.name },
+                    },
+                    { clock: this.clock, eventIdGenerator: this.eventIdGenerator },
+                ),
+            );
+        });
+    }
+}
