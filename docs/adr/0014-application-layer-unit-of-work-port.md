@@ -6,7 +6,7 @@ status: accepted
 
 > Fills in the `src/application/` layer that [ADR-0006](0006-monorepo-scaffolding-and-shared-kernel.md)
 > declares ("use-cases; depends on domain only") but leaves unspecified. Records
-> *how* use cases hide the transaction / repository / outbox wiring. Originated
+> _how_ use cases hide the transaction / repository / outbox wiring. Originated
 > from issue #120 (architecture-review finding: "introduce an application-layer
 > use case in the context generator/sample").
 
@@ -25,9 +25,9 @@ site (currently the integration tests, since `apps/api` does not exist yet):
 
 ```ts
 await withOutboxTransaction(appPool, scope, writer, async (client, outbox) => {
-  const repo = new DrizzleEntryRepository(client);   // wired here
-  await repo.save(entry);                            // wired here
-  outbox.append(makeEvent());                        // wired here
+    const repo = new DrizzleEntryRepository(client); // wired here
+    await repo.save(entry); // wired here
+    outbox.append(makeEvent()); // wired here
 });
 ```
 
@@ -42,7 +42,7 @@ This stacks two friction patterns:
 The real bugs (wrong `TransactionScope`, a forgotten outbox append, a repo built
 outside the transaction, a wrong `EventType`) have **no locality**: they hide in
 the wiring, which lives in N call sites and N tests. The plop template is the
-highest-leverage fix point stamping the deep shape *before* the real contexts
+highest-leverage fix point stamping the deep shape _before_ the real contexts
 are generated pays forward N times; doing it after means re-writing N contexts.
 
 ## Decision
@@ -61,13 +61,13 @@ repositories alongside event appending:
 
 ```ts
 export interface SampleUnitOfWork {
-  run<T>(scope: TransactionScope, body: (ctx: SampleUnitOfWorkContext) => Promise<T>): Promise<T>;
+    run<T>(scope: TransactionScope, body: (ctx: SampleUnitOfWorkContext) => Promise<T>): Promise<T>;
 }
 
 export interface SampleUnitOfWorkContext {
-  readonly entries: EntryRepository;   // the repos this context owns
-  readonly shows: ShowRepository;
-  appendEvents(...events: DomainEvent[]): void;
+    readonly entries: EntryRepository; // the repos this context owns
+    readonly shows: ShowRepository;
+    appendEvents(...events: DomainEvent[]): void;
 }
 ```
 
@@ -79,7 +79,7 @@ The port depends on domain (its own repository interfaces) and `@ods/kernel`
 
 A class whose constructor takes the `UnitOfWork` port plus the kernel ports it
 needs (`Clock`, `EventIdGenerator`); whose method takes the domain input and
-the `TransactionScope` separately (the scope is *who is acting* RLS, not
+the `TransactionScope` separately (the scope is _who is acting_ RLS, not
 domain data):
 
 ```ts
@@ -108,21 +108,24 @@ Drizzle repositories inside the transaction, and exposes them through the
 
 ```ts
 export class PgSampleUnitOfWork implements SampleUnitOfWork {
-  constructor(
-    private readonly pool: pg.Pool,
-    private readonly writer: OutboxWriter,
-  ) {}
+    constructor(
+        private readonly pool: pg.Pool,
+        private readonly writer: OutboxWriter,
+    ) {}
 
-  async run<T>(scope: TransactionScope, body: (ctx: SampleUnitOfWorkContext) => Promise<T>): Promise<T> {
-    return withOutboxTransaction(this.pool, scope, this.writer, async (client, outbox) => {
-      const ctx: SampleUnitOfWorkContext = {
-        entries: new DrizzleEntryRepository(client),
-        shows: new DrizzleShowRepository(client),
-        appendEvents: (...events) => outbox.append(...events),
-      };
-      return body(ctx);
-    });
-  }
+    async run<T>(
+        scope: TransactionScope,
+        body: (ctx: SampleUnitOfWorkContext) => Promise<T>,
+    ): Promise<T> {
+        return withOutboxTransaction(this.pool, scope, this.writer, async (client, outbox) => {
+            const ctx: SampleUnitOfWorkContext = {
+                entries: new DrizzleEntryRepository(client),
+                shows: new DrizzleShowRepository(client),
+                appendEvents: (...events) => outbox.append(...events),
+            };
+            return body(ctx);
+        });
+    }
 }
 ```
 
