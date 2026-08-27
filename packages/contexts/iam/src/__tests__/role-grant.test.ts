@@ -9,6 +9,7 @@ import {
     grantRole,
     revokeRoleGrant,
     hasRoleGrant,
+    assertGrantsOwnedBy,
     DuplicateRoleGrantError,
     RoleGrantOwnerMismatchError,
 } from '../domain/role-grant.js';
@@ -274,6 +275,43 @@ describe('Exhibitor boundary', () => {
         } satisfies Record<DomainRole, true>;
 
         expect(Object.keys(_allDomainRoles)).not.toContain('Exhibitor');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// assertGrantsOwnedBy
+// ---------------------------------------------------------------------------
+
+describe('assertGrantsOwnedBy', () => {
+    /**
+     * assertGrantsOwnedBy is a reusable domain-level check for the saveAll
+     * owner-mismatch invariant. Each saveAll adapter is responsible for
+     * invoking it (or an equivalent check) to honour the contract; the
+     * interface cannot force the call, so this suite pins the helper's own
+     * behaviour, not any adapter's use of it.
+     */
+    it('passes for an empty collection', () => {
+        expect(() => assertGrantsOwnedBy(ALICE_ID, [])).not.toThrow();
+    });
+
+    it('passes for a single-owner collection', () => {
+        expect(() => assertGrantsOwnedBy(ALICE_ID, [aliceShowSecretary, aliceJudge])).not.toThrow();
+    });
+
+    it('passes for a single-owner collection owned by a different user', () => {
+        expect(() => assertGrantsOwnedBy(BOB_ID, [bobPlatformAdmin])).not.toThrow();
+    });
+
+    it('throws RoleGrantOwnerMismatchError when a grant belongs to a different user', () => {
+        expect(() => assertGrantsOwnedBy(ALICE_ID, [bobPlatformAdmin])).toThrow(
+            RoleGrantOwnerMismatchError,
+        );
+    });
+
+    it('throws when a mixed-owner collection contains a foreign grant', () => {
+        expect(() => assertGrantsOwnedBy(ALICE_ID, [aliceShowSecretary, bobPlatformAdmin])).toThrow(
+            RoleGrantOwnerMismatchError,
+        );
     });
 });
 
