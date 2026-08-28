@@ -224,7 +224,7 @@ _Avoid_: Transaction, Charge
 Owns platform accounts and role grants; a generic context behind an anticorruption layer to an external identity provider.
 
 **User**:
-An authenticated platform account, created automatically on first login through the external identity provider. Carries a normalized display name and email sourced from the provider and refreshed on each login. Has account status: **Active** (default on creation) or **Suspended** (set by Platform Administrator). Any Active User holds the Exhibitor capability by default — no Role Grant required.
+An authenticated platform account, created automatically on first login through the external identity provider. A returning User is recognised across logins by the identity provider's stable subject identifier, which is distinct from the platform's own account identifier (ADR-0013). Carries a normalized display name and email sourced from the provider and refreshed on each login. Has account status: **Active** (default on creation) or **Suspended** (set by Platform Administrator); a Suspended user is rejected at login — their profile is not refreshed — until a Platform Administrator reactivates the account. Any Active User holds the Exhibitor capability by default — no Role Grant required.
 _Avoid_: Account (acceptable synonym), Login
 
 **Role Grant**:

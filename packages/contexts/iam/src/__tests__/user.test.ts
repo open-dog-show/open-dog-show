@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { asUserId } from '../domain/domain-ids.js';
 import type { User } from '../domain/user.js';
-import { suspendUser, reactivateUser } from '../domain/user.js';
+import { suspendUser, reactivateUser, createUser, refreshUserProfile } from '../domain/user.js';
 import { FakeUserRepository } from '../testing/index.js';
 
 const ALICE_ID = asUserId('user-alice');
@@ -77,6 +77,52 @@ describe('reactivateUser', () => {
 
     it('throws when called on an already-Active user', () => {
         expect(() => reactivateUser(activeAlice)).toThrow();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// createUser
+// ---------------------------------------------------------------------------
+
+describe('createUser', () => {
+    it('creates an Active user with the given id, external subject, display name, and email', () => {
+        const user = createUser(ALICE_ID, 'sub|alice', 'Alice', 'alice@example.com');
+
+        expect(user).toEqual({
+            id: ALICE_ID,
+            externalSubject: 'sub|alice',
+            displayName: 'Alice',
+            email: 'alice@example.com',
+            status: 'Active',
+        });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// refreshUserProfile
+// ---------------------------------------------------------------------------
+
+describe('refreshUserProfile', () => {
+    it('returns a copy with refreshed displayName and email, preserving id, external subject, and status', () => {
+        const refreshed = refreshUserProfile(activeAlice, 'Alice Smith', 'alice.smith@example.com');
+
+        expect(refreshed).toEqual({
+            id: ALICE_ID,
+            externalSubject: 'sub|alice',
+            displayName: 'Alice Smith',
+            email: 'alice.smith@example.com',
+            status: 'Active',
+        });
+    });
+
+    it('preserves a Suspended status (refresh never changes account status)', () => {
+        const refreshed = refreshUserProfile(suspendedBob, 'Robert', 'robert@example.com');
+
+        expect(refreshed.status).toBe('Suspended');
+        expect(refreshed.id).toBe(BOB_ID);
+        expect(refreshed.externalSubject).toBe(suspendedBob.externalSubject);
+        expect(refreshed.displayName).toBe('Robert');
+        expect(refreshed.email).toBe('robert@example.com');
     });
 });
 

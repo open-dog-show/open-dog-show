@@ -29,3 +29,32 @@ export function reactivateUser(user: User): User {
     }
     return { ...user, status: 'Active' };
 }
+
+/**
+ * Factory for a new `Active` user.
+ *
+ * A user is created on first login from the identity-provider claims: the
+ * platform `UserId` (distinct from the provider `sub`, ADR-0013), the opaque
+ * external subject, and the initial display name and email. The account always
+ * starts `Active`.
+ */
+export function createUser(
+    id: UserId,
+    externalSubject: string,
+    displayName: string,
+    email: string,
+): User {
+    return { id, externalSubject, displayName, email, status: 'Active' };
+}
+
+/**
+ * Returns a copy of `user` with refreshed `displayName` and `email`.
+ *
+ * The stable identity (id, external subject) and account status are preserved —
+ * refreshing a profile never changes account status (a `Suspended` user stays
+ * `Suspended`). {@link authenticate} guards against refreshing a suspended
+ * account before calling this.
+ */
+export function refreshUserProfile(user: User, displayName: string, email: string): User {
+    return { ...user, displayName, email };
+}

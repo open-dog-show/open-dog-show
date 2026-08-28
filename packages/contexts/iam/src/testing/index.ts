@@ -3,3 +3,5 @@
 
 export { FakeUserRepository } from './fake-user-repository.js';
 export { FakeRoleGrantRepository } from './fake-role-grant-repository.js';
+export { FakeIdentityProvider } from './fake-identity-provider.js';
+export { FakeUserIdGenerator } from './fake-user-id-generator.js';
