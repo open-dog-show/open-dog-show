@@ -85,6 +85,14 @@ eslint-plugin-unicorn — https://github.com/sindresorhus/eslint-plugin-unicorn
 Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
 MIT — dev-only, used in open-dog-show (root)
 
+husky — https://github.com/typicode/husky
+Copyright (c) typicode
+MIT — dev-only, used in open-dog-show (root)
+
+lint-staged — https://github.com/lint-staged/lint-staged
+Copyright (c) Andrey Okonetchnikov <andrey@okonet.ru>
+MIT — dev-only, used in open-dog-show (root)
+
 plop — https://plopjs.com
 Copyright (c) Andrew Worcester <andrew@amwmedia.com>
 MIT — dev-only, used in open-dog-show (root)

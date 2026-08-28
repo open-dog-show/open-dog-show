@@ -8,13 +8,15 @@
     },
     "scripts": {
         "lint": "eslint . && prettier --check .",
+        "format": "prettier --write .",
         "new:context": "plop context",
         "notice-check": "node --experimental-strip-types scripts/check-notice.ts",
         "test": "vitest run",
         "test:integration": "vitest run --config vitest.integration.config.ts",
         "typecheck": "tsc",
         "skill:install": "python scripts/install-respond-pr-review.py",
-        "skill:update": "python scripts/install-respond-pr-review.py"
+        "skill:update": "python scripts/install-respond-pr-review.py",
+        "prepare": "husky"
     },
     "devDependencies": {
         "@eslint/js": "^9.17.0",
@@ -26,6 +28,8 @@
         "eslint-import-resolver-typescript": "^4.4.5",
         "eslint-plugin-boundaries": "^7.1.0",
         "eslint-plugin-unicorn": "^65.0.1",
+        "husky": "^9.1.7",
+        "lint-staged": "^17.4.1",
         "pg": "^8.22.0",
         "plop": "^4.0.5",
         "prettier": "^3.4.2",
@@ -33,5 +37,8 @@
         "typescript": "^5.7.3",
         "typescript-eslint": "^8.21.0",
         "vitest": "^3.0.4"
+    },
+    "lint-staged": {
+        "**/*": "prettier --write --ignore-unknown"
     }
 }

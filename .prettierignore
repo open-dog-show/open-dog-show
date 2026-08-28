@@ -9,4 +9,6 @@ pnpm-lock.yaml
 plop-templates/
 # VS Code task runner regenerates this file in its own format
 .vscode/tasks.json
+# Husky hook scripts: no Prettier parser for shell hooks
+.husky/
 
