@@ -24,4 +24,17 @@ export class FakeUserRepository implements UserRepository {
     async save(user: User): Promise<void> {
         this.store.set(user.id, user);
     }
+
+    async createIfAbsent(user: User): Promise<User> {
+        // Atomic in this in-memory fake: the existence check and the insert run
+        // in the same synchronous step (no await between them), so two
+        // interleaved calls cannot both observe no user and both insert.
+        for (const existing of this.store.values()) {
+            if (existing.externalSubject === user.externalSubject) {
+                return existing;
+            }
+        }
+        this.store.set(user.id, user);
+        return user;
+    }
 }
