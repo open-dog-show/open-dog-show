@@ -1,10 +1,9 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { AwardTypeId, GradeScaleId, GradeId } from '../domain/domain-ids.js';
+import type { AwardTypeId } from '../domain/domain-ids.js';
 import type { IndividualAwardType } from '../domain/award-type.js';
 import type { EffectiveRuleset } from '../domain/effective-ruleset.js';
-import type { Grade } from '../domain/grade-scale.js';
 import type {
     AwardPolicy,
     AwardValidationResult,
@@ -15,6 +14,7 @@ import type {
     ClassPlacement,
     JudgingScopeResults,
 } from '../domain/judging-scope-results.js';
+import { meetsAwardRequirements } from './meets-award-requirements.js';
 
 /**
  * In-memory FCI implementation of {@link AwardPolicy}.
@@ -98,32 +98,14 @@ export class FciAwardPolicy implements AwardPolicy {
             const classDef = ruleset.classDefinitions.find((c) => c.id === placement.classId);
             if (!classDef) continue;
 
-            const dogGrade = this.resolveGrade(placement.gradeId, classDef.gradeScaleId, ruleset);
-            if (!dogGrade) continue;
-
             for (const awardTypeId of classDef.awardTypeIds) {
                 const awardType = ruleset.awardTypes.find((at) => at.id === awardTypeId);
                 if (!awardType) continue;
                 if (awardType.scope === 'collective') continue;
 
-                const minGrade = this.resolveGrade(
-                    awardType.minimumGradeId,
-                    classDef.gradeScaleId,
-                    ruleset,
-                );
-                if (!minGrade) continue;
-
-                if (!this.gradeAtLeast(dogGrade, minGrade)) continue;
-
-                if (
-                    awardType.minimumPlacement !== undefined &&
-                    (placement.placement === undefined ||
-                        placement.placement > awardType.minimumPlacement)
-                ) {
-                    continue;
+                if (meetsAwardRequirements(placement, awardType, classDef, ruleset).meets) {
+                    eligible.add(awardTypeId);
                 }
-
-                eligible.add(awardTypeId);
             }
         }
 
@@ -173,61 +155,13 @@ export class FciAwardPolicy implements AwardPolicy {
                 };
             }
 
-            const dogGrade = this.resolveGrade(placement.gradeId, classDef.gradeScaleId, ruleset);
-            if (!dogGrade) {
-                return {
-                    valid: false,
-                    reason: `Unknown grade '${placement.gradeId}' in grade scale '${classDef.gradeScaleId}'`,
-                };
-            }
-
-            const minGrade = this.resolveGrade(
-                awardType.minimumGradeId,
-                classDef.gradeScaleId,
-                ruleset,
-            );
-            if (!minGrade) {
-                return {
-                    valid: false,
-                    reason: `Award type '${awardType.id}' references unknown minimum grade '${awardType.minimumGradeId}'`,
-                };
-            }
-
-            if (!this.gradeAtLeast(dogGrade, minGrade)) {
-                return {
-                    valid: false,
-                    reason: `Dog '${assignment.dogRef}' received grade '${placement.gradeId}' but '${awardType.id}' requires at least '${awardType.minimumGradeId}'`,
-                };
-            }
-
-            if (
-                awardType.minimumPlacement !== undefined &&
-                (placement.placement === undefined ||
-                    placement.placement > awardType.minimumPlacement)
-            ) {
-                return {
-                    valid: false,
-                    reason: `Dog '${assignment.dogRef}' has placement ${String(placement.placement)} but '${awardType.id}' requires placement ${String(awardType.minimumPlacement)} or better`,
-                };
+            const requirement = meetsAwardRequirements(placement, awardType, classDef, ruleset);
+            if (!requirement.meets) {
+                return { valid: false, reason: requirement.reason };
             }
         }
 
         return { valid: true };
-    }
-
-    /**
-     * Returns the {@link Grade} for `gradeId` within the given grade scale,
-     * or `undefined` when either the scale or the grade cannot be found.
-     */
-    private resolveGrade(
-        gradeId: GradeId | undefined,
-        gradeScaleId: GradeScaleId,
-        ruleset: EffectiveRuleset,
-    ): Grade | undefined {
-        if (gradeId === undefined) return undefined;
-        return ruleset.gradeScales
-            .find((gs) => gs.id === gradeScaleId)
-            ?.grades.find((g) => g.id === gradeId);
     }
 
     /**
@@ -264,13 +198,5 @@ export class FciAwardPolicy implements AwardPolicy {
         }
 
         return strictestOrdinal < Infinity && candidateGrade.ordinal <= strictestOrdinal;
-    }
-
-    /**
-     * Returns true when `actual` is at least as good as `minimum`.
-     * Lower ordinal = better grade (Excellent = 0, Very Good = 1, …).
-     */
-    private gradeAtLeast(actual: Grade, minimum: Grade): boolean {
-        return actual.ordinal <= minimum.ordinal;
     }
 }
