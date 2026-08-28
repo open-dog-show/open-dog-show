@@ -50,6 +50,11 @@ export interface AuthenticateDeps {
  *   refreshed from the latest claims and the user is saved.
  * - **Suspended user**: throws {@link UserSuspendedError} before any other
  *   processing — the suspended account is left untouched.
+ * - **Invalid provider claims**: {@link createUser} throws
+ *   {@link InvalidProviderClaimsError} on a blank `sub` or `email` on first
+ *   login; `authenticate` does not catch it — it propagates exactly as
+ *   `UserSuspendedError` does, so no account is created. A future composition
+ *   root / API boundary will map it to an authentication failure (ADR-0015).
  *
  * The platform `UserId` is intentionally distinct from the provider `sub`
  * (ADR-0013); a new id is minted by the {@link UserIdGenerator} on first login.

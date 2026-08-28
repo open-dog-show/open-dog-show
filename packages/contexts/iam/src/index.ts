@@ -4,7 +4,13 @@
 export type { UserId } from './domain/domain-ids.js';
 export { asUserId } from './domain/domain-ids.js';
 export type { User, UserStatus } from './domain/user.js';
-export { suspendUser, reactivateUser, createUser, refreshUserProfile } from './domain/user.js';
+export {
+    suspendUser,
+    reactivateUser,
+    createUser,
+    refreshUserProfile,
+    InvalidProviderClaimsError,
+} from './domain/user.js';
 export type { UserRepository } from './domain/user-repository.js';
 export type {
     DomainRole,
