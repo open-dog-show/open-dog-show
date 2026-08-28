@@ -4,6 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import { asUserId } from '../domain/domain-ids.js';
 import type { User } from '../domain/user.js';
+import { InvalidProviderClaimsError } from '../domain/user.js';
 import type { UserRepository } from '../domain/user-repository.js';
 import { authenticate, type AuthenticateDeps, UserSuspendedError } from '../domain/authenticate.js';
 import { FakeIdentityProvider, FakeUserRepository, FakeUserIdGenerator } from '../testing/index.js';
@@ -147,6 +148,73 @@ describe('authenticate', () => {
         };
 
         await expect(authenticate(d, 'token-bob')).rejects.toBeInstanceOf(UserSuspendedError);
+    });
+
+    // -- provider-claim canonicalization propagation (ADR-0015) ------------
+
+    it('propagates InvalidProviderClaimsError on a first login with a blank sub and creates no account', async () => {
+        const d = deps(
+            new Map([
+                ['token-blank-sub', { sub: '   ', displayName: 'X', email: 'x@example.com' }],
+            ]),
+        );
+
+        await expect(authenticate(d, 'token-blank-sub')).rejects.toBeInstanceOf(
+            InvalidProviderClaimsError,
+        );
+
+        // No account was created for the blank subject.
+        expect(await d.users.findByExternalSubject('   ')).toBeUndefined();
+        expect(await d.users.findById(asUserId('user-1'))).toBeUndefined();
+    });
+
+    it('propagates InvalidProviderClaimsError on a first login with a blank email and creates no account', async () => {
+        const d = deps(
+            new Map([['token-blank-email', { sub: 'sub|new', displayName: 'X', email: '' }]]),
+        );
+
+        await expect(authenticate(d, 'token-blank-email')).rejects.toBeInstanceOf(
+            InvalidProviderClaimsError,
+        );
+
+        expect(await d.users.findByExternalSubject('sub|new')).toBeUndefined();
+    });
+
+    it('keeps the existing email on a subsequent login whose incoming email is blank (keep-existing guard)', async () => {
+        const d = deps(
+            new Map([
+                ['token-a', { sub: 'sub|alice', displayName: 'Alice', email: 'Alice@Example.COM' }],
+                ['token-b', { sub: 'sub|alice', displayName: 'Alice Smith', email: '' }],
+            ]),
+        );
+
+        const first = await authenticate(d, 'token-a');
+        expect(first.email).toBe('alice@example.com');
+
+        const second = await authenticate(d, 'token-b');
+        // The blank incoming email preserved the stored (normalized) email.
+        expect(second.email).toBe('alice@example.com');
+        expect(second.displayName).toBe('Alice Smith');
+        expect(second.id).toBe(first.id);
+    });
+
+    it('keeps the existing displayName on a subsequent login whose incoming displayName is blank', async () => {
+        const d = deps(
+            new Map([
+                ['token-a', { sub: 'sub|alice', displayName: 'Alice', email: 'alice@example.com' }],
+                [
+                    'token-b',
+                    { sub: 'sub|alice', displayName: '   ', email: 'alice.smith@example.com' },
+                ],
+            ]),
+        );
+
+        const first = await authenticate(d, 'token-a');
+        const second = await authenticate(d, 'token-b');
+
+        expect(second.displayName).toBe('Alice');
+        expect(second.email).toBe('alice.smith@example.com');
+        expect(second.id).toBe(first.id);
     });
 });
 
