@@ -130,6 +130,13 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
         minimumPlacement: undefined,
         isDiscretionary: false,
         scope: 'breed',
+        // ADR-0017: BOB draws on the adult certificate (CACIB) winner plus the
+        // junior and veteran class wins, from both sexes (sex-tagged streams).
+        fedBy: [
+            { awardTypeId: FCI_AWARD_CACIB },
+            { classId: asClassId('junior') },
+            { classId: asClassId('veteran') },
+        ],
     },
     {
         id: FCI_AWARD_BOS,
@@ -137,6 +144,12 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
         minimumPlacement: undefined,
         isDiscretionary: false,
         scope: 'breed',
+        // ADR-0017: BOS shares BOB's feeders; BOS is the opposite sex to BOB.
+        fedBy: [
+            { awardTypeId: FCI_AWARD_CACIB },
+            { classId: asClassId('junior') },
+            { classId: asClassId('veteran') },
+        ],
     },
     {
         id: FCI_AWARD_BIG,
@@ -144,6 +157,8 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
         minimumPlacement: undefined,
         isDiscretionary: false,
         scope: 'group',
+        // ADR-0017: BIG is fed by the BOB winners of the group's breeds.
+        fedBy: [{ awardTypeId: FCI_AWARD_BOB }],
     },
     {
         id: FCI_AWARD_BIS,
@@ -151,6 +166,8 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
         minimumPlacement: undefined,
         isDiscretionary: false,
         scope: 'show',
+        // ADR-0017: BIS is fed by the BIG winners.
+        fedBy: [{ awardTypeId: FCI_AWARD_BIG }],
     },
     // -----------------------------------------------------------------------
     // Main ring competitions (Section 7) — individual dog awards.
@@ -164,6 +181,9 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
         minimumPlacement: undefined,
         isDiscretionary: false,
         scope: 'show',
+        // ADR-0017: fed by the junior class win (the class win is the feeder at
+        // both CACIB and CAC shows; CACIB-J is a per-sex award, not a feeder).
+        fedBy: [{ classId: asClassId('junior') }],
     },
     {
         id: FCI_AWARD_BEST_VETERAN,
@@ -171,6 +191,8 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
         minimumPlacement: undefined,
         isDiscretionary: false,
         scope: 'show',
+        // ADR-0017: fed by the veteran class win (CACIB-V is per-sex, not a feeder).
+        fedBy: [{ classId: asClassId('veteran') }],
     },
     {
         id: FCI_AWARD_BEST_PUPPY,
@@ -178,6 +200,9 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
         minimumPlacement: undefined,
         isDiscretionary: false,
         scope: 'show',
+        // ADR-0017: the Puppy class grants no award type; the 1st-place dog
+        // proceeds directly to Best Puppy, so the feeder is the class win.
+        fedBy: [{ classId: asClassId('puppy') }],
     },
     {
         id: FCI_AWARD_BEST_MINOR_PUPPY,
@@ -185,6 +210,9 @@ const fciAwardTypes: ReadonlyArray<AwardType> = [
         minimumPlacement: undefined,
         isDiscretionary: false,
         scope: 'show',
+        // ADR-0017: the Minor Puppy class grants no award type; the 1st-place
+        // dog proceeds directly to Best Minor Puppy.
+        fedBy: [{ classId: asClassId('minor-puppy') }],
     },
     // -----------------------------------------------------------------------
     // Collective competition awards (Section 7) — awarded to the winning group.

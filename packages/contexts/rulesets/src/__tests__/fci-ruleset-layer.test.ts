@@ -40,8 +40,11 @@ import {
 } from '../layers/kmsh-ruleset-layer.js';
 import { resolveEffectiveRuleset } from '../domain/resolve-effective-ruleset.js';
 import { CertificateKind } from '../domain/certificate-kind.js';
+import { asClassId } from '../domain/domain-ids.js';
+import type { AwardTypeId } from '../domain/domain-ids.js';
 import type { LocalDate } from '../domain/local-date.js';
 import type { IndividualAwardType } from '../domain/award-type.js';
+import type { EffectiveRuleset } from '../domain/effective-ruleset.js';
 
 const RESOLVE_DATE: LocalDate = { year: 2026, month: 8, day: 11 };
 
@@ -345,6 +348,90 @@ describe('fciLayer — metadata', () => {
 });
 
 // ---------------------------------------------------------------------------
+// fciLayer — fedBy declarations (ADR-0017)
+// ---------------------------------------------------------------------------
+
+describe('fciLayer — fedBy declarations (ADR-0017)', () => {
+    const individual = (id: AwardTypeId): IndividualAwardType => {
+        const at = fciLayer.awardTypes.find((a) => a.id === id);
+        if (!at || at.scope === 'collective') {
+            throw new Error(`individual award type ${id} not found`);
+        }
+        return at;
+    };
+
+    it('BOB is fed by CACIB + junior + veteran class wins', () => {
+        expect(individual(FCI_AWARD_BOB).fedBy).toEqual([
+            { awardTypeId: FCI_AWARD_CACIB },
+            { classId: asClassId('junior') },
+            { classId: asClassId('veteran') },
+        ]);
+    });
+
+    it('BOS is fed by CACIB + junior + veteran class wins (same feeders as BOB)', () => {
+        expect(individual(FCI_AWARD_BOS).fedBy).toEqual([
+            { awardTypeId: FCI_AWARD_CACIB },
+            { classId: asClassId('junior') },
+            { classId: asClassId('veteran') },
+        ]);
+    });
+
+    it('BIG is fed by BOB winners', () => {
+        expect(individual(FCI_AWARD_BIG).fedBy).toEqual([{ awardTypeId: FCI_AWARD_BOB }]);
+    });
+
+    it('BIS is fed by BIG winners', () => {
+        expect(individual(FCI_AWARD_BIS).fedBy).toEqual([{ awardTypeId: FCI_AWARD_BIG }]);
+    });
+
+    it('Best Junior is fed by the junior class win (not CACIB-J)', () => {
+        expect(individual(FCI_AWARD_BEST_JUNIOR).fedBy).toEqual([{ classId: asClassId('junior') }]);
+    });
+
+    it('Best Veteran is fed by the veteran class win (not CACIB-V)', () => {
+        expect(individual(FCI_AWARD_BEST_VETERAN).fedBy).toEqual([
+            { classId: asClassId('veteran') },
+        ]);
+    });
+
+    it('Best Puppy is fed by the puppy class win', () => {
+        expect(individual(FCI_AWARD_BEST_PUPPY).fedBy).toEqual([{ classId: asClassId('puppy') }]);
+    });
+
+    it('Best Minor Puppy is fed by the minor-puppy class win', () => {
+        expect(individual(FCI_AWARD_BEST_MINOR_PUPPY).fedBy).toEqual([
+            { classId: asClassId('minor-puppy') },
+        ]);
+    });
+
+    it('CACIB-J is NOT listed as a feeder on any award', () => {
+        for (const at of fciLayer.awardTypes) {
+            if (at.scope === 'collective') continue;
+            const fedBy = (at as IndividualAwardType).fedBy;
+            if (!fedBy) continue;
+            expect(fedBy).not.toContainEqual({ awardTypeId: FCI_AWARD_CACIB_J });
+        }
+    });
+
+    it('CACIB-V is NOT listed as a feeder on any award', () => {
+        for (const at of fciLayer.awardTypes) {
+            if (at.scope === 'collective') continue;
+            const fedBy = (at as IndividualAwardType).fedBy;
+            if (!fedBy) continue;
+            expect(fedBy).not.toContainEqual({ awardTypeId: FCI_AWARD_CACIB_V });
+        }
+    });
+
+    it('per-sex award types have no fedBy (feeders are breed/group/show only)', () => {
+        for (const at of fciLayer.awardTypes) {
+            if (at.scope === 'per-sex') {
+                expect((at as IndividualAwardType).fedBy).toBeUndefined();
+            }
+        }
+    });
+});
+
+// ---------------------------------------------------------------------------
 // resolveEffectiveRuleset([fciLayer], date) — FCI-only snapshot
 // ---------------------------------------------------------------------------
 
@@ -481,5 +568,84 @@ describe('resolveEffectiveRuleset with FCI + KMSH layers', () => {
         for (const id of fciClassIds) {
             expect(ruleset.classDefinitions.find((c) => c.id === id)).toBeDefined();
         }
+    });
+});
+
+// ---------------------------------------------------------------------------
+// fedBy layering — FCI base vs KMSH override (ADR-0017, last-layer-wins)
+// ---------------------------------------------------------------------------
+
+describe('fedBy layering — FCI base vs KMSH override', () => {
+    const individual = (ruleset: EffectiveRuleset, id: AwardTypeId): IndividualAwardType => {
+        const at = ruleset.awardTypes.find((a) => a.id === id);
+        if (!at || at.scope === 'collective') {
+            throw new Error(`individual award type ${id} not found`);
+        }
+        return at as IndividualAwardType;
+    };
+
+    it('FCI-only: BOB fedBy has no national CAC feeder', () => {
+        const ruleset = resolveEffectiveRuleset([fciLayer], RESOLVE_DATE);
+        expect(individual(ruleset, FCI_AWARD_BOB).fedBy).toEqual([
+            { awardTypeId: FCI_AWARD_CACIB },
+            { classId: asClassId('junior') },
+            { classId: asClassId('veteran') },
+        ]);
+    });
+
+    it('FCI-only: BOS fedBy has no national CAC feeder', () => {
+        const ruleset = resolveEffectiveRuleset([fciLayer], RESOLVE_DATE);
+        expect(individual(ruleset, FCI_AWARD_BOS).fedBy).toEqual([
+            { awardTypeId: FCI_AWARD_CACIB },
+            { classId: asClassId('junior') },
+            { classId: asClassId('veteran') },
+        ]);
+    });
+
+    it('FCI + KMSH: BOB fedBy adds the national CAC feeder (wholesale override)', () => {
+        const ruleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
+        expect(individual(ruleset, FCI_AWARD_BOB).fedBy).toEqual([
+            { awardTypeId: FCI_AWARD_CACIB },
+            { awardTypeId: KMSH_AWARD_CAC },
+            { classId: asClassId('junior') },
+            { classId: asClassId('veteran') },
+        ]);
+    });
+
+    it('FCI + KMSH: BOS fedBy adds the national CAC feeder (wholesale override)', () => {
+        const ruleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
+        expect(individual(ruleset, FCI_AWARD_BOS).fedBy).toEqual([
+            { awardTypeId: FCI_AWARD_CACIB },
+            { awardTypeId: KMSH_AWARD_CAC },
+            { classId: asClassId('junior') },
+            { classId: asClassId('veteran') },
+        ]);
+    });
+
+    it('FCI + KMSH: BIG/BIS feeders are unchanged by the KMSH layer', () => {
+        const ruleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
+        expect(individual(ruleset, FCI_AWARD_BIG).fedBy).toEqual([{ awardTypeId: FCI_AWARD_BOB }]);
+        expect(individual(ruleset, FCI_AWARD_BIS).fedBy).toEqual([{ awardTypeId: FCI_AWARD_BIG }]);
+    });
+
+    it('FCI + KMSH: Best Junior/Veteran/Puppy/Minor Puppy feeders are unchanged', () => {
+        const ruleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
+        expect(individual(ruleset, FCI_AWARD_BEST_JUNIOR).fedBy).toEqual([
+            { classId: asClassId('junior') },
+        ]);
+        expect(individual(ruleset, FCI_AWARD_BEST_VETERAN).fedBy).toEqual([
+            { classId: asClassId('veteran') },
+        ]);
+        expect(individual(ruleset, FCI_AWARD_BEST_PUPPY).fedBy).toEqual([
+            { classId: asClassId('puppy') },
+        ]);
+        expect(individual(ruleset, FCI_AWARD_BEST_MINOR_PUPPY).fedBy).toEqual([
+            { classId: asClassId('minor-puppy') },
+        ]);
+    });
+
+    it('FCI + KMSH: national CAC award type has no fedBy (per-sex)', () => {
+        const ruleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
+        expect(individual(ruleset, KMSH_AWARD_CAC).fedBy).toBeUndefined();
     });
 });

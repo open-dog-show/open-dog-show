@@ -10,12 +10,36 @@ import {
     asGradeScaleId,
     asRulesetLayerId,
 } from '../domain/domain-ids.js';
+import type { AwardTypeId, ClassId, GradeId } from '../domain/domain-ids.js';
 import type { AwardType } from '../domain/award-type.js';
 import type { ClassDefinition } from '../domain/class-definition.js';
 import type { GradeScale } from '../domain/grade-scale.js';
 import type { EffectiveRuleset } from '../domain/effective-ruleset.js';
-import type { JudgingScopeResults } from '../domain/judging-scope-results.js';
+import type {
+    CandidateStream,
+    JudgingScopeResults,
+    StreamCandidate,
+} from '../domain/judging-scope-results.js';
 import type { ProposedAwardAssignment } from '../domain/award-policy.js';
+import { resolveEffectiveRuleset } from '../domain/resolve-effective-ruleset.js';
+import type { LocalDate } from '../domain/local-date.js';
+import {
+    fciLayer,
+    FCI_GRADE_EXCELLENT,
+    FCI_GRADE_VERY_GOOD,
+    FCI_GRADE_VERY_PROMISING,
+    FCI_GRADE_PROMISING,
+    FCI_AWARD_CACIB,
+    FCI_AWARD_BOB,
+    FCI_AWARD_BOS,
+    FCI_AWARD_BIG,
+    FCI_AWARD_BIS,
+    FCI_AWARD_BEST_JUNIOR,
+    FCI_AWARD_BEST_VETERAN,
+    FCI_AWARD_BEST_PUPPY,
+    FCI_AWARD_BEST_MINOR_PUPPY,
+} from '../layers/fci-ruleset-layer.js';
+import { kmshLayer, KMSH_AWARD_CAC } from '../layers/kmsh-ruleset-layer.js';
 
 // ---------------------------------------------------------------------------
 // Shared grade IDs
@@ -155,6 +179,33 @@ const RULESET: EffectiveRuleset = {
 // ---------------------------------------------------------------------------
 
 const policy = new FciAwardPolicy();
+// ---------------------------------------------------------------------------
+// Real-ruleset fixtures (ADR-0017 feeder model) + stream helpers
+// ---------------------------------------------------------------------------
+
+const RESOLVE_DATE: LocalDate = { year: 2026, month: 1, day: 1 };
+
+/** FCI base layer only — BOB fedBy has no national CAC feeder. */
+const FCI_RULESET: EffectiveRuleset = resolveEffectiveRuleset([fciLayer], RESOLVE_DATE);
+
+/** FCI + KMSH — BOB/BOS overridden to add the national CAC feeder. */
+const KMSH_RULESET: EffectiveRuleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
+
+const cand = (dogRef: string, gradeId: GradeId): StreamCandidate => ({ dogRef, gradeId });
+
+/** An award-feeder stream (feeder is an Award Type); `sex` is breed-scope only. */
+const awardStream = (
+    feederAwardTypeId: AwardTypeId,
+    sex: 'male' | 'female' | undefined,
+    candidates: ReadonlyArray<StreamCandidate>,
+): CandidateStream => ({ feederAwardTypeId, sex, candidates });
+
+/** A class-feeder stream (feeder is a Class placement); `sex` is breed-scope only. */
+const classStream = (
+    feederClassId: ClassId,
+    sex: 'male' | 'female' | undefined,
+    candidates: ReadonlyArray<StreamCandidate>,
+): CandidateStream => ({ feederClassId, sex, candidates });
 
 // ---------------------------------------------------------------------------
 // per-sex scope — eligibleAwardTypes
@@ -327,125 +378,539 @@ describe('FciAwardPolicy — per-sex scope — validateAwardChoices', () => {
 });
 
 // ---------------------------------------------------------------------------
-// breed scope — eligibleAwardTypes
+// breed scope — eligibleAwardTypes (feeder-keyed streams, ADR-0017)
 // ---------------------------------------------------------------------------
 
 describe('FciAwardPolicy — breed scope — eligibleAwardTypes', () => {
-    it('returns BOB and BOS when CACIB candidates are available from both sexes', () => {
+    it('returns BOB and BOS when a qualifying male and female CACIB stream are present', () => {
         const scope: JudgingScopeResults = {
             kind: 'breed',
-            maleCandidates: [{ dogRef: 'male-1', gradeId: EXCELLENT, awardTypeId: CACIB_ID }],
-            femaleCandidates: [{ dogRef: 'female-1', gradeId: EXCELLENT, awardTypeId: CACIB_ID }],
+            streams: [
+                awardStream(FCI_AWARD_CACIB, 'male', [cand('male-1', FCI_GRADE_EXCELLENT)]),
+                awardStream(FCI_AWARD_CACIB, 'female', [cand('female-1', FCI_GRADE_EXCELLENT)]),
+            ],
         };
 
-        const result = policy.eligibleAwardTypes(scope, RULESET);
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
 
-        expect(result).toContain(BOB_ID);
-        expect(result).toContain(BOS_ID);
+        expect(result).toContain(FCI_AWARD_BOB);
+        expect(result).toContain(FCI_AWARD_BOS);
     });
 
-    it('returns BOB and BOS when CACIB-J and CACIB-V candidates are present from both sexes', () => {
+    it('returns BOB and BOS when only junior class-win streams qualify from both sexes', () => {
         const scope: JudgingScopeResults = {
             kind: 'breed',
-            maleCandidates: [{ dogRef: 'male-1', gradeId: EXCELLENT, awardTypeId: CACIB_J_ID }],
-            femaleCandidates: [{ dogRef: 'female-1', gradeId: EXCELLENT, awardTypeId: CACIB_V_ID }],
+            streams: [
+                classStream(asClassId('junior'), 'male', [cand('male-1', FCI_GRADE_EXCELLENT)]),
+                classStream(asClassId('junior'), 'female', [cand('female-1', FCI_GRADE_EXCELLENT)]),
+            ],
         };
 
-        const result = policy.eligibleAwardTypes(scope, RULESET);
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
 
-        expect(result).toContain(BOB_ID);
-        expect(result).toContain(BOS_ID);
+        expect(result).toContain(FCI_AWARD_BOB);
+        expect(result).toContain(FCI_AWARD_BOS);
     });
 
-    it('returns no breed awards when male candidates are absent', () => {
+    it('returns BOB and BOS when a male CACIB stream and a female veteran class-win stream qualify (multi-feeder)', () => {
         const scope: JudgingScopeResults = {
             kind: 'breed',
-            maleCandidates: [],
-            femaleCandidates: [{ dogRef: 'female-1', gradeId: EXCELLENT, awardTypeId: CACIB_ID }],
+            streams: [
+                awardStream(FCI_AWARD_CACIB, 'male', [cand('male-1', FCI_GRADE_EXCELLENT)]),
+                classStream(asClassId('veteran'), 'female', [
+                    cand('female-1', FCI_GRADE_EXCELLENT),
+                ]),
+            ],
         };
 
-        const result = policy.eligibleAwardTypes(scope, RULESET);
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
+
+        expect(result).toContain(FCI_AWARD_BOB);
+        expect(result).toContain(FCI_AWARD_BOS);
+    });
+
+    it('returns no breed awards when no male qualifying candidate is present', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'breed',
+            streams: [
+                awardStream(FCI_AWARD_CACIB, 'female', [cand('female-1', FCI_GRADE_EXCELLENT)]),
+            ],
+        };
+
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
 
         expect(result).toHaveLength(0);
     });
 
-    it('returns no breed awards when female candidates are absent', () => {
+    it('returns no breed awards when no female qualifying candidate is present', () => {
         const scope: JudgingScopeResults = {
             kind: 'breed',
-            maleCandidates: [{ dogRef: 'male-1', gradeId: EXCELLENT, awardTypeId: CACIB_ID }],
-            femaleCandidates: [],
+            streams: [awardStream(FCI_AWARD_CACIB, 'male', [cand('male-1', FCI_GRADE_EXCELLENT)])],
         };
 
-        const result = policy.eligibleAwardTypes(scope, RULESET);
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
 
         expect(result).toHaveLength(0);
     });
 
-    it('returns no breed awards when all candidates have a grade below Excellent', () => {
+    it('returns no breed awards when both sexes are present but graded below Excellent', () => {
         const scope: JudgingScopeResults = {
             kind: 'breed',
-            maleCandidates: [{ dogRef: 'male-1', gradeId: VERY_GOOD, awardTypeId: CACIB_ID }],
-            femaleCandidates: [{ dogRef: 'female-1', gradeId: VERY_GOOD, awardTypeId: CACIB_ID }],
+            streams: [
+                awardStream(FCI_AWARD_CACIB, 'male', [cand('male-1', FCI_GRADE_VERY_GOOD)]),
+                awardStream(FCI_AWARD_CACIB, 'female', [cand('female-1', FCI_GRADE_VERY_GOOD)]),
+            ],
         };
 
-        const result = policy.eligibleAwardTypes(scope, RULESET);
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
 
         expect(result).toHaveLength(0);
+    });
+
+    it('ignores streams whose feeder matches no fedBy entry (out-of-scope feeder matches nothing)', () => {
+        // A CAC stream is present, but the FCI-layer BOB fedBy has no CAC feeder,
+        // so without a CACIB/junior/veteran stream BOB is not eligible.
+        const scope: JudgingScopeResults = {
+            kind: 'breed',
+            streams: [
+                awardStream(KMSH_AWARD_CAC, 'male', [cand('male-1', FCI_GRADE_EXCELLENT)]),
+                awardStream(KMSH_AWARD_CAC, 'female', [cand('female-1', FCI_GRADE_EXCELLENT)]),
+            ],
+        };
+
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
+
+        expect(result).not.toContain(FCI_AWARD_BOB);
     });
 });
 
 // ---------------------------------------------------------------------------
-// group scope — eligibleAwardTypes
+// group scope — eligibleAwardTypes (feeder-keyed streams, ADR-0017)
 // ---------------------------------------------------------------------------
 
 describe('FciAwardPolicy — group scope — eligibleAwardTypes', () => {
-    it('returns Best-in-Group award type ID when BOB candidates are present', () => {
+    it('returns BIG when a BOB feeder stream has a candidate graded Excellent', () => {
         const scope: JudgingScopeResults = {
             kind: 'group',
-            bobCandidates: [{ dogRef: 'bob-1', gradeId: EXCELLENT, awardTypeId: BOB_ID }],
+            streams: [awardStream(FCI_AWARD_BOB, undefined, [cand('bob-1', FCI_GRADE_EXCELLENT)])],
         };
 
-        const result = policy.eligibleAwardTypes(scope, RULESET);
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
 
-        expect(result).toContain(BIG_ID);
+        expect(result).toContain(FCI_AWARD_BIG);
     });
 
-    it('returns no group awards when no BOB candidates are present', () => {
+    it('returns no group awards when the BOB feeder stream candidate is below Excellent', () => {
         const scope: JudgingScopeResults = {
             kind: 'group',
-            bobCandidates: [],
+            streams: [awardStream(FCI_AWARD_BOB, undefined, [cand('bob-1', FCI_GRADE_VERY_GOOD)])],
         };
 
-        const result = policy.eligibleAwardTypes(scope, RULESET);
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
+
+        expect(result).not.toContain(FCI_AWARD_BIG);
+    });
+
+    it('returns no group awards when no feeder stream is present', () => {
+        const scope: JudgingScopeResults = { kind: 'group', streams: [] };
+
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
 
         expect(result).toHaveLength(0);
     });
 });
 
 // ---------------------------------------------------------------------------
-// show scope — eligibleAwardTypes
+// show scope — eligibleAwardTypes (feeder-keyed streams, ADR-0017)
 // ---------------------------------------------------------------------------
 
 describe('FciAwardPolicy — show scope — eligibleAwardTypes', () => {
-    it('returns Best-in-Show award type ID when BIG candidates are present', () => {
+    it('returns BIS only when a BIG feeder stream has a candidate graded Excellent', () => {
         const scope: JudgingScopeResults = {
             kind: 'show',
-            bigCandidates: [{ dogRef: 'big-1', gradeId: EXCELLENT, awardTypeId: BIG_ID }],
+            streams: [awardStream(FCI_AWARD_BIG, undefined, [cand('big-1', FCI_GRADE_EXCELLENT)])],
         };
 
-        const result = policy.eligibleAwardTypes(scope, RULESET);
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
 
-        expect(result).toContain(BIS_ID);
+        expect(result).toContain(FCI_AWARD_BIS);
+        expect(result).not.toContain(FCI_AWARD_BEST_JUNIOR);
+        expect(result).not.toContain(FCI_AWARD_BEST_PUPPY);
     });
 
-    it('returns no show awards when no BIG candidates are present', () => {
+    it('returns Best Junior only when a junior class-win stream has a candidate graded Excellent', () => {
         const scope: JudgingScopeResults = {
             kind: 'show',
-            bigCandidates: [],
+            streams: [
+                classStream(asClassId('junior'), undefined, [cand('jr-1', FCI_GRADE_EXCELLENT)]),
+            ],
         };
 
-        const result = policy.eligibleAwardTypes(scope, RULESET);
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
+
+        expect(result).toContain(FCI_AWARD_BEST_JUNIOR);
+        expect(result).not.toContain(FCI_AWARD_BIS);
+    });
+
+    it('returns Best Puppy only when a puppy class-win stream meets Very Promising', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'show',
+            streams: [
+                classStream(asClassId('puppy'), undefined, [
+                    cand('pup-1', FCI_GRADE_VERY_PROMISING),
+                ]),
+            ],
+        };
+
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
+
+        expect(result).toContain(FCI_AWARD_BEST_PUPPY);
+    });
+
+    it('does not return Best Puppy when the puppy stream candidate is below Very Promising', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'show',
+            streams: [
+                classStream(asClassId('puppy'), undefined, [cand('pup-1', FCI_GRADE_PROMISING)]),
+            ],
+        };
+
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
+
+        expect(result).not.toContain(FCI_AWARD_BEST_PUPPY);
+    });
+
+    it('returns Best Minor Puppy when a minor-puppy class-win stream meets Very Promising', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'show',
+            streams: [
+                classStream(asClassId('minor-puppy'), undefined, [
+                    cand('mp-1', FCI_GRADE_VERY_PROMISING),
+                ]),
+            ],
+        };
+
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
+
+        expect(result).toContain(FCI_AWARD_BEST_MINOR_PUPPY);
+    });
+
+    it('returns Best Veteran when a veteran class-win stream has a candidate graded Excellent', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'show',
+            streams: [
+                classStream(asClassId('veteran'), undefined, [cand('vet-1', FCI_GRADE_EXCELLENT)]),
+            ],
+        };
+
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
+
+        expect(result).toContain(FCI_AWARD_BEST_VETERAN);
+    });
+
+    it('returns no show awards when no feeder stream is present', () => {
+        const scope: JudgingScopeResults = { kind: 'show', streams: [] };
+
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
 
         expect(result).toHaveLength(0);
+    });
+
+    it('each show award is gated on its own feeder stream + minimumGradeId (mixed streams)', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'show',
+            streams: [
+                awardStream(FCI_AWARD_BIG, undefined, [cand('big-1', FCI_GRADE_EXCELLENT)]),
+                classStream(asClassId('puppy'), undefined, [
+                    cand('pup-1', FCI_GRADE_VERY_PROMISING),
+                ]),
+            ],
+        };
+
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
+
+        expect(result).toContain(FCI_AWARD_BIS);
+        expect(result).toContain(FCI_AWARD_BEST_PUPPY);
+        expect(result).not.toContain(FCI_AWARD_BEST_JUNIOR);
+        expect(result).not.toContain(FCI_AWARD_BEST_VETERAN);
+        expect(result).not.toContain(FCI_AWARD_BEST_MINOR_PUPPY);
+    });
+});
+// ---------------------------------------------------------------------------
+// validateAwardChoices — breed scope (ADR-0017)
+// ---------------------------------------------------------------------------
+
+describe('FciAwardPolicy — breed scope — validateAwardChoices', () => {
+    it('accepts BOB and BOS proposed from qualifying CACIB-stream dogs of both sexes', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'breed',
+            streams: [
+                awardStream(FCI_AWARD_CACIB, 'male', [cand('male-1', FCI_GRADE_EXCELLENT)]),
+                awardStream(FCI_AWARD_CACIB, 'female', [cand('female-1', FCI_GRADE_EXCELLENT)]),
+            ],
+        };
+        const proposed: ReadonlyArray<ProposedAwardAssignment> = [
+            { dogRef: 'male-1', awardTypeId: FCI_AWARD_BOB },
+            { dogRef: 'female-1', awardTypeId: FCI_AWARD_BOS },
+        ];
+
+        const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
+
+        expect(result.valid).toBe(true);
+    });
+
+    it('rejects a BOB proposal for a dog not present in any BOB feeder stream', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'breed',
+            streams: [
+                awardStream(FCI_AWARD_CACIB, 'male', [cand('male-1', FCI_GRADE_EXCELLENT)]),
+                awardStream(FCI_AWARD_CACIB, 'female', [cand('female-1', FCI_GRADE_EXCELLENT)]),
+            ],
+        };
+        const proposed: ReadonlyArray<ProposedAwardAssignment> = [
+            { dogRef: 'intruder', awardTypeId: FCI_AWARD_BOB },
+            { dogRef: 'female-1', awardTypeId: FCI_AWARD_BOS },
+        ];
+
+        const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
+
+        expect(result.valid).toBe(false);
+    });
+
+    it('rejects a BOB proposal for a dog graded below the award minimumGradeId', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'breed',
+            streams: [
+                awardStream(FCI_AWARD_CACIB, 'male', [cand('male-1', FCI_GRADE_VERY_GOOD)]),
+                awardStream(FCI_AWARD_CACIB, 'female', [cand('female-1', FCI_GRADE_EXCELLENT)]),
+            ],
+        };
+        const proposed: ReadonlyArray<ProposedAwardAssignment> = [
+            { dogRef: 'male-1', awardTypeId: FCI_AWARD_BOB },
+            { dogRef: 'female-1', awardTypeId: FCI_AWARD_BOS },
+        ];
+
+        const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
+
+        expect(result.valid).toBe(false);
+    });
+
+    it('rejects a missing non-discretionary BOS when both sexes qualify (BOB alone is not enough)', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'breed',
+            streams: [
+                awardStream(FCI_AWARD_CACIB, 'male', [cand('male-1', FCI_GRADE_EXCELLENT)]),
+                awardStream(FCI_AWARD_CACIB, 'female', [cand('female-1', FCI_GRADE_EXCELLENT)]),
+            ],
+        };
+        const proposed: ReadonlyArray<ProposedAwardAssignment> = [
+            { dogRef: 'male-1', awardTypeId: FCI_AWARD_BOB },
+        ];
+
+        const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
+
+        expect(result.valid).toBe(false);
+    });
+
+    it('rejects BOB and BOS proposed for dogs of the same sex', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'breed',
+            streams: [
+                awardStream(FCI_AWARD_CACIB, 'male', [cand('male-1', FCI_GRADE_EXCELLENT)]),
+                awardStream(FCI_AWARD_CACIB, 'male', [cand('male-2', FCI_GRADE_EXCELLENT)]),
+            ],
+        };
+        const proposed: ReadonlyArray<ProposedAwardAssignment> = [
+            { dogRef: 'male-1', awardTypeId: FCI_AWARD_BOB },
+            { dogRef: 'male-2', awardTypeId: FCI_AWARD_BOS },
+        ];
+
+        const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
+
+        expect(result.valid).toBe(false);
+    });
+
+    it('rejects BOB and BOS proposed for the same dog', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'breed',
+            streams: [
+                awardStream(FCI_AWARD_CACIB, 'male', [cand('male-1', FCI_GRADE_EXCELLENT)]),
+                awardStream(FCI_AWARD_CACIB, 'female', [cand('female-1', FCI_GRADE_EXCELLENT)]),
+            ],
+        };
+        const proposed: ReadonlyArray<ProposedAwardAssignment> = [
+            { dogRef: 'male-1', awardTypeId: FCI_AWARD_BOB },
+            { dogRef: 'male-1', awardTypeId: FCI_AWARD_BOS },
+        ];
+
+        const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
+
+        expect(result.valid).toBe(false);
+    });
+});
+// ---------------------------------------------------------------------------
+// validateAwardChoices — group & show scope (ADR-0017)
+// ---------------------------------------------------------------------------
+
+describe('FciAwardPolicy — group & show scope — validateAwardChoices', () => {
+    it('accepts a valid BIS proposal from a BIG-stream candidate graded Excellent', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'show',
+            streams: [awardStream(FCI_AWARD_BIG, undefined, [cand('big-1', FCI_GRADE_EXCELLENT)])],
+        };
+        const proposed: ReadonlyArray<ProposedAwardAssignment> = [
+            { dogRef: 'big-1', awardTypeId: FCI_AWARD_BIS },
+        ];
+
+        const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
+
+        expect(result.valid).toBe(true);
+    });
+
+    it('rejects a BIS proposal for a dog graded below Excellent', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'show',
+            streams: [awardStream(FCI_AWARD_BIG, undefined, [cand('big-1', FCI_GRADE_VERY_GOOD)])],
+        };
+        const proposed: ReadonlyArray<ProposedAwardAssignment> = [
+            { dogRef: 'big-1', awardTypeId: FCI_AWARD_BIS },
+        ];
+
+        const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
+
+        expect(result.valid).toBe(false);
+    });
+
+    it('rejects a BIS proposal for a dog not in a BIG feeder stream', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'show',
+            streams: [awardStream(FCI_AWARD_BIG, undefined, [cand('big-1', FCI_GRADE_EXCELLENT)])],
+        };
+        const proposed: ReadonlyArray<ProposedAwardAssignment> = [
+            { dogRef: 'intruder', awardTypeId: FCI_AWARD_BIS },
+        ];
+
+        const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
+
+        expect(result.valid).toBe(false);
+    });
+
+    it('rejects a missing non-discretionary BIS when a qualifying BIG stream is present', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'show',
+            streams: [awardStream(FCI_AWARD_BIG, undefined, [cand('big-1', FCI_GRADE_EXCELLENT)])],
+        };
+        const proposed: ReadonlyArray<ProposedAwardAssignment> = [];
+
+        const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
+
+        expect(result.valid).toBe(false);
+    });
+
+    it('accepts a valid Best Puppy proposal from a puppy-class-stream candidate graded Very Promising', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'show',
+            streams: [
+                classStream(asClassId('puppy'), undefined, [
+                    cand('pup-1', FCI_GRADE_VERY_PROMISING),
+                ]),
+            ],
+        };
+        const proposed: ReadonlyArray<ProposedAwardAssignment> = [
+            { dogRef: 'pup-1', awardTypeId: FCI_AWARD_BEST_PUPPY },
+        ];
+
+        const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
+
+        expect(result.valid).toBe(true);
+    });
+
+    it('accepts an empty proposal when no feeder stream qualifies (no mandatory award triggered)', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'show',
+            streams: [awardStream(FCI_AWARD_BIG, undefined, [cand('big-1', FCI_GRADE_VERY_GOOD)])],
+        };
+        const proposed: ReadonlyArray<ProposedAwardAssignment> = [];
+
+        const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
+
+        expect(result.valid).toBe(true);
+    });
+
+    it('accepts a valid BIG proposal from a BOB-stream candidate graded Excellent', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'group',
+            streams: [awardStream(FCI_AWARD_BOB, undefined, [cand('bob-1', FCI_GRADE_EXCELLENT)])],
+        };
+        const proposed: ReadonlyArray<ProposedAwardAssignment> = [
+            { dogRef: 'bob-1', awardTypeId: FCI_AWARD_BIG },
+        ];
+
+        const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
+
+        expect(result.valid).toBe(true);
+    });
+});
+// ---------------------------------------------------------------------------
+// CAC-show case — KMSH layer (ADR-0017 show-type-aware feeding)
+// ---------------------------------------------------------------------------
+
+describe('FciAwardPolicy — CAC-show case (KMSH layer)', () => {
+    it('BOB is eligible from CAC + class-win feeders when no CACIB stream is present (breed scope)', () => {
+        // CAC-only show: a CAC stream + junior/veteran class-win streams from
+        // both sexes, but NO CACIB/CACIB-J/CACIB-V streams. The KMSH-layer BOB
+        // fedBy includes CAC; the absent CACIB feeder matches nothing.
+        const scope: JudgingScopeResults = {
+            kind: 'breed',
+            streams: [
+                awardStream(KMSH_AWARD_CAC, 'male', [cand('male-1', FCI_GRADE_EXCELLENT)]),
+                awardStream(KMSH_AWARD_CAC, 'female', [cand('female-1', FCI_GRADE_EXCELLENT)]),
+                classStream(asClassId('junior'), 'male', [cand('male-jr', FCI_GRADE_EXCELLENT)]),
+                classStream(asClassId('junior'), 'female', [
+                    cand('female-jr', FCI_GRADE_EXCELLENT),
+                ]),
+                classStream(asClassId('veteran'), 'male', [cand('male-vet', FCI_GRADE_EXCELLENT)]),
+                classStream(asClassId('veteran'), 'female', [
+                    cand('female-vet', FCI_GRADE_EXCELLENT),
+                ]),
+            ],
+        };
+
+        const result = policy.eligibleAwardTypes(scope, KMSH_RULESET);
+
+        expect(result).toContain(FCI_AWARD_BOB);
+        expect(result).toContain(FCI_AWARD_BOS);
+    });
+
+    it('Best Junior and Best Veteran in Show are eligible from class-win streams (show scope)', () => {
+        const scope: JudgingScopeResults = {
+            kind: 'show',
+            streams: [
+                classStream(asClassId('junior'), undefined, [cand('jr-1', FCI_GRADE_EXCELLENT)]),
+                classStream(asClassId('veteran'), undefined, [cand('vet-1', FCI_GRADE_EXCELLENT)]),
+            ],
+        };
+
+        const result = policy.eligibleAwardTypes(scope, KMSH_RULESET);
+
+        expect(result).toContain(FCI_AWARD_BEST_JUNIOR);
+        expect(result).toContain(FCI_AWARD_BEST_VETERAN);
+        expect(result).not.toContain(FCI_AWARD_BIS);
+    });
+
+    it('FCI-layer BOB is NOT eligible from a CAC stream alone (CAC feeder unknown to FCI layer)', () => {
+        // Same streams, but resolved against the FCI-only ruleset: BOB fedBy has
+        // no CAC feeder, and no CACIB/junior/veteran stream is present.
+        const scope: JudgingScopeResults = {
+            kind: 'breed',
+            streams: [
+                awardStream(KMSH_AWARD_CAC, 'male', [cand('male-1', FCI_GRADE_EXCELLENT)]),
+                awardStream(KMSH_AWARD_CAC, 'female', [cand('female-1', FCI_GRADE_EXCELLENT)]),
+            ],
+        };
+
+        const result = policy.eligibleAwardTypes(scope, FCI_RULESET);
+
+        expect(result).not.toContain(FCI_AWARD_BOB);
     });
 });
