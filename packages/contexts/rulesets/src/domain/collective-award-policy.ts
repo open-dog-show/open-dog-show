@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { CollectiveCompetitionResults } from './collective-competition-results.js';
+import type { EntryRef } from './entry-ref.js';
 
 /**
  * The outcome of evaluating a Collective Competition.
@@ -17,7 +18,7 @@ export type CollectiveAwardResult =
            * All entries are co-winners; collective competitions have no
            * internal ranking.
            */
-          readonly winningGroupRefs: ReadonlyArray<string>;
+          readonly winningGroupRefs: ReadonlyArray<EntryRef>;
       }
     | { readonly valid: false; readonly reason: string };
 

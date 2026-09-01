@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { AwardTypeId, GradeId } from '../domain/domain-ids.js';
+import type { EntryRef } from '../domain/entry-ref.js';
 import type { Feeder, IndividualAwardType } from '../domain/award-type.js';
 import type { EffectiveRuleset } from '../domain/effective-ruleset.js';
 import type {
@@ -232,7 +233,7 @@ export class FciAwardPolicy implements AwardPolicy {
 
         // Breed scope: BOB and BOS must be opposite-sex, distinct dogs (ADR-0017).
         if (scope.kind === 'breed') {
-            const sexOf = (dogRef: string) =>
+            const sexOf = (dogRef: EntryRef) =>
                 scope.streams.find((s) => s.candidates.some((c) => c.dogRef === dogRef))?.sex;
             const breedProposals = proposed.filter((p) => {
                 const at = ruleset.awardTypes.find((a) => a.id === p.awardTypeId);

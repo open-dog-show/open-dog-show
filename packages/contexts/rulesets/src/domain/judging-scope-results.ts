@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { ClassId, GradeId, AwardTypeId } from './domain-ids.js';
+import type { EntryRef } from './entry-ref.js';
 
 /**
  * A single dog's result within a per-sex class judging — the grade the judge
@@ -11,7 +12,7 @@ export interface ClassPlacement {
     /** The class in which this dog was judged. */
     readonly classId: ClassId;
     /** Opaque reference to the judged entry (opaque to the Rulesets context). */
-    readonly dogRef: string;
+    readonly dogRef: EntryRef;
     /** Grade awarded by the judge. */
     readonly gradeId: GradeId;
     /**
@@ -30,7 +31,7 @@ export interface ClassPlacement {
  */
 export interface StreamCandidate {
     /** Opaque reference to the judged entry (opaque to the Rulesets context). */
-    readonly dogRef: string;
+    readonly dogRef: EntryRef;
     /** Grade the dog received from its feeder. */
     readonly gradeId: GradeId;
 }
