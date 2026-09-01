@@ -10,6 +10,10 @@ export type RecognitionStatus = 'definitive' | 'provisional' | 'unrecognised';
  * An officially recognised breed, classified into one {@link Group}.
  * The breed list and classification are ruleset-owned reference data.
  *
+ * Per ADR-0010, this type carries no display `name` — breed display strings
+ * live in the i18n bundle keyed by `breed.<id>`. The domain owns identity and
+ * rules only.
+ *
  * Deferred (ADR-0001, amended 2026-08-28, #134): this `Breed` record is not
  * yet wired into `RulesetLayer` / `EffectiveRuleset` — no consumer reads the
  * record today. The `BreedId` brand and this type definition stay as the
@@ -19,7 +23,6 @@ export type RecognitionStatus = 'definitive' | 'provisional' | 'unrecognised';
  */
 export interface Breed {
     readonly id: BreedId;
-    readonly name: string;
     readonly groupId: GroupId;
     readonly recognitionStatus: RecognitionStatus;
 }
@@ -27,6 +30,11 @@ export interface Breed {
 /**
  * A subdivision of a {@link Breed} (by size, coat, or colour) that is
  * judged separately for awards — CACIB is made per Breed and Variety.
+ *
+ * Per ADR-0010, this type carries no display `name` — variety display strings
+ * live in the i18n bundle keyed by `variety.<breed-id>.<variety-id>`
+ * (`VarietyId` is breed-scoped, so the breed id namespaces the key). The
+ * domain owns identity and rules only.
  *
  * Deferred (ADR-0001, amended 2026-08-28, #134): this `Variety` record is
  * not yet wired into `RulesetLayer` / `EffectiveRuleset`. The `VarietyId`
@@ -37,12 +45,16 @@ export interface Breed {
 export interface Variety {
     readonly id: VarietyId;
     readonly breedId: BreedId;
-    readonly name: string;
 }
 
 /**
  * One of the governing body's top-level breed groupings (the FCI defines 10).
  * Used for catalogue division and the Best in Group competition.
+ *
+ * Per ADR-0010, this type carries no display `name` — group display strings
+ * live in the i18n bundle keyed by `group.<id>`. `ordinal` is retained: it is
+ * structural catalogue ordering, not a display string. The domain owns
+ * identity and rules only.
  *
  * Deferred (ADR-0001, amended 2026-08-28, #134): this `Group` record is not
  * yet wired into `RulesetLayer` / `EffectiveRuleset`. The `GroupId` brand and
@@ -51,7 +63,6 @@ export interface Variety {
  */
 export interface Group {
     readonly id: GroupId;
-    readonly name: string;
     /** Governs catalogue ordering; lower ordinal appears first. */
     readonly ordinal: number;
 }

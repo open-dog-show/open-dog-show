@@ -28,8 +28,9 @@ i18n bundle for all other UI strings. Two lookup mechanisms for the same problem
 
 Remove `name: string` (and its planned `Record<LanguageCode, string>` successor)
 from every named Ruleset domain type (`Grade`, `GradeScale`, `SpecialOutcome`,
-`ClassDefinition`, `AwardType`, `ShowType`, `RulesetLayer`). All display names
-live in translation bundles keyed by a convention derived from the domain ID:
+`ClassDefinition`, `AwardType`, `ShowType`, `RulesetLayer`, `Breed`, `Variety`,
+`Group`). All display names live in translation bundles keyed by a convention
+derived from the domain ID:
 
 ```
 en.json: { "grade.excellent": "Excellent", "nav.home": "Home", ... }
@@ -57,10 +58,16 @@ requires only a new translation file — no domain code changes.
 ## Consequences
 
 - `name: string` is removed from all domain interfaces in `@ods/rulesets`
-  (issue #64).
+  (issue #64; `Breed`/`Variety`/`Group` de-named in issue #150).
 - `fci-ruleset-layer.ts` and `kmsh-ruleset-layer.ts` lose their `name` fields;
   the in-memory data becomes purely structural.
 - The presentation layer owns all display strings via a standard i18n tool
   (`react-i18next`, `next-intl`, or equivalent).
 - Translation key convention: `<concept-type>.<domain-id>` — e.g.
-  `grade.excellent`, `class.junior`, `award.cacib`.
+  `grade.excellent`, `class.junior`, `award.cacib`, `breed.german-shepherd`,
+  `group.fci-1`. (`Group.ordinal` is retained — it is structural catalogue
+  ordering, not a display string.) `VarietyId` is breed-scoped (identifies a
+  variety only within a breed), so variety keys are namespaced with the breed
+  id — `variety.<breed-id>.<variety-id>`, e.g.
+  `variety.german-shepherd.rough-coated` — so two breeds reusing the same
+  `VarietyId` resolve to distinct display strings.
