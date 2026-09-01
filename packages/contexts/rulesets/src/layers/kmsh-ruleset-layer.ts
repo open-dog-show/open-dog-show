@@ -123,6 +123,40 @@ export const kmshLayer: RulesetLayer = {
             isDiscretionary: true,
             scope: 'per-sex',
         },
+        // -------------------------------------------------------------------
+        // ADR-0017: BOB/BOS wholesale override — last-layer-wins replaces the
+        // FCI-layer BOB/BOS entirely, adding the national CAC adult feeder
+        // (KMSH Bijlage 1 §4: the adult may hold "CAC/CACIB"). The junior and
+        // veteran class-win feeders are retained. At a CAC-only show no CACIB
+        // stream is present, so BOB feeds off the CAC stream + class wins
+        // (Bijlage 2 §2-3); at a CACIB show the CACIB stream feeds BOB instead.
+        // -------------------------------------------------------------------
+        {
+            id: FCI_AWARD_BOB,
+            minimumGradeId: FCI_GRADE_EXCELLENT,
+            minimumPlacement: undefined,
+            isDiscretionary: false,
+            scope: 'breed',
+            fedBy: [
+                { awardTypeId: FCI_AWARD_CACIB },
+                { awardTypeId: KMSH_AWARD_CAC },
+                { classId: asClassId('junior') },
+                { classId: asClassId('veteran') },
+            ],
+        },
+        {
+            id: FCI_AWARD_BOS,
+            minimumGradeId: FCI_GRADE_EXCELLENT,
+            minimumPlacement: undefined,
+            isDiscretionary: false,
+            scope: 'breed',
+            fedBy: [
+                { awardTypeId: FCI_AWARD_CACIB },
+                { awardTypeId: KMSH_AWARD_CAC },
+                { classId: asClassId('junior') },
+                { classId: asClassId('veteran') },
+            ],
+        },
     ],
     showTypes: [
         {

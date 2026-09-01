@@ -38,6 +38,7 @@ export type {
     AwardType,
     IndividualAwardType,
     CollectiveAwardType,
+    Feeder,
 } from './domain/award-type.js';
 export type { RecognitionStatus, Breed, Variety, Group } from './domain/breed.js';
 export type { ShowType } from './domain/show-type.js';
@@ -46,7 +47,10 @@ export type { RulesetLayer } from './domain/ruleset-layer.js';
 export { resolveEffectiveRuleset } from './domain/resolve-effective-ruleset.js';
 export type {
     ClassPlacement,
-    CandidateEntry,
+    StreamCandidate,
+    CandidateStream,
+    AwardFeederStream,
+    ClassFeederStream,
     JudgingScopeResults,
 } from './domain/judging-scope-results.js';
 export type {
