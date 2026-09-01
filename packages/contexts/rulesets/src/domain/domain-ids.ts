@@ -7,7 +7,7 @@ declare const __brand: unique symbol;
  * Compile-time brand helper — keeps rulesets IDs distinct from each other
  * and from kernel IDs even though all are plain strings at runtime.
  */
-type Brand<T, B> = T & { readonly [__brand]: B };
+export type Brand<T, B> = T & { readonly [__brand]: B };
 
 /** Branded string identifying a Class within a Ruleset. */
 export type ClassId = Brand<string, 'ClassId'>;

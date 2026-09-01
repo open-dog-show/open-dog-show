@@ -5,15 +5,17 @@ import type { ClassDefinition } from '../domain/class-definition.js';
 import type { ClassEligibilityPolicy } from '../domain/class-eligibility-policy.js';
 import type { DogEligibilityProfile } from '../domain/dog-eligibility-profile.js';
 import type { LocalDate } from '../domain/local-date.js';
+import { asAgeMonths } from '../domain/age-months.js';
+import type { AgeMonths } from '../domain/age-months.js';
 
 /**
  * Returns the number of completed calendar months from `from` to `to`.
  * Mirrors FCI age evaluation: a dog born on the 4th reaches the next
  * month-age on the 4th of the subsequent month (FCI 2026; KMSH ART.23).
  */
-function completedMonths(from: LocalDate, to: LocalDate): number {
+function completedMonths(from: LocalDate, to: LocalDate): AgeMonths {
     const months = (to.year - from.year) * 12 + (to.month - from.month);
-    return to.day < from.day ? months - 1 : months;
+    return asAgeMonths(to.day < from.day ? months - 1 : months);
 }
 
 /**

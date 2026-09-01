@@ -4,6 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import { FciClassEligibilityPolicy } from '../testing/fci-class-eligibility-policy.js';
 import { asClassId, asGradeScaleId } from '../domain/domain-ids.js';
+import { asAgeMonths } from '../domain/age-months.js';
 import { CertificateKind } from '../domain/certificate-kind.js';
 import type { ClassDefinition } from '../domain/class-definition.js';
 import type { DogEligibilityProfile } from '../domain/dog-eligibility-profile.js';
@@ -25,16 +26,23 @@ const BORN_UNDER_3M: LocalDate = { year: 2026, month: 5, day: 5 };
 /** Born one day earlier → 3 completed months on show day. */
 const BORN_OVER_3M: LocalDate = { year: 2026, month: 5, day: 3 };
 
-function makeClass(overrides: Partial<ClassDefinition> = {}): ClassDefinition {
+type ClassDefOverrides = Partial<Omit<ClassDefinition, 'fromAgeMonths' | 'lessThanAgeMonths'>> & {
+    fromAgeMonths?: number | undefined;
+    lessThanAgeMonths?: number | undefined;
+};
+
+function makeClass(overrides: ClassDefOverrides = {}): ClassDefinition {
+    const { fromAgeMonths, lessThanAgeMonths, ...rest } = overrides;
     return {
         id: asClassId('test-class'),
-        fromAgeMonths: undefined,
-        lessThanAgeMonths: undefined,
+        fromAgeMonths: fromAgeMonths === undefined ? undefined : asAgeMonths(fromAgeMonths),
+        lessThanAgeMonths:
+            lessThanAgeMonths === undefined ? undefined : asAgeMonths(lessThanAgeMonths),
         requiredCertificates: [],
         bredByExhibitor: false,
         gradeScaleId: asGradeScaleId('standard'),
         awardTypeIds: [],
-        ...overrides,
+        ...rest,
     };
 }
 
