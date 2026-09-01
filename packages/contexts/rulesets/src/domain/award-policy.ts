@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { AwardTypeId } from './domain-ids.js';
+import type { EntryRef } from './entry-ref.js';
 import type { EffectiveRuleset } from './effective-ruleset.js';
 import type { JudgingScopeResults } from './judging-scope-results.js';
 
@@ -10,7 +11,7 @@ import type { JudgingScopeResults } from './judging-scope-results.js';
  */
 export interface ProposedAwardAssignment {
     /** Opaque reference to the judged entry receiving the award. */
-    readonly dogRef: string;
+    readonly dogRef: EntryRef;
     readonly awardTypeId: AwardTypeId;
 }
 

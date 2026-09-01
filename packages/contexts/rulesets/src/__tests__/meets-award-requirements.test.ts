@@ -12,6 +12,7 @@ import {
     asRulesetLayerId,
 } from '../domain/domain-ids.js';
 import { asAgeMonths } from '../domain/age-months.js';
+import { asEntryRef } from '../domain/entry-ref.js';
 import type { IndividualAwardType } from '../domain/award-type.js';
 import type { ClassDefinition } from '../domain/class-definition.js';
 import type { GradeScale } from '../domain/grade-scale.js';
@@ -72,7 +73,7 @@ const placement = (
     classId = OPEN_CLASS_ID,
 ): ClassPlacement => ({
     classId,
-    dogRef: 'dog-1',
+    dogRef: asEntryRef('dog-1'),
     gradeId,
     placement: ordinalPlacement,
 });

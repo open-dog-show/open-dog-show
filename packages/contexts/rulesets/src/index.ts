@@ -15,6 +15,7 @@ export type {
     EffectiveRulesetId,
 } from './domain/domain-ids.js';
 export type { AgeMonths } from './domain/age-months.js';
+export type { EntryRef } from './domain/entry-ref.js';
 export {
     asClassId,
     asAwardTypeId,
@@ -29,6 +30,7 @@ export {
     asEffectiveRulesetId,
 } from './domain/domain-ids.js';
 export { asAgeMonths } from './domain/age-months.js';
+export { asEntryRef } from './domain/entry-ref.js';
 export type { LocalDate } from './domain/local-date.js';
 export { CertificateKind } from './domain/certificate-kind.js';
 export type { DogEligibilityProfile } from './domain/dog-eligibility-profile.js';

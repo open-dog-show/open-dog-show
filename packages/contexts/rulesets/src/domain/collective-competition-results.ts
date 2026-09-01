@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { BreedId, VarietyId } from './domain-ids.js';
+import type { EntryRef } from './entry-ref.js';
 
 /**
  * A single dog competing within a Collective Competition.
@@ -9,7 +10,7 @@ import type { BreedId, VarietyId } from './domain-ids.js';
  */
 export interface CollectiveEntry {
     /** Opaque reference to the judged entry. */
-    readonly dogRef: string;
+    readonly dogRef: EntryRef;
     readonly sex: 'dog' | 'bitch';
 }
 
@@ -47,6 +48,6 @@ export type CollectiveCompetitionResults =
     | {
           readonly kind: 'progeny-group';
           /** Opaque reference to the sire or dam whose offspring are competing. */
-          readonly parentDogRef: string;
+          readonly parentDogRef: EntryRef;
           readonly entries: ReadonlyArray<CollectiveEntry>;
       };
