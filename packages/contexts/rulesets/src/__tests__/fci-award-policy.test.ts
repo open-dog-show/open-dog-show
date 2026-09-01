@@ -10,6 +10,7 @@ import {
     asGradeScaleId,
     asRulesetLayerId,
 } from '../domain/domain-ids.js';
+import { asAgeMonths } from '../domain/age-months.js';
 import type { AwardTypeId, ClassId, GradeId } from '../domain/domain-ids.js';
 import type { AwardType } from '../domain/award-type.js';
 import type { ClassDefinition } from '../domain/class-definition.js';
@@ -138,7 +139,7 @@ const awardTypes: ReadonlyArray<AwardType> = [
 const classDefinitions: ReadonlyArray<ClassDefinition> = [
     {
         id: OPEN_CLASS_ID,
-        fromAgeMonths: 15,
+        fromAgeMonths: asAgeMonths(15),
         lessThanAgeMonths: undefined,
         requiredCertificates: [],
         bredByExhibitor: false,
@@ -147,8 +148,8 @@ const classDefinitions: ReadonlyArray<ClassDefinition> = [
     },
     {
         id: JUNIOR_CLASS_ID,
-        fromAgeMonths: 6,
-        lessThanAgeMonths: 18,
+        fromAgeMonths: asAgeMonths(6),
+        lessThanAgeMonths: asAgeMonths(18),
         requiredCertificates: [],
         bredByExhibitor: false,
         gradeScaleId: GRADE_SCALE_ID,
@@ -156,7 +157,7 @@ const classDefinitions: ReadonlyArray<ClassDefinition> = [
     },
     {
         id: VETERAN_CLASS_ID,
-        fromAgeMonths: 96,
+        fromAgeMonths: asAgeMonths(96),
         lessThanAgeMonths: undefined,
         requiredCertificates: [],
         bredByExhibitor: false,

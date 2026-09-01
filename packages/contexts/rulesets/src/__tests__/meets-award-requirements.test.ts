@@ -11,6 +11,7 @@ import {
     asGradeScaleId,
     asRulesetLayerId,
 } from '../domain/domain-ids.js';
+import { asAgeMonths } from '../domain/age-months.js';
 import type { IndividualAwardType } from '../domain/award-type.js';
 import type { ClassDefinition } from '../domain/class-definition.js';
 import type { GradeScale } from '../domain/grade-scale.js';
@@ -40,7 +41,7 @@ const gradeScale: GradeScale = {
 
 const classDefinition: ClassDefinition = {
     id: OPEN_CLASS_ID,
-    fromAgeMonths: 15,
+    fromAgeMonths: asAgeMonths(15),
     lessThanAgeMonths: undefined,
     requiredCertificates: [],
     bredByExhibitor: false,

@@ -3,6 +3,7 @@
 
 import type { RulesetLayer } from '../domain/ruleset-layer.js';
 import { asRulesetLayerId, asClassId, asAwardTypeId, asShowTypeId } from '../domain/domain-ids.js';
+import { asAgeMonths } from '../domain/age-months.js';
 import { CertificateKind } from '../domain/certificate-kind.js';
 import {
     FCI_LAYER_ID,
@@ -87,8 +88,8 @@ export const kmshLayer: RulesetLayer = {
         // ("minimum 3 tot 6 maanden"), unlike FCI which has no numeric floor.
         {
             id: asClassId('minor-puppy'),
-            fromAgeMonths: 3,
-            lessThanAgeMonths: 6,
+            fromAgeMonths: asAgeMonths(3),
+            lessThanAgeMonths: asAgeMonths(6),
             requiredCertificates: [CertificateKind.Vaccination],
             bredByExhibitor: false,
             gradeScaleId: FCI_PUPPY_GRADE_SCALE_ID,
@@ -97,7 +98,7 @@ export const kmshLayer: RulesetLayer = {
         // Fokkersklas (ART.24): available at breed-specific shows; feeds CAC + RCAC.
         {
             id: KMSH_CLASS_FOKKERSKLAS,
-            fromAgeMonths: 15,
+            fromAgeMonths: asAgeMonths(15),
             lessThanAgeMonths: undefined,
             requiredCertificates: [],
             bredByExhibitor: true,

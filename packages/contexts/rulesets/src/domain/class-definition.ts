@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { ClassId, GradeScaleId, AwardTypeId } from './domain-ids.js';
+import type { AgeMonths } from './age-months.js';
 import type { CertificateKind } from './certificate-kind.js';
 
 /**
@@ -13,10 +14,10 @@ import type { CertificateKind } from './certificate-kind.js';
  */
 export interface ClassDefinition {
     readonly id: ClassId;
-    /** Minimum age in whole months on show day (FCI: "from X months"). Undefined = no lower bound. */
-    readonly fromAgeMonths: number | undefined;
-    /** Exclusive upper age in whole months on show day (FCI: "less than Y months"). Undefined = no upper bound. */
-    readonly lessThanAgeMonths: number | undefined;
+    /** Minimum age in whole calendar months on show day (FCI: "from X months"). Undefined = no lower bound. */
+    readonly fromAgeMonths: AgeMonths | undefined;
+    /** Exclusive upper age in whole calendar months on show day (FCI: "less than Y months"). Undefined = no upper bound. */
+    readonly lessThanAgeMonths: AgeMonths | undefined;
     /** Entry certificates required to enter this Class. */
     readonly requiredCertificates: ReadonlyArray<CertificateKind>;
     /** Whether the Bred-by-Exhibitor handler condition applies. */

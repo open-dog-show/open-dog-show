@@ -11,6 +11,7 @@ import {
     asAwardTypeId,
     asShowTypeId,
 } from '../domain/domain-ids.js';
+import { asAgeMonths } from '../domain/age-months.js';
 import type { RulesetLayer } from '../domain/ruleset-layer.js';
 import type { LocalDate } from '../domain/local-date.js';
 import type { ClassDefinition } from '../domain/class-definition.js';
@@ -42,7 +43,7 @@ function makeLayer(
 function makeClass(id: string, fromAgeMonths?: number): ClassDefinition {
     return {
         id: asClassId(id),
-        fromAgeMonths: fromAgeMonths,
+        fromAgeMonths: fromAgeMonths === undefined ? undefined : asAgeMonths(fromAgeMonths),
         lessThanAgeMonths: undefined,
         requiredCertificates: [],
         bredByExhibitor: false,

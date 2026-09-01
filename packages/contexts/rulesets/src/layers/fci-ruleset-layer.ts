@@ -15,6 +15,7 @@ import {
     asAwardTypeId,
     asShowTypeId,
 } from '../domain/domain-ids.js';
+import { asAgeMonths } from '../domain/age-months.js';
 import { CertificateKind } from '../domain/certificate-kind.js';
 
 // ---------------------------------------------------------------------------
@@ -257,7 +258,7 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     {
         id: asClassId('minor-puppy'),
         fromAgeMonths: undefined,
-        lessThanAgeMonths: 6,
+        lessThanAgeMonths: asAgeMonths(6),
         requiredCertificates: [CertificateKind.Vaccination],
         bredByExhibitor: false,
         gradeScaleId: FCI_PUPPY_GRADE_SCALE_ID,
@@ -268,8 +269,8 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // -----------------------------------------------------------------------
     {
         id: asClassId('puppy'),
-        fromAgeMonths: 6,
-        lessThanAgeMonths: 9,
+        fromAgeMonths: asAgeMonths(6),
+        lessThanAgeMonths: asAgeMonths(9),
         requiredCertificates: [],
         bredByExhibitor: false,
         gradeScaleId: FCI_PUPPY_GRADE_SCALE_ID,
@@ -280,8 +281,8 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // -----------------------------------------------------------------------
     {
         id: asClassId('junior'),
-        fromAgeMonths: 9,
-        lessThanAgeMonths: 18,
+        fromAgeMonths: asAgeMonths(9),
+        lessThanAgeMonths: asAgeMonths(18),
         requiredCertificates: [],
         bredByExhibitor: false,
         gradeScaleId: FCI_GRADE_SCALE_ID,
@@ -292,8 +293,8 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // -----------------------------------------------------------------------
     {
         id: asClassId('intermediate'),
-        fromAgeMonths: 15,
-        lessThanAgeMonths: 24,
+        fromAgeMonths: asAgeMonths(15),
+        lessThanAgeMonths: asAgeMonths(24),
         requiredCertificates: [],
         bredByExhibitor: false,
         gradeScaleId: FCI_GRADE_SCALE_ID,
@@ -304,7 +305,7 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // -----------------------------------------------------------------------
     {
         id: asClassId('open'),
-        fromAgeMonths: 15,
+        fromAgeMonths: asAgeMonths(15),
         lessThanAgeMonths: undefined,
         requiredCertificates: [],
         bredByExhibitor: false,
@@ -317,7 +318,7 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // -----------------------------------------------------------------------
     {
         id: asClassId('bred-by-exhibitor'),
-        fromAgeMonths: 15,
+        fromAgeMonths: asAgeMonths(15),
         lessThanAgeMonths: undefined,
         requiredCertificates: [],
         bredByExhibitor: true,
@@ -329,7 +330,7 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // -----------------------------------------------------------------------
     {
         id: asClassId('working'),
-        fromAgeMonths: 15,
+        fromAgeMonths: asAgeMonths(15),
         lessThanAgeMonths: undefined,
         requiredCertificates: [CertificateKind.WorkingCertificate],
         bredByExhibitor: false,
@@ -341,7 +342,7 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // -----------------------------------------------------------------------
     {
         id: asClassId('champion'),
-        fromAgeMonths: 15,
+        fromAgeMonths: asAgeMonths(15),
         lessThanAgeMonths: undefined,
         requiredCertificates: [CertificateKind.ChampionCertificate],
         bredByExhibitor: false,
@@ -353,7 +354,7 @@ const fciClassDefinitions: ReadonlyArray<ClassDefinition> = [
     // -----------------------------------------------------------------------
     {
         id: asClassId('veteran'),
-        fromAgeMonths: 96,
+        fromAgeMonths: asAgeMonths(96),
         lessThanAgeMonths: undefined,
         requiredCertificates: [],
         bredByExhibitor: false,
