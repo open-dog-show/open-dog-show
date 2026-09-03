@@ -31,7 +31,7 @@ export {
 } from './domain/domain-ids.js';
 export { asAgeMonths } from './domain/age-months.js';
 export { asEntryRef } from './domain/entry-ref.js';
-export type { LocalDate } from './domain/local-date.js';
+export { LocalDate, InvalidLocalDateError } from './domain/local-date.js';
 export { CertificateKind } from './domain/certificate-kind.js';
 export type { DogEligibilityProfile } from './domain/dog-eligibility-profile.js';
 export type { ClassEligibilityPolicy } from './domain/class-eligibility-policy.js';

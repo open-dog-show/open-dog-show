@@ -17,6 +17,7 @@ import type { IndividualAwardType } from '../domain/award-type.js';
 import type { ClassDefinition } from '../domain/class-definition.js';
 import type { GradeScale } from '../domain/grade-scale.js';
 import type { EffectiveRuleset } from '../domain/effective-ruleset.js';
+import { LocalDate } from '../domain/local-date.js';
 import type { ClassPlacement } from '../domain/judging-scope-results.js';
 
 // ---------------------------------------------------------------------------
@@ -59,7 +60,7 @@ const cacib: IndividualAwardType = {
 };
 
 const RULESET: EffectiveRuleset = {
-    resolvedAt: { year: 2026, month: 1, day: 1 },
+    resolvedAt: LocalDate.of(2026, 1, 1),
     sourceLayerIds: [asRulesetLayerId('fci')],
     classDefinitions: [classDefinition],
     gradeScales: [gradeScale],

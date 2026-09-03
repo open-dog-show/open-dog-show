@@ -42,11 +42,11 @@ import { resolveEffectiveRuleset } from '../domain/resolve-effective-ruleset.js'
 import { CertificateKind } from '../domain/certificate-kind.js';
 import { asClassId } from '../domain/domain-ids.js';
 import type { AwardTypeId } from '../domain/domain-ids.js';
-import type { LocalDate } from '../domain/local-date.js';
+import { LocalDate } from '../domain/local-date.js';
 import type { IndividualAwardType } from '../domain/award-type.js';
 import type { EffectiveRuleset } from '../domain/effective-ruleset.js';
 
-const RESOLVE_DATE: LocalDate = { year: 2026, month: 8, day: 11 };
+const RESOLVE_DATE: LocalDate = LocalDate.of(2026, 8, 11);
 
 // ---------------------------------------------------------------------------
 // FCI base layer — structure

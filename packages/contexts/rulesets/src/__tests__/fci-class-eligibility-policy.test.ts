@@ -8,23 +8,23 @@ import { asAgeMonths } from '../domain/age-months.js';
 import { CertificateKind } from '../domain/certificate-kind.js';
 import type { ClassDefinition } from '../domain/class-definition.js';
 import type { DogEligibilityProfile } from '../domain/dog-eligibility-profile.js';
-import type { LocalDate } from '../domain/local-date.js';
+import { LocalDate } from '../domain/local-date.js';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
 // ---------------------------------------------------------------------------
 
 /** Show day used throughout the suite. */
-const SHOW_DATE: LocalDate = { year: 2026, month: 8, day: 4 };
+const SHOW_DATE: LocalDate = LocalDate.of(2026, 8, 4);
 
 /**
- * Born exactly 3 months before show day: `completedMonths(2026-05-04, 2026-08-04) === 3`.
+ * Born exactly 3 months before show day: `SHOW_DATE.completedMonthsSince(BORN_EXACTLY_3M) === 3`.
  */
-const BORN_EXACTLY_3M: LocalDate = { year: 2026, month: 5, day: 4 };
+const BORN_EXACTLY_3M: LocalDate = LocalDate.of(2026, 5, 4);
 /** Born one day later → 2 completed months on show day. */
-const BORN_UNDER_3M: LocalDate = { year: 2026, month: 5, day: 5 };
+const BORN_UNDER_3M: LocalDate = LocalDate.of(2026, 5, 5);
 /** Born one day earlier → 3 completed months on show day. */
-const BORN_OVER_3M: LocalDate = { year: 2026, month: 5, day: 3 };
+const BORN_OVER_3M: LocalDate = LocalDate.of(2026, 5, 3);
 
 type ClassDefOverrides = Partial<Omit<ClassDefinition, 'fromAgeMonths' | 'lessThanAgeMonths'>> & {
     fromAgeMonths?: number | undefined;
@@ -130,7 +130,7 @@ describe('FciClassEligibilityPolicy — age window', () => {
 
     it('is ineligible when showDate is before dateOfBirth (negative age guard)', () => {
         const classDef = makeClass(); // no age bounds
-        const futureBirth: LocalDate = { year: 2026, month: 9, day: 1 };
+        const futureBirth: LocalDate = LocalDate.of(2026, 9, 1);
         const profile = makeProfile({ dateOfBirth: futureBirth });
 
         expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(false);
