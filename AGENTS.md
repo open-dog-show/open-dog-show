@@ -71,6 +71,17 @@ apps/api/                 @ods/api          composition root
   `PgPollingDispatcher`) and the `Clock`/`EventIdGenerator` production implementations
   in its `infrastructure/` layer; its `domain/` layer stays ORM-free.
 
+### Context layout (ADR-0019)
+
+Each context's `src/` follows clean-DDD role packages (kebab-case):
+`domain/{value-objects,entities,aggregates,domain-services,events,repositories,specifications}`,
+`application/{use-cases,ports,services,commands,queries,dto}`,
+`infrastructure/{persistence/drizzle,persistence/mappers,persistence/repositories,external,configuration}`.
+Directories signal the tactical role (filenames stay domain-language, per the
+file-naming rule). Create a folder only when it has content. **No per-context
+`presentation/`** — ADR-0004/0006 keep HTTP/API in `apps/api`; `EF/` → `drizzle`.
+See ADR-0019.
+
 ### Package management
 
 `pnpm install` / `pnpm lint` / `pnpm test` / `pnpm typecheck`. No npm or yarn.
