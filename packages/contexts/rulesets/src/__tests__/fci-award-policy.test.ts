@@ -24,7 +24,7 @@ import type {
 } from '../domain/judging-scope-results.js';
 import type { ProposedAwardAssignment } from '../domain/award-policy.js';
 import { resolveEffectiveRuleset } from '../domain/resolve-effective-ruleset.js';
-import type { LocalDate } from '../domain/local-date.js';
+import { LocalDate } from '../domain/local-date.js';
 import {
     fciLayer,
     FCI_GRADE_EXCELLENT,
@@ -168,7 +168,7 @@ const classDefinitions: ReadonlyArray<ClassDefinition> = [
 ];
 
 const RULESET: EffectiveRuleset = {
-    resolvedAt: { year: 2026, month: 1, day: 1 },
+    resolvedAt: LocalDate.of(2026, 1, 1),
     sourceLayerIds: [asRulesetLayerId('fci')],
     classDefinitions,
     gradeScales: [gradeScale],
@@ -185,7 +185,7 @@ const policy = new FciAwardPolicy();
 // Real-ruleset fixtures (ADR-0017 feeder model) + stream helpers
 // ---------------------------------------------------------------------------
 
-const RESOLVE_DATE: LocalDate = { year: 2026, month: 1, day: 1 };
+const RESOLVE_DATE: LocalDate = LocalDate.of(2026, 1, 1);
 
 /** FCI base layer only — BOB fedBy has no national CAC feeder. */
 const FCI_RULESET: EffectiveRuleset = resolveEffectiveRuleset([fciLayer], RESOLVE_DATE);

@@ -26,7 +26,9 @@ export function resolveEffectiveRuleset(
     resolvedAt: LocalDate,
 ): EffectiveRuleset {
     return {
-        resolvedAt: { ...resolvedAt },
+        // LocalDate is an immutable value object — its reference is safe to
+        // share, so the snapshot preserves it directly (no defensive copy).
+        resolvedAt,
         sourceLayerIds: layers.map((l) => l.id),
         classDefinitions: mergeById(layers.flatMap((l) => [...l.classDefinitions])),
         gradeScales: mergeById(layers.flatMap((l) => [...l.gradeScales])),

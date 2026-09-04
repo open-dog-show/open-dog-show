@@ -13,7 +13,7 @@ import {
 } from '../domain/domain-ids.js';
 import { asAgeMonths } from '../domain/age-months.js';
 import type { RulesetLayer } from '../domain/ruleset-layer.js';
-import type { LocalDate } from '../domain/local-date.js';
+import { LocalDate } from '../domain/local-date.js';
 import type { ClassDefinition } from '../domain/class-definition.js';
 import type { GradeScale } from '../domain/grade-scale.js';
 import type { AwardType } from '../domain/award-type.js';
@@ -23,7 +23,7 @@ import type { ShowType } from '../domain/show-type.js';
 // Fixture helpers
 // ---------------------------------------------------------------------------
 
-const TEST_DATE: LocalDate = { year: 2026, month: 8, day: 4 };
+const TEST_DATE: LocalDate = LocalDate.of(2026, 8, 4);
 
 function makeLayer(
     id: string,
