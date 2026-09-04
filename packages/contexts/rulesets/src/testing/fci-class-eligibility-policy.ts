@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { ClassDefinition } from '../domain/class-definition.js';
-import type { ClassEligibilityPolicy } from '../domain/class-eligibility-policy.js';
-import type { DogEligibilityProfile } from '../domain/dog-eligibility-profile.js';
-import type { LocalDate } from '../domain/local-date.js';
+import type { ClassDefinition } from '../domain/entities/class-definition.js';
+import type { ClassEligibilityPolicy } from '../domain/domain-services/class-eligibility-policy.js';
+import type { DogEligibilityProfile } from '../domain/value-objects/dog-eligibility-profile.js';
+import type { LocalDate } from '../domain/value-objects/local-date.js';
 
 /**
  * In-memory FCI implementation of {@link ClassEligibilityPolicy}.

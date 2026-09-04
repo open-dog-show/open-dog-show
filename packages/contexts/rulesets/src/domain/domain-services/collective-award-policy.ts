@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { CollectiveCompetitionResults } from './collective-competition-results.js';
-import type { EntryRef } from './entry-ref.js';
+import type { CollectiveCompetitionResults } from '../value-objects/collective-competition-results.js';
+import type { EntryRef } from '../value-objects/entry-ref.js';
 
 /**
  * The outcome of evaluating a Collective Competition.

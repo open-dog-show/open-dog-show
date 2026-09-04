@@ -38,13 +38,13 @@ import {
     KMSH_AWARD_RCAC,
     KMSH_CLASS_FOKKERSKLAS,
 } from '../layers/kmsh-ruleset-layer.js';
-import { resolveEffectiveRuleset } from '../domain/resolve-effective-ruleset.js';
-import { CertificateKind } from '../domain/certificate-kind.js';
-import { asClassId } from '../domain/domain-ids.js';
-import type { AwardTypeId } from '../domain/domain-ids.js';
-import { LocalDate } from '../domain/local-date.js';
-import type { IndividualAwardType } from '../domain/award-type.js';
-import type { EffectiveRuleset } from '../domain/effective-ruleset.js';
+import { resolveEffectiveRuleset } from '../domain/domain-services/resolve-effective-ruleset.js';
+import { CertificateKind } from '../domain/value-objects/certificate-kind.js';
+import { asClassId } from '../domain/value-objects/domain-ids.js';
+import type { AwardTypeId } from '../domain/value-objects/domain-ids.js';
+import { LocalDate } from '../domain/value-objects/local-date.js';
+import type { IndividualAwardType } from '../domain/entities/award-type.js';
+import type { EffectiveRuleset } from '../domain/aggregates/effective-ruleset.js';
 
 const RESOLVE_DATE: LocalDate = LocalDate.of(2026, 8, 11);
 

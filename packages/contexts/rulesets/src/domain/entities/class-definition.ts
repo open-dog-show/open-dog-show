@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { ClassId, GradeScaleId, AwardTypeId } from './domain-ids.js';
-import type { AgeMonths } from './age-months.js';
-import type { CertificateKind } from './certificate-kind.js';
+import type { ClassId, GradeScaleId, AwardTypeId } from '../value-objects/domain-ids.js';
+import type { AgeMonths } from '../value-objects/age-months.js';
+import type { CertificateKind } from '../value-objects/certificate-kind.js';
 
 /**
  * The ruleset-owned data record for a single Class — eligibility rules,

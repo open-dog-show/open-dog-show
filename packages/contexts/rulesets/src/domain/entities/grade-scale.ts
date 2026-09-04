@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { GradeId, GradeScaleId, SpecialOutcomeId } from './domain-ids.js';
+import type { GradeId, GradeScaleId, SpecialOutcomeId } from '../value-objects/domain-ids.js';
 
 /** An ordinal quality grade within a {@link GradeScale} (e.g. Excellent, Very Good). */
 export interface Grade {

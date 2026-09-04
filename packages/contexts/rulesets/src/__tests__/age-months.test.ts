@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, expectTypeOf, it } from 'vitest';
-import { asAgeMonths } from '../domain/age-months.js';
-import type { AgeMonths } from '../domain/age-months.js';
+import { asAgeMonths } from '../domain/value-objects/age-months.js';
+import type { AgeMonths } from '../domain/value-objects/age-months.js';
 
 describe('asAgeMonths', () => {
     it('casts a raw number to an AgeMonths, preserving the value', () => {

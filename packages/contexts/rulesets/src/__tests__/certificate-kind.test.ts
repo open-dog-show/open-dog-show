@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, it, expect } from 'vitest';
-import { CertificateKind } from '../domain/certificate-kind.js';
+import { CertificateKind } from '../domain/value-objects/certificate-kind.js';
 
 describe('CertificateKind', () => {
     it('has the champion-certificate value', () => {

@@ -1,21 +1,21 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { AwardTypeId, GradeId } from '../domain/domain-ids.js';
-import type { EntryRef } from '../domain/entry-ref.js';
-import type { Feeder, IndividualAwardType } from '../domain/award-type.js';
-import type { EffectiveRuleset } from '../domain/effective-ruleset.js';
+import type { AwardTypeId, GradeId } from '../domain/value-objects/domain-ids.js';
+import type { EntryRef } from '../domain/value-objects/entry-ref.js';
+import type { Feeder, IndividualAwardType } from '../domain/entities/award-type.js';
+import type { EffectiveRuleset } from '../domain/aggregates/effective-ruleset.js';
 import type {
     AwardPolicy,
     AwardValidationResult,
     ProposedAwardAssignment,
-} from '../domain/award-policy.js';
+} from '../domain/domain-services/award-policy.js';
 import type {
     CandidateStream,
     ClassPlacement,
     JudgingScopeResults,
     StreamCandidate,
-} from '../domain/judging-scope-results.js';
+} from '../domain/value-objects/judging-scope-results.js';
 import { meetsAwardRequirements } from './meets-award-requirements.js';
 
 /**

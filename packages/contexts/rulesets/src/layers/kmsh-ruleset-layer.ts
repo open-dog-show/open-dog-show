@@ -1,10 +1,15 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { RulesetLayer } from '../domain/ruleset-layer.js';
-import { asRulesetLayerId, asClassId, asAwardTypeId, asShowTypeId } from '../domain/domain-ids.js';
-import { asAgeMonths } from '../domain/age-months.js';
-import { CertificateKind } from '../domain/certificate-kind.js';
+import type { RulesetLayer } from '../domain/entities/ruleset-layer.js';
+import {
+    asRulesetLayerId,
+    asClassId,
+    asAwardTypeId,
+    asShowTypeId,
+} from '../domain/value-objects/domain-ids.js';
+import { asAgeMonths } from '../domain/value-objects/age-months.js';
+import { CertificateKind } from '../domain/value-objects/certificate-kind.js';
 import {
     FCI_LAYER_ID,
     FCI_GRADE_SCALE_ID,

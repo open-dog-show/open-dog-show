@@ -9,22 +9,22 @@ import {
     asGradeId,
     asGradeScaleId,
     asRulesetLayerId,
-} from '../domain/domain-ids.js';
-import { asAgeMonths } from '../domain/age-months.js';
-import { asEntryRef } from '../domain/entry-ref.js';
-import type { AwardTypeId, ClassId, GradeId } from '../domain/domain-ids.js';
-import type { AwardType } from '../domain/award-type.js';
-import type { ClassDefinition } from '../domain/class-definition.js';
-import type { GradeScale } from '../domain/grade-scale.js';
-import type { EffectiveRuleset } from '../domain/effective-ruleset.js';
+} from '../domain/value-objects/domain-ids.js';
+import { asAgeMonths } from '../domain/value-objects/age-months.js';
+import { asEntryRef } from '../domain/value-objects/entry-ref.js';
+import type { AwardTypeId, ClassId, GradeId } from '../domain/value-objects/domain-ids.js';
+import type { AwardType } from '../domain/entities/award-type.js';
+import type { ClassDefinition } from '../domain/entities/class-definition.js';
+import type { GradeScale } from '../domain/entities/grade-scale.js';
+import type { EffectiveRuleset } from '../domain/aggregates/effective-ruleset.js';
 import type {
     CandidateStream,
     JudgingScopeResults,
     StreamCandidate,
-} from '../domain/judging-scope-results.js';
-import type { ProposedAwardAssignment } from '../domain/award-policy.js';
-import { resolveEffectiveRuleset } from '../domain/resolve-effective-ruleset.js';
-import { LocalDate } from '../domain/local-date.js';
+} from '../domain/value-objects/judging-scope-results.js';
+import type { ProposedAwardAssignment } from '../domain/domain-services/award-policy.js';
+import { resolveEffectiveRuleset } from '../domain/domain-services/resolve-effective-ruleset.js';
+import { LocalDate } from '../domain/value-objects/local-date.js';
 import {
     fciLayer,
     FCI_GRADE_EXCELLENT,

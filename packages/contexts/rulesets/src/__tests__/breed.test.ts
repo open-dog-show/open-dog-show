@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, it, expectTypeOf } from 'vitest';
-import type { Breed, Variety, Group, RecognitionStatus } from '../domain/breed.js';
-import type { BreedId, VarietyId, GroupId } from '../domain/domain-ids.js';
+import type { Breed, Variety, Group, RecognitionStatus } from '../domain/entities/breed.js';
+import type { BreedId, VarietyId, GroupId } from '../domain/value-objects/domain-ids.js';
 
 // Per ADR-0010, `Breed`/`Variety`/`Group` carry no display `name` — display
 // strings live in the i18n bundle keyed by `<concept-type>.<domain-id>`. These

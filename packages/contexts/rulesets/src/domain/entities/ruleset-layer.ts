@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { RulesetLayerId } from './domain-ids.js';
+import type { RulesetLayerId } from '../value-objects/domain-ids.js';
 import type { ClassDefinition } from './class-definition.js';
 import type { GradeScale } from './grade-scale.js';
 import type { AwardType } from './award-type.js';

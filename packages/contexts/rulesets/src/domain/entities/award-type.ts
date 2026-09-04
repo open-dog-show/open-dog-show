@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { AwardTypeId, ClassId, GradeId } from './domain-ids.js';
+import type { AwardTypeId, ClassId, GradeId } from '../value-objects/domain-ids.js';
 
 /** The scope level at which an {@link AwardType} is determined. */
 export type AwardScope = 'per-sex' | 'breed' | 'group' | 'show' | 'collective';
