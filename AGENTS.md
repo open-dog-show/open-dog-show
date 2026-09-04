@@ -71,6 +71,29 @@ apps/api/                 @ods/api          composition root
   `PgPollingDispatcher`) and the `Clock`/`EventIdGenerator` production implementations
   in its `infrastructure/` layer; its `domain/` layer stays ORM-free.
 
+### Value objects (ADR-0018)
+
+Three patterns, by whether the value space has invariants:
+
+- **Validating class VO** (constrained value space or behavior, e.g. `LocalDate`):
+  a `class` with `readonly #` private fields (runtime encapsulation + nominal —
+  bare literals rejected), a private constructor + static validating factory
+  (`of`), read-only accessors, `equals()` value equality, and side-effect-free
+  methods that return new instances. **Compare via `equals()`, never `===` and
+  never as a `Set`/`Map` key** without a derived primitive key — the language uses
+  reference identity. Domain-layer, framework-free. Reference impl:
+  `packages/contexts/rulesets/src/domain/local-date.ts`.
+- **Branded opaque type** (IDs/units, e.g. `ShowId`, `AgeMonths`, `EntryRef`):
+  `type X = Brand<T, 'X'>` + an `asX` cast at the boundary. No validation for
+  opaque IDs (generated/assigned, not user-typed); when the value has a
+  **format/range invariant**, the cast becomes a validating factory that throws
+  (e.g. `asEventType`). Value equality/immutability come from the primitive.
+- **Closed-set vocabulary** (fixed enums, e.g. `CertificateKind`):
+  `export const X = { … } as const` + `export type X = (typeof X)[keyof typeof X]`.
+
+Never store a mutable object (`Date`, array) reachable for mutation behind a
+TS-only `private`/`readonly` — use a `#` field and/or an immutable primitive.
+
 ### Package management
 
 `pnpm install` / `pnpm lint` / `pnpm test` / `pnpm typecheck`. No npm or yarn.
