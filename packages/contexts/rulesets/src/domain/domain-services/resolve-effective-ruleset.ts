@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { RulesetLayer } from './ruleset-layer.js';
-import type { EffectiveRuleset } from './effective-ruleset.js';
-import type { LocalDate } from './local-date.js';
+import type { RulesetLayer } from '../entities/ruleset-layer.js';
+import type { EffectiveRuleset } from '../aggregates/effective-ruleset.js';
+import type { LocalDate } from '../value-objects/local-date.js';
 
 /**
  * Composes an ordered array of {@link RulesetLayer}s into a single immutable

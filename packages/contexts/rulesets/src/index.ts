@@ -13,9 +13,9 @@ export type {
     ShowTypeId,
     RulesetLayerId,
     EffectiveRulesetId,
-} from './domain/domain-ids.js';
-export type { AgeMonths } from './domain/age-months.js';
-export type { EntryRef } from './domain/entry-ref.js';
+} from './domain/value-objects/domain-ids.js';
+export type { AgeMonths } from './domain/value-objects/age-months.js';
+export type { EntryRef } from './domain/value-objects/entry-ref.js';
 export {
     asClassId,
     asAwardTypeId,
@@ -28,27 +28,27 @@ export {
     asShowTypeId,
     asRulesetLayerId,
     asEffectiveRulesetId,
-} from './domain/domain-ids.js';
-export { asAgeMonths } from './domain/age-months.js';
-export { asEntryRef } from './domain/entry-ref.js';
-export { LocalDate, InvalidLocalDateError } from './domain/local-date.js';
-export { CertificateKind } from './domain/certificate-kind.js';
-export type { DogEligibilityProfile } from './domain/dog-eligibility-profile.js';
-export type { ClassEligibilityPolicy } from './domain/class-eligibility-policy.js';
-export type { Grade, SpecialOutcome, GradeScale } from './domain/grade-scale.js';
-export type { ClassDefinition } from './domain/class-definition.js';
+} from './domain/value-objects/domain-ids.js';
+export { asAgeMonths } from './domain/value-objects/age-months.js';
+export { asEntryRef } from './domain/value-objects/entry-ref.js';
+export { LocalDate, InvalidLocalDateError } from './domain/value-objects/local-date.js';
+export { CertificateKind } from './domain/value-objects/certificate-kind.js';
+export type { DogEligibilityProfile } from './domain/value-objects/dog-eligibility-profile.js';
+export type { ClassEligibilityPolicy } from './domain/domain-services/class-eligibility-policy.js';
+export type { Grade, SpecialOutcome, GradeScale } from './domain/entities/grade-scale.js';
+export type { ClassDefinition } from './domain/entities/class-definition.js';
 export type {
     AwardScope,
     AwardType,
     IndividualAwardType,
     CollectiveAwardType,
     Feeder,
-} from './domain/award-type.js';
-export type { RecognitionStatus, Breed, Variety, Group } from './domain/breed.js';
-export type { ShowType } from './domain/show-type.js';
-export type { EffectiveRuleset } from './domain/effective-ruleset.js';
-export type { RulesetLayer } from './domain/ruleset-layer.js';
-export { resolveEffectiveRuleset } from './domain/resolve-effective-ruleset.js';
+} from './domain/entities/award-type.js';
+export type { RecognitionStatus, Breed, Variety, Group } from './domain/entities/breed.js';
+export type { ShowType } from './domain/entities/show-type.js';
+export type { EffectiveRuleset } from './domain/aggregates/effective-ruleset.js';
+export type { RulesetLayer } from './domain/entities/ruleset-layer.js';
+export { resolveEffectiveRuleset } from './domain/domain-services/resolve-effective-ruleset.js';
 export type {
     ClassPlacement,
     StreamCandidate,
@@ -56,18 +56,18 @@ export type {
     AwardFeederStream,
     ClassFeederStream,
     JudgingScopeResults,
-} from './domain/judging-scope-results.js';
+} from './domain/value-objects/judging-scope-results.js';
 export type {
     ProposedAwardAssignment,
     AwardValidationResult,
     AwardPolicy,
-} from './domain/award-policy.js';
+} from './domain/domain-services/award-policy.js';
 export type {
     CollectiveEntry,
     CollectiveCompetitionResults,
     CollectiveCompetitionKind,
-} from './domain/collective-competition-results.js';
+} from './domain/value-objects/collective-competition-results.js';
 export type {
     CollectiveAwardResult,
     CollectiveAwardPolicy,
-} from './domain/collective-award-policy.js';
+} from './domain/domain-services/collective-award-policy.js';

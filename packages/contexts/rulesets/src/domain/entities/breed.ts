@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { BreedId, VarietyId, GroupId } from './domain-ids.js';
+import type { BreedId, VarietyId, GroupId } from '../value-objects/domain-ids.js';
 
 /** FCI recognition status of a Breed; gates award eligibility. */
 export type RecognitionStatus = 'definitive' | 'provisional' | 'unrecognised';

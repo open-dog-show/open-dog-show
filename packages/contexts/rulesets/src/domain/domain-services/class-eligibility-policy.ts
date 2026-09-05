@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { ClassDefinition } from './class-definition.js';
-import type { DogEligibilityProfile } from './dog-eligibility-profile.js';
-import type { LocalDate } from './local-date.js';
+import type { ClassDefinition } from '../entities/class-definition.js';
+import type { DogEligibilityProfile } from '../value-objects/dog-eligibility-profile.js';
+import type { LocalDate } from '../value-objects/local-date.js';
 
 /**
  * Port: answers whether a Dog may enter a specific Class on a given show day.

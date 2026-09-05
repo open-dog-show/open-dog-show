@@ -3,22 +3,22 @@
 
 import { describe, it, expect } from 'vitest';
 import { meetsAwardRequirements } from '../testing/meets-award-requirements.js';
-import type { GradeId } from '../domain/domain-ids.js';
+import type { GradeId } from '../domain/value-objects/domain-ids.js';
 import {
     asAwardTypeId,
     asClassId,
     asGradeId,
     asGradeScaleId,
     asRulesetLayerId,
-} from '../domain/domain-ids.js';
-import { asAgeMonths } from '../domain/age-months.js';
-import { asEntryRef } from '../domain/entry-ref.js';
-import type { IndividualAwardType } from '../domain/award-type.js';
-import type { ClassDefinition } from '../domain/class-definition.js';
-import type { GradeScale } from '../domain/grade-scale.js';
-import type { EffectiveRuleset } from '../domain/effective-ruleset.js';
-import { LocalDate } from '../domain/local-date.js';
-import type { ClassPlacement } from '../domain/judging-scope-results.js';
+} from '../domain/value-objects/domain-ids.js';
+import { asAgeMonths } from '../domain/value-objects/age-months.js';
+import { asEntryRef } from '../domain/value-objects/entry-ref.js';
+import type { IndividualAwardType } from '../domain/entities/award-type.js';
+import type { ClassDefinition } from '../domain/entities/class-definition.js';
+import type { GradeScale } from '../domain/entities/grade-scale.js';
+import type { EffectiveRuleset } from '../domain/aggregates/effective-ruleset.js';
+import { LocalDate } from '../domain/value-objects/local-date.js';
+import type { ClassPlacement } from '../domain/value-objects/judging-scope-results.js';
 
 // ---------------------------------------------------------------------------
 // Shared fixture

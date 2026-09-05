@@ -3,12 +3,12 @@
 
 import { describe, it, expect } from 'vitest';
 import { FciClassEligibilityPolicy } from '../testing/fci-class-eligibility-policy.js';
-import { asClassId, asGradeScaleId } from '../domain/domain-ids.js';
-import { asAgeMonths } from '../domain/age-months.js';
-import { CertificateKind } from '../domain/certificate-kind.js';
-import type { ClassDefinition } from '../domain/class-definition.js';
-import type { DogEligibilityProfile } from '../domain/dog-eligibility-profile.js';
-import { LocalDate } from '../domain/local-date.js';
+import { asClassId, asGradeScaleId } from '../domain/value-objects/domain-ids.js';
+import { asAgeMonths } from '../domain/value-objects/age-months.js';
+import { CertificateKind } from '../domain/value-objects/certificate-kind.js';
+import type { ClassDefinition } from '../domain/entities/class-definition.js';
+import type { DogEligibilityProfile } from '../domain/value-objects/dog-eligibility-profile.js';
+import { LocalDate } from '../domain/value-objects/local-date.js';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers

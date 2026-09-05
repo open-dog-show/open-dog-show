@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, expectTypeOf, it } from 'vitest';
-import { LocalDate, InvalidLocalDateError } from '../domain/local-date.js';
-import { asAgeMonths } from '../domain/age-months.js';
+import { LocalDate, InvalidLocalDateError } from '../domain/value-objects/local-date.js';
+import { asAgeMonths } from '../domain/value-objects/age-months.js';
 
 describe('LocalDate', () => {
     describe('of — valid construction', () => {

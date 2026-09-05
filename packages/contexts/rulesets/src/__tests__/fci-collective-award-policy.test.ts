@@ -3,9 +3,9 @@
 
 import { describe, it, expect } from 'vitest';
 import { FciCollectiveAwardPolicy } from '../testing/fci-collective-award-policy.js';
-import { asBreedId, asVarietyId } from '../domain/domain-ids.js';
-import { asEntryRef } from '../domain/entry-ref.js';
-import type { CollectiveCompetitionResults } from '../domain/collective-competition-results.js';
+import { asBreedId, asVarietyId } from '../domain/value-objects/domain-ids.js';
+import { asEntryRef } from '../domain/value-objects/entry-ref.js';
+import type { CollectiveCompetitionResults } from '../domain/value-objects/collective-competition-results.js';
 
 const BREED_ID = asBreedId('german-shepherd');
 const VARIETY_ID = asVarietyId('rough-coated');

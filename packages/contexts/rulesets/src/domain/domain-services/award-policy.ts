@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { AwardTypeId } from './domain-ids.js';
-import type { EntryRef } from './entry-ref.js';
-import type { EffectiveRuleset } from './effective-ruleset.js';
-import type { JudgingScopeResults } from './judging-scope-results.js';
+import type { AwardTypeId } from '../value-objects/domain-ids.js';
+import type { EntryRef } from '../value-objects/entry-ref.js';
+import type { EffectiveRuleset } from '../aggregates/effective-ruleset.js';
+import type { JudgingScopeResults } from '../value-objects/judging-scope-results.js';
 
 /**
  * A proposed assignment of one award type to one dog entry.

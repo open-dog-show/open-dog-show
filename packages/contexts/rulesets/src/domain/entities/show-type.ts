@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { ShowTypeId, AwardTypeId } from './domain-ids.js';
-import type { CollectiveCompetitionKind } from './collective-competition-results.js';
+import type { ShowTypeId, AwardTypeId } from '../value-objects/domain-ids.js';
+import type { CollectiveCompetitionKind } from '../value-objects/collective-competition-results.js';
 
 /**
  * A ruleset-owned classification of a Show (e.g. CAC-only, CAC-CACIB, Open,

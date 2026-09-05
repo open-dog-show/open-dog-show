@@ -4,8 +4,8 @@
 import type {
     CollectiveAwardPolicy,
     CollectiveAwardResult,
-} from '../domain/collective-award-policy.js';
-import type { CollectiveCompetitionResults } from '../domain/collective-competition-results.js';
+} from '../domain/domain-services/collective-award-policy.js';
+import type { CollectiveCompetitionResults } from '../domain/value-objects/collective-competition-results.js';
 
 const BREEDERS_MIN = 3;
 const BREEDERS_MAX = 5;

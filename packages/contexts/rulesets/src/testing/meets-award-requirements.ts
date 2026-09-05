@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { GradeId, GradeScaleId } from '../domain/domain-ids.js';
-import type { IndividualAwardType } from '../domain/award-type.js';
-import type { ClassDefinition } from '../domain/class-definition.js';
-import type { EffectiveRuleset } from '../domain/effective-ruleset.js';
-import type { Grade } from '../domain/grade-scale.js';
-import type { ClassPlacement } from '../domain/judging-scope-results.js';
+import type { GradeId, GradeScaleId } from '../domain/value-objects/domain-ids.js';
+import type { IndividualAwardType } from '../domain/entities/award-type.js';
+import type { ClassDefinition } from '../domain/entities/class-definition.js';
+import type { EffectiveRuleset } from '../domain/aggregates/effective-ruleset.js';
+import type { Grade } from '../domain/entities/grade-scale.js';
+import type { ClassPlacement } from '../domain/value-objects/judging-scope-results.js';
 
 /**
  * The outcome of checking a single dog's placement against an

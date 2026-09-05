@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, it, expect } from 'vitest';
-import { resolveEffectiveRuleset } from '../domain/resolve-effective-ruleset.js';
+import { resolveEffectiveRuleset } from '../domain/domain-services/resolve-effective-ruleset.js';
 import {
     asClassId,
     asRulesetLayerId,
@@ -10,14 +10,14 @@ import {
     asGradeScaleId,
     asAwardTypeId,
     asShowTypeId,
-} from '../domain/domain-ids.js';
-import { asAgeMonths } from '../domain/age-months.js';
-import type { RulesetLayer } from '../domain/ruleset-layer.js';
-import { LocalDate } from '../domain/local-date.js';
-import type { ClassDefinition } from '../domain/class-definition.js';
-import type { GradeScale } from '../domain/grade-scale.js';
-import type { AwardType } from '../domain/award-type.js';
-import type { ShowType } from '../domain/show-type.js';
+} from '../domain/value-objects/domain-ids.js';
+import { asAgeMonths } from '../domain/value-objects/age-months.js';
+import type { RulesetLayer } from '../domain/entities/ruleset-layer.js';
+import { LocalDate } from '../domain/value-objects/local-date.js';
+import type { ClassDefinition } from '../domain/entities/class-definition.js';
+import type { GradeScale } from '../domain/entities/grade-scale.js';
+import type { AwardType } from '../domain/entities/award-type.js';
+import type { ShowType } from '../domain/entities/show-type.js';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
