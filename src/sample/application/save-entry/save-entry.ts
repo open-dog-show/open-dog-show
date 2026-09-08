@@ -9,7 +9,12 @@ import {
     type EventIdGenerator,
     type TransactionScope,
 } from '../../../Shared/index.js';
-import type { Entry } from '../../domain/model/entry/entry.js';
+import { asEntryId, asShowId } from '../../domain/shared/domain-ids.js';
+import { createEntry } from '../../domain/model/entry/entry.js';
+// Re-exported so existing callers (`from './save-entry.js'`) still see the
+// error; the canonical definition lives with the `createEntry` factory in the
+// Entry aggregate.
+export { InvalidTransactionScopeError } from '../../domain/model/entry/entry.js';
 import type { SampleUnitOfWork } from '../ports/unit-of-work.js';
 
 /**
@@ -27,36 +32,13 @@ export interface SaveEntryInput {
 }
 
 /**
- * Construct the {@link Entry} aggregate from the use-case input and the
- * transaction scope.
- *
- * An Entry is Club-owned, so only a `club` scope (which carries both the
- * owning `ClubId` and the acting `PrincipalId`) is accepted; an `exhibitor`
- * or `platform` scope has no Club to attribute the Entry to.
- */
-function toEntry(input: SaveEntryInput, scope: TransactionScope): Entry {
-    if (scope.kind !== 'club') {
-        throw new Error(
-            `SaveEntryUseCase requires a club-scoped transaction, received '${scope.kind}'`,
-        );
-    }
-    return {
-        id: input.id,
-        clubId: scope.clubId,
-        principalId: scope.principalId,
-        showId: input.showId,
-        dogName: input.dogName,
-    };
-}
-
-/**
  * Use case: submit (upsert) an Entry and record the `sample.EntrySubmitted`
  * fact in the same transaction (ADR-0014).
  *
  * The transaction boundary, repository construction, and outbox write are all
  * hidden behind the injected {@link SampleUnitOfWork} port, so this class
- * depends only on domain types and `@ods/kernel` — it is trivially unit-testable
- * with a fake unit of work and no Docker.
+ * depends only on domain types and the shared kernel — it is trivially
+ * unit-testable with a fake unit of work and no Docker.
  */
 export class SaveEntryUseCase {
     /**
@@ -76,7 +58,11 @@ export class SaveEntryUseCase {
      */
     async execute(input: SaveEntryInput, scope: TransactionScope): Promise<void> {
         await this.unitOfWork.run(scope, async (ctx) => {
-            const entry = toEntry(input, scope);
+            const entry = createEntry(scope, {
+                id: asEntryId(input.id),
+                showId: asShowId(input.showId),
+                dogName: input.dogName,
+            });
             await ctx.entries.save(entry);
             ctx.appendEvents(
                 createDomainEvent(

@@ -41,9 +41,13 @@ import {
 import { resolveEffectiveRuleset } from '../../../../../../src/rulesets/domain/service/resolve-effective-ruleset.js';
 import { CertificateKind } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/certificate-kind.js';
 import { asClassId } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+import { findOrFail } from '../../../../../../tests/test-kit/index.js';
 import type { AwardTypeId } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
 import { LocalDate } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
-import type { IndividualAwardType } from '../../../../../../src/rulesets/domain/model/effective-ruleset/entities/award-type.js';
+import type {
+    IndividualAwardType,
+    HigherScopeAwardType,
+} from '../../../../../../src/rulesets/domain/model/effective-ruleset/entities/award-type.js';
 import type { EffectiveRuleset } from '../../../../../../src/rulesets/domain/model/effective-ruleset/effective-ruleset.js';
 
 const RESOLVE_DATE: LocalDate = LocalDate.of(2026, 8, 11);
@@ -59,7 +63,10 @@ describe('fciLayer — grade scales', () => {
 
     describe('adult grade scale', () => {
         const adultScale = () =>
-            fciLayer.gradeScales.find((s) => s.id !== FCI_PUPPY_GRADE_SCALE_ID)!;
+            findOrFail(
+                fciLayer.gradeScales.find((s) => s.id !== FCI_PUPPY_GRADE_SCALE_ID),
+                'adult grade scale',
+            );
 
         it('has four grades in ordinal order', () => {
             expect(adultScale().grades).toHaveLength(4);
@@ -93,7 +100,10 @@ describe('fciLayer — grade scales', () => {
 
     describe('puppy grade scale', () => {
         const puppyScale = () =>
-            fciLayer.gradeScales.find((s) => s.id === FCI_PUPPY_GRADE_SCALE_ID)!;
+            findOrFail(
+                fciLayer.gradeScales.find((s) => s.id === FCI_PUPPY_GRADE_SCALE_ID),
+                'puppy grade scale',
+            );
 
         it('exists with id fci-puppy', () => {
             expect(puppyScale()).toBeDefined();
@@ -126,84 +136,114 @@ describe('fciLayer — class definitions', () => {
     });
 
     it('Minor Puppy class is under 6 months, requires vaccination, uses puppy scale', () => {
-        const cls = fciLayer.classDefinitions.find((c) => c.id === 'minor-puppy');
+        const cls = findOrFail(
+            fciLayer.classDefinitions.find((c) => c.id === 'minor-puppy'),
+            'minor-puppy',
+        );
         expect(cls).toBeDefined();
-        expect(cls!.fromAgeMonths).toBeUndefined();
-        expect(cls!.lessThanAgeMonths).toBe(6);
-        expect(cls!.requiredCertificates).toContain(CertificateKind.Vaccination);
-        expect(cls!.gradeScaleId).toBe(FCI_PUPPY_GRADE_SCALE_ID);
-        expect(cls!.awardTypeIds).toHaveLength(0);
+        expect(cls.fromAgeMonths).toBeUndefined();
+        expect(cls.lessThanAgeMonths).toBe(6);
+        expect(cls.requiredCertificates).toContain(CertificateKind.Vaccination);
+        expect(cls.gradeScaleId).toBe(FCI_PUPPY_GRADE_SCALE_ID);
+        expect(cls.awardTypeIds).toHaveLength(0);
     });
 
     it('Puppy class is 6–9 months with no required certificates and uses puppy scale', () => {
-        const cls = fciLayer.classDefinitions.find((c) => c.id === 'puppy');
+        const cls = findOrFail(
+            fciLayer.classDefinitions.find((c) => c.id === 'puppy'),
+            'puppy',
+        );
         expect(cls).toBeDefined();
-        expect(cls!.fromAgeMonths).toBe(6);
-        expect(cls!.lessThanAgeMonths).toBe(9);
-        expect(cls!.requiredCertificates).toEqual([]);
-        expect(cls!.gradeScaleId).toBe(FCI_PUPPY_GRADE_SCALE_ID);
+        expect(cls.fromAgeMonths).toBe(6);
+        expect(cls.lessThanAgeMonths).toBe(9);
+        expect(cls.requiredCertificates).toEqual([]);
+        expect(cls.gradeScaleId).toBe(FCI_PUPPY_GRADE_SCALE_ID);
     });
 
     it('Junior class is 9–18 months and feeds CACIB-J', () => {
-        const cls = fciLayer.classDefinitions.find((c) => c.id === 'junior');
+        const cls = findOrFail(
+            fciLayer.classDefinitions.find((c) => c.id === 'junior'),
+            'junior',
+        );
         expect(cls).toBeDefined();
-        expect(cls!.fromAgeMonths).toBe(9);
-        expect(cls!.lessThanAgeMonths).toBe(18);
-        expect(cls!.awardTypeIds).toContain('cacib-j');
+        expect(cls.fromAgeMonths).toBe(9);
+        expect(cls.lessThanAgeMonths).toBe(18);
+        expect(cls.awardTypeIds).toContain('cacib-j');
     });
 
     it('Intermediate class is 15–24 months and feeds CACIB', () => {
-        const cls = fciLayer.classDefinitions.find((c) => c.id === 'intermediate');
+        const cls = findOrFail(
+            fciLayer.classDefinitions.find((c) => c.id === 'intermediate'),
+            'intermediate',
+        );
         expect(cls).toBeDefined();
-        expect(cls!.fromAgeMonths).toBe(15);
-        expect(cls!.lessThanAgeMonths).toBe(24);
-        expect(cls!.awardTypeIds).toContain('cacib');
+        expect(cls.fromAgeMonths).toBe(15);
+        expect(cls.lessThanAgeMonths).toBe(24);
+        expect(cls.awardTypeIds).toContain('cacib');
     });
 
     it('Open class is 15+ months with no upper bound and feeds CACIB', () => {
-        const cls = fciLayer.classDefinitions.find((c) => c.id === 'open');
+        const cls = findOrFail(
+            fciLayer.classDefinitions.find((c) => c.id === 'open'),
+            'open',
+        );
         expect(cls).toBeDefined();
-        expect(cls!.fromAgeMonths).toBe(15);
-        expect(cls!.lessThanAgeMonths).toBeUndefined();
-        expect(cls!.awardTypeIds).toContain('cacib');
+        expect(cls.fromAgeMonths).toBe(15);
+        expect(cls.lessThanAgeMonths).toBeUndefined();
+        expect(cls.awardTypeIds).toContain('cacib');
     });
 
     it('Working class is 15+ months and requires working certificate', () => {
-        const cls = fciLayer.classDefinitions.find((c) => c.id === 'working');
+        const cls = findOrFail(
+            fciLayer.classDefinitions.find((c) => c.id === 'working'),
+            'working',
+        );
         expect(cls).toBeDefined();
-        expect(cls!.fromAgeMonths).toBe(15);
-        expect(cls!.requiredCertificates).toContain(CertificateKind.WorkingCertificate);
+        expect(cls.fromAgeMonths).toBe(15);
+        expect(cls.requiredCertificates).toContain(CertificateKind.WorkingCertificate);
     });
 
     it('Champion class is 15+ months and requires champion certificate', () => {
-        const cls = fciLayer.classDefinitions.find((c) => c.id === 'champion');
+        const cls = findOrFail(
+            fciLayer.classDefinitions.find((c) => c.id === 'champion'),
+            'champion',
+        );
         expect(cls).toBeDefined();
-        expect(cls!.fromAgeMonths).toBe(15);
-        expect(cls!.requiredCertificates).toContain(CertificateKind.ChampionCertificate);
+        expect(cls.fromAgeMonths).toBe(15);
+        expect(cls.requiredCertificates).toContain(CertificateKind.ChampionCertificate);
     });
 
     it('Veteran class starts at 96 months (8 years) with no upper bound', () => {
-        const cls = fciLayer.classDefinitions.find((c) => c.id === 'veteran');
+        const cls = findOrFail(
+            fciLayer.classDefinitions.find((c) => c.id === 'veteran'),
+            'veteran',
+        );
         expect(cls).toBeDefined();
-        expect(cls!.fromAgeMonths).toBe(96);
-        expect(cls!.lessThanAgeMonths).toBeUndefined();
-        expect(cls!.awardTypeIds).toContain('cacib-v');
+        expect(cls.fromAgeMonths).toBe(96);
+        expect(cls.lessThanAgeMonths).toBeUndefined();
+        expect(cls.awardTypeIds).toContain('cacib-v');
     });
 
     it('Bred by Exhibitor class is 15+ months with bredByExhibitor=true and feeds CACIB', () => {
-        const cls = fciLayer.classDefinitions.find((c) => c.id === 'bred-by-exhibitor');
+        const cls = findOrFail(
+            fciLayer.classDefinitions.find((c) => c.id === 'bred-by-exhibitor'),
+            'bred-by-exhibitor',
+        );
         expect(cls).toBeDefined();
-        expect(cls!.fromAgeMonths).toBe(15);
-        expect(cls!.lessThanAgeMonths).toBeUndefined();
-        expect(cls!.bredByExhibitor).toBe(true);
-        expect(cls!.awardTypeIds).toContain('cacib');
+        expect(cls.fromAgeMonths).toBe(15);
+        expect(cls.lessThanAgeMonths).toBeUndefined();
+        expect(cls.bredByExhibitor).toBe(true);
+        expect(cls.awardTypeIds).toContain('cacib');
     });
 
     it('Honour class has no age restriction', () => {
-        const cls = fciLayer.classDefinitions.find((c) => c.id === 'honour');
+        const cls = findOrFail(
+            fciLayer.classDefinitions.find((c) => c.id === 'honour'),
+            'honour',
+        );
         expect(cls).toBeDefined();
-        expect(cls!.fromAgeMonths).toBeUndefined();
-        expect(cls!.lessThanAgeMonths).toBeUndefined();
+        expect(cls.fromAgeMonths).toBeUndefined();
+        expect(cls.lessThanAgeMonths).toBeUndefined();
     });
 });
 
@@ -219,7 +259,7 @@ describe('fciLayer — award types', () => {
         expect(at).toBeDefined();
         expect(at!.scope).toBe('per-sex');
         expect(at!.isDiscretionary).toBe(true);
-        expect(at!.minimumPlacement).toBe(1);
+        expect(at!.worstEligiblePlacement).toBe(1);
         // minimumGradeId must be the Excellent grade on the FCI adult scale
         const excellent = fciLayer.gradeScales[0]!.grades.find((g) => g.ordinal === 0);
         expect(at!.minimumGradeId).toBe(excellent!.id);
@@ -233,7 +273,7 @@ describe('fciLayer — award types', () => {
         expect(at).toBeDefined();
         expect(at!.scope).toBe('per-sex');
         expect(at!.isDiscretionary).toBe(true);
-        expect(at!.minimumPlacement).toBeUndefined();
+        expect(at!.worstEligiblePlacement).toBeUndefined();
     });
 
     it('CACIB-J is per-sex, discretionary, Excellent-1st', () => {
@@ -243,7 +283,7 @@ describe('fciLayer — award types', () => {
         expect(at).toBeDefined();
         expect(at!.scope).toBe('per-sex');
         expect(at!.isDiscretionary).toBe(true);
-        expect(at!.minimumPlacement).toBe(1);
+        expect(at!.worstEligiblePlacement).toBe(1);
     });
 
     it('CACIB-V is per-sex, discretionary, Excellent-1st', () => {
@@ -253,7 +293,7 @@ describe('fciLayer — award types', () => {
         expect(at).toBeDefined();
         expect(at!.scope).toBe('per-sex');
         expect(at!.isDiscretionary).toBe(true);
-        expect(at!.minimumPlacement).toBe(1);
+        expect(at!.worstEligiblePlacement).toBe(1);
     });
 
     it('BOB is breed scope', () => {
@@ -352,80 +392,84 @@ describe('fciLayer — metadata', () => {
 // ---------------------------------------------------------------------------
 
 describe('fciLayer — fedBy declarations (ADR-0017)', () => {
-    const individual = (id: AwardTypeId): IndividualAwardType => {
+    const individual = (id: AwardTypeId): HigherScopeAwardType => {
         const at = fciLayer.awardTypes.find((a) => a.id === id);
-        if (!at || at.scope === 'collective') {
-            throw new Error(`individual award type ${id} not found`);
+        if (at === undefined || at.scope === 'per-sex' || at.scope === 'collective') {
+            throw new Error(`higher-scope award type ${id} not found`);
         }
         return at;
     };
 
     it('BOB is fed by CACIB + junior + veteran class wins', () => {
         expect(individual(FCI_AWARD_BOB).fedBy).toEqual([
-            { awardTypeId: FCI_AWARD_CACIB },
-            { classId: asClassId('junior') },
-            { classId: asClassId('veteran') },
+            { kind: 'award', awardTypeId: FCI_AWARD_CACIB },
+            { kind: 'class', classId: asClassId('junior') },
+            { kind: 'class', classId: asClassId('veteran') },
         ]);
     });
 
     it('BOS is fed by CACIB + junior + veteran class wins (same feeders as BOB)', () => {
         expect(individual(FCI_AWARD_BOS).fedBy).toEqual([
-            { awardTypeId: FCI_AWARD_CACIB },
-            { classId: asClassId('junior') },
-            { classId: asClassId('veteran') },
+            { kind: 'award', awardTypeId: FCI_AWARD_CACIB },
+            { kind: 'class', classId: asClassId('junior') },
+            { kind: 'class', classId: asClassId('veteran') },
         ]);
     });
 
     it('BIG is fed by BOB winners', () => {
-        expect(individual(FCI_AWARD_BIG).fedBy).toEqual([{ awardTypeId: FCI_AWARD_BOB }]);
+        expect(individual(FCI_AWARD_BIG).fedBy).toEqual([
+            { kind: 'award', awardTypeId: FCI_AWARD_BOB },
+        ]);
     });
 
     it('BIS is fed by BIG winners', () => {
-        expect(individual(FCI_AWARD_BIS).fedBy).toEqual([{ awardTypeId: FCI_AWARD_BIG }]);
+        expect(individual(FCI_AWARD_BIS).fedBy).toEqual([
+            { kind: 'award', awardTypeId: FCI_AWARD_BIG },
+        ]);
     });
 
     it('Best Junior is fed by the junior class win (not CACIB-J)', () => {
-        expect(individual(FCI_AWARD_BEST_JUNIOR).fedBy).toEqual([{ classId: asClassId('junior') }]);
+        expect(individual(FCI_AWARD_BEST_JUNIOR).fedBy).toEqual([
+            { kind: 'class', classId: asClassId('junior') },
+        ]);
     });
 
     it('Best Veteran is fed by the veteran class win (not CACIB-V)', () => {
         expect(individual(FCI_AWARD_BEST_VETERAN).fedBy).toEqual([
-            { classId: asClassId('veteran') },
+            { kind: 'class', classId: asClassId('veteran') },
         ]);
     });
 
     it('Best Puppy is fed by the puppy class win', () => {
-        expect(individual(FCI_AWARD_BEST_PUPPY).fedBy).toEqual([{ classId: asClassId('puppy') }]);
+        expect(individual(FCI_AWARD_BEST_PUPPY).fedBy).toEqual([
+            { kind: 'class', classId: asClassId('puppy') },
+        ]);
     });
 
     it('Best Minor Puppy is fed by the minor-puppy class win', () => {
         expect(individual(FCI_AWARD_BEST_MINOR_PUPPY).fedBy).toEqual([
-            { classId: asClassId('minor-puppy') },
+            { kind: 'class', classId: asClassId('minor-puppy') },
         ]);
     });
 
     it('CACIB-J is NOT listed as a feeder on any award', () => {
         for (const at of fciLayer.awardTypes) {
-            if (at.scope === 'collective') continue;
-            const fedBy = (at as IndividualAwardType).fedBy;
-            if (!fedBy) continue;
-            expect(fedBy).not.toContainEqual({ awardTypeId: FCI_AWARD_CACIB_J });
+            if (at.scope === 'per-sex' || at.scope === 'collective') continue;
+            expect(at.fedBy).not.toContainEqual({ kind: 'award', awardTypeId: FCI_AWARD_CACIB_J });
         }
     });
 
     it('CACIB-V is NOT listed as a feeder on any award', () => {
         for (const at of fciLayer.awardTypes) {
-            if (at.scope === 'collective') continue;
-            const fedBy = (at as IndividualAwardType).fedBy;
-            if (!fedBy) continue;
-            expect(fedBy).not.toContainEqual({ awardTypeId: FCI_AWARD_CACIB_V });
+            if (at.scope === 'per-sex' || at.scope === 'collective') continue;
+            expect(at.fedBy).not.toContainEqual({ kind: 'award', awardTypeId: FCI_AWARD_CACIB_V });
         }
     });
 
     it('per-sex award types have no fedBy (feeders are breed/group/show only)', () => {
         for (const at of fciLayer.awardTypes) {
             if (at.scope === 'per-sex') {
-                expect((at as IndividualAwardType).fedBy).toBeUndefined();
+                expect('fedBy' in at).toBe(false);
             }
         }
     });
@@ -473,23 +517,32 @@ describe('kmshLayer — structure', () => {
     });
 
     it('overrides Minor Puppy class with fromAgeMonths=3 (KMSH ART.23)', () => {
-        const cls = kmshLayer.classDefinitions.find((c) => c.id === 'minor-puppy');
+        const cls = findOrFail(
+            kmshLayer.classDefinitions.find((c) => c.id === 'minor-puppy'),
+            'minor-puppy',
+        );
         expect(cls).toBeDefined();
-        expect(cls!.fromAgeMonths).toBe(3);
-        expect(cls!.lessThanAgeMonths).toBe(6);
+        expect(cls.fromAgeMonths).toBe(3);
+        expect(cls.lessThanAgeMonths).toBe(6);
     });
 
     it('adds the Fokkersklas class with bredByExhibitor=true', () => {
-        const cls = kmshLayer.classDefinitions.find((c) => c.id === KMSH_CLASS_FOKKERSKLAS);
+        const cls = findOrFail(
+            kmshLayer.classDefinitions.find((c) => c.id === KMSH_CLASS_FOKKERSKLAS),
+            'Fokkersklas',
+        );
         expect(cls).toBeDefined();
-        expect(cls!.bredByExhibitor).toBe(true);
-        expect(cls!.fromAgeMonths).toBe(15);
+        expect(cls.bredByExhibitor).toBe(true);
+        expect(cls.fromAgeMonths).toBe(15);
     });
 
     it('Fokkersklas feeds both CAC and RCAC', () => {
-        const cls = kmshLayer.classDefinitions.find((c) => c.id === KMSH_CLASS_FOKKERSKLAS);
-        expect(cls!.awardTypeIds).toContain(KMSH_AWARD_CAC);
-        expect(cls!.awardTypeIds).toContain(KMSH_AWARD_RCAC);
+        const cls = findOrFail(
+            kmshLayer.classDefinitions.find((c) => c.id === KMSH_CLASS_FOKKERSKLAS),
+            'Fokkersklas',
+        );
+        expect(cls.awardTypeIds).toContain(KMSH_AWARD_CAC);
+        expect(cls.awardTypeIds).toContain(KMSH_AWARD_RCAC);
     });
 
     it('adds the national CAC award type', () => {
@@ -506,7 +559,7 @@ describe('kmshLayer — structure', () => {
         expect(at).toBeDefined();
         expect(at!.scope).toBe('per-sex');
         expect(at!.isDiscretionary).toBe(true);
-        expect(at!.minimumPlacement).toBeUndefined();
+        expect(at!.worstEligiblePlacement).toBeUndefined();
     });
 
     it('KMSH layer adds no grade scale overrides (language is not a rule difference, ADR-0010)', () => {
@@ -537,14 +590,20 @@ describe('resolveEffectiveRuleset with FCI + KMSH layers', () => {
     });
 
     it('Fokkersklas is present with bredByExhibitor=true', () => {
-        const cls = ruleset.classDefinitions.find((c) => c.id === KMSH_CLASS_FOKKERSKLAS);
+        const cls = findOrFail(
+            ruleset.classDefinitions.find((c) => c.id === KMSH_CLASS_FOKKERSKLAS),
+            'Fokkersklas',
+        );
         expect(cls).toBeDefined();
-        expect(cls!.bredByExhibitor).toBe(true);
+        expect(cls.bredByExhibitor).toBe(true);
     });
 
     it('Minor Puppy class is overridden with fromAgeMonths=3', () => {
-        const cls = ruleset.classDefinitions.find((c) => c.id === 'minor-puppy');
-        expect(cls!.fromAgeMonths).toBe(3);
+        const cls = findOrFail(
+            ruleset.classDefinitions.find((c) => c.id === 'minor-puppy'),
+            'minor-puppy',
+        );
+        expect(cls.fromAgeMonths).toBe(3);
     });
 
     it('has 17 award types (15 FCI + CAC + RCAC)', () => {
@@ -576,76 +635,84 @@ describe('resolveEffectiveRuleset with FCI + KMSH layers', () => {
 // ---------------------------------------------------------------------------
 
 describe('fedBy layering — FCI base vs KMSH override', () => {
-    const individual = (ruleset: EffectiveRuleset, id: AwardTypeId): IndividualAwardType => {
+    const individual = (ruleset: EffectiveRuleset, id: AwardTypeId): HigherScopeAwardType => {
         const at = ruleset.awardTypes.find((a) => a.id === id);
-        if (!at || at.scope === 'collective') {
-            throw new Error(`individual award type ${id} not found`);
+        if (at === undefined || at.scope === 'per-sex' || at.scope === 'collective') {
+            throw new Error(`higher-scope award type ${id} not found`);
         }
-        return at as IndividualAwardType;
+        return at;
     };
 
     it('FCI-only: BOB fedBy has no national CAC feeder', () => {
         const ruleset = resolveEffectiveRuleset([fciLayer], RESOLVE_DATE);
         expect(individual(ruleset, FCI_AWARD_BOB).fedBy).toEqual([
-            { awardTypeId: FCI_AWARD_CACIB },
-            { classId: asClassId('junior') },
-            { classId: asClassId('veteran') },
+            { kind: 'award', awardTypeId: FCI_AWARD_CACIB },
+            { kind: 'class', classId: asClassId('junior') },
+            { kind: 'class', classId: asClassId('veteran') },
         ]);
     });
 
     it('FCI-only: BOS fedBy has no national CAC feeder', () => {
         const ruleset = resolveEffectiveRuleset([fciLayer], RESOLVE_DATE);
         expect(individual(ruleset, FCI_AWARD_BOS).fedBy).toEqual([
-            { awardTypeId: FCI_AWARD_CACIB },
-            { classId: asClassId('junior') },
-            { classId: asClassId('veteran') },
+            { kind: 'award', awardTypeId: FCI_AWARD_CACIB },
+            { kind: 'class', classId: asClassId('junior') },
+            { kind: 'class', classId: asClassId('veteran') },
         ]);
     });
 
     it('FCI + KMSH: BOB fedBy adds the national CAC feeder (wholesale override)', () => {
         const ruleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
         expect(individual(ruleset, FCI_AWARD_BOB).fedBy).toEqual([
-            { awardTypeId: FCI_AWARD_CACIB },
-            { awardTypeId: KMSH_AWARD_CAC },
-            { classId: asClassId('junior') },
-            { classId: asClassId('veteran') },
+            { kind: 'award', awardTypeId: FCI_AWARD_CACIB },
+            { kind: 'award', awardTypeId: KMSH_AWARD_CAC },
+            { kind: 'class', classId: asClassId('junior') },
+            { kind: 'class', classId: asClassId('veteran') },
         ]);
     });
 
     it('FCI + KMSH: BOS fedBy adds the national CAC feeder (wholesale override)', () => {
         const ruleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
         expect(individual(ruleset, FCI_AWARD_BOS).fedBy).toEqual([
-            { awardTypeId: FCI_AWARD_CACIB },
-            { awardTypeId: KMSH_AWARD_CAC },
-            { classId: asClassId('junior') },
-            { classId: asClassId('veteran') },
+            { kind: 'award', awardTypeId: FCI_AWARD_CACIB },
+            { kind: 'award', awardTypeId: KMSH_AWARD_CAC },
+            { kind: 'class', classId: asClassId('junior') },
+            { kind: 'class', classId: asClassId('veteran') },
         ]);
     });
 
     it('FCI + KMSH: BIG/BIS feeders are unchanged by the KMSH layer', () => {
         const ruleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
-        expect(individual(ruleset, FCI_AWARD_BIG).fedBy).toEqual([{ awardTypeId: FCI_AWARD_BOB }]);
-        expect(individual(ruleset, FCI_AWARD_BIS).fedBy).toEqual([{ awardTypeId: FCI_AWARD_BIG }]);
+        expect(individual(ruleset, FCI_AWARD_BIG).fedBy).toEqual([
+            { kind: 'award', awardTypeId: FCI_AWARD_BOB },
+        ]);
+        expect(individual(ruleset, FCI_AWARD_BIS).fedBy).toEqual([
+            { kind: 'award', awardTypeId: FCI_AWARD_BIG },
+        ]);
     });
 
     it('FCI + KMSH: Best Junior/Veteran/Puppy/Minor Puppy feeders are unchanged', () => {
         const ruleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
         expect(individual(ruleset, FCI_AWARD_BEST_JUNIOR).fedBy).toEqual([
-            { classId: asClassId('junior') },
+            { kind: 'class', classId: asClassId('junior') },
         ]);
         expect(individual(ruleset, FCI_AWARD_BEST_VETERAN).fedBy).toEqual([
-            { classId: asClassId('veteran') },
+            { kind: 'class', classId: asClassId('veteran') },
         ]);
         expect(individual(ruleset, FCI_AWARD_BEST_PUPPY).fedBy).toEqual([
-            { classId: asClassId('puppy') },
+            { kind: 'class', classId: asClassId('puppy') },
         ]);
         expect(individual(ruleset, FCI_AWARD_BEST_MINOR_PUPPY).fedBy).toEqual([
-            { classId: asClassId('minor-puppy') },
+            { kind: 'class', classId: asClassId('minor-puppy') },
         ]);
     });
 
     it('FCI + KMSH: national CAC award type has no fedBy (per-sex)', () => {
         const ruleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
-        expect(individual(ruleset, KMSH_AWARD_CAC).fedBy).toBeUndefined();
+        const cac = ruleset.awardTypes.find((a) => a.id === KMSH_AWARD_CAC);
+        expect(cac).toBeDefined();
+        if (cac !== undefined) {
+            expect('fedBy' in cac).toBe(false);
+        }
     });
 });

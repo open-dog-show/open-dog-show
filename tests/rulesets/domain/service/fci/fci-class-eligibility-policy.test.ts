@@ -53,6 +53,7 @@ function makeProfile(overrides: Partial<DogEligibilityProfile> = {}): DogEligibi
     return {
         dateOfBirth: BORN_EXACTLY_3M,
         heldCertificates: [],
+        handlerIsBreeder: false,
         ...overrides,
     };
 }
@@ -69,28 +70,28 @@ describe('FciClassEligibilityPolicy — age window', () => {
             const classDef = makeClass({ fromAgeMonths: 3 });
             const profile = makeProfile({ dateOfBirth: BORN_UNDER_3M });
 
-            expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(false);
+            expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(false);
         });
 
         it('is eligible when dog age equals fromAgeMonths exactly (boundary)', () => {
             const classDef = makeClass({ fromAgeMonths: 3 });
             const profile = makeProfile({ dateOfBirth: BORN_EXACTLY_3M });
 
-            expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
+            expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(true);
         });
 
         it('is eligible when dog age is greater than fromAgeMonths', () => {
             const classDef = makeClass({ fromAgeMonths: 3 });
             const profile = makeProfile({ dateOfBirth: BORN_OVER_3M });
 
-            expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
+            expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(true);
         });
 
         it('applies no lower-bound check when fromAgeMonths is undefined', () => {
             const classDef = makeClass({ fromAgeMonths: undefined, lessThanAgeMonths: 10 });
             const profile = makeProfile({ dateOfBirth: BORN_UNDER_3M });
 
-            expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
+            expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(true);
         });
     });
 
@@ -99,28 +100,28 @@ describe('FciClassEligibilityPolicy — age window', () => {
             const classDef = makeClass({ lessThanAgeMonths: 3 });
             const profile = makeProfile({ dateOfBirth: BORN_EXACTLY_3M });
 
-            expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(false);
+            expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(false);
         });
 
         it('is ineligible when dog age exceeds lessThanAgeMonths', () => {
             const classDef = makeClass({ lessThanAgeMonths: 3 });
             const profile = makeProfile({ dateOfBirth: BORN_OVER_3M });
 
-            expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(false);
+            expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(false);
         });
 
         it('is eligible when dog age is strictly less than lessThanAgeMonths', () => {
             const classDef = makeClass({ lessThanAgeMonths: 3 });
             const profile = makeProfile({ dateOfBirth: BORN_UNDER_3M });
 
-            expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
+            expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(true);
         });
 
         it('applies no upper-bound check when lessThanAgeMonths is undefined', () => {
             const classDef = makeClass({ fromAgeMonths: 3, lessThanAgeMonths: undefined });
             const profile = makeProfile({ dateOfBirth: BORN_OVER_3M });
 
-            expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
+            expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(true);
         });
     });
 
@@ -128,15 +129,17 @@ describe('FciClassEligibilityPolicy — age window', () => {
         const classDef = makeClass({ fromAgeMonths: 3, lessThanAgeMonths: 6 });
         const profile = makeProfile({ dateOfBirth: BORN_OVER_3M });
 
-        expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
+        expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(true);
     });
 
-    it('is ineligible when showDate is before dateOfBirth (negative age guard)', () => {
+    it('throws when showDate is before dateOfBirth (negative age surfaces, not fail-closed)', () => {
         const classDef = makeClass(); // no age bounds
         const futureBirth: LocalDate = LocalDate.of(2026, 9, 1);
         const profile = makeProfile({ dateOfBirth: futureBirth });
 
-        expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(false);
+        // A show date before the dog's date of birth is a corrupt profile — it
+        // must surface as a RangeError rather than silently filtering the dog out.
+        expect(() => policy.isEligible(classDef, profile, SHOW_DATE)).toThrow(RangeError);
     });
 });
 
@@ -149,7 +152,7 @@ describe('FciClassEligibilityPolicy — required certificates', () => {
         const classDef = makeClass({ requiredCertificates: [CertificateKind.ChampionCertificate] });
         const profile = makeProfile({ heldCertificates: [] });
 
-        expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(false);
+        expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(false);
     });
 
     it('is eligible when champion-certificate is required and held', () => {
@@ -158,14 +161,14 @@ describe('FciClassEligibilityPolicy — required certificates', () => {
             heldCertificates: [CertificateKind.ChampionCertificate],
         });
 
-        expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
+        expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(true);
     });
 
     it('is ineligible when working-certificate is required but not held', () => {
         const classDef = makeClass({ requiredCertificates: [CertificateKind.WorkingCertificate] });
         const profile = makeProfile({ heldCertificates: [] });
 
-        expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(false);
+        expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(false);
     });
 
     it('is eligible when working-certificate is required and held', () => {
@@ -174,21 +177,21 @@ describe('FciClassEligibilityPolicy — required certificates', () => {
             heldCertificates: [CertificateKind.WorkingCertificate],
         });
 
-        expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
+        expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(true);
     });
 
     it('is ineligible when vaccination is required but not held', () => {
         const classDef = makeClass({ requiredCertificates: [CertificateKind.Vaccination] });
         const profile = makeProfile({ heldCertificates: [] });
 
-        expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(false);
+        expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(false);
     });
 
     it('is eligible when vaccination is required and held', () => {
         const classDef = makeClass({ requiredCertificates: [CertificateKind.Vaccination] });
         const profile = makeProfile({ heldCertificates: [CertificateKind.Vaccination] });
 
-        expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
+        expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(true);
     });
 
     it('is ineligible when one of multiple required certificates is missing', () => {
@@ -202,7 +205,7 @@ describe('FciClassEligibilityPolicy — required certificates', () => {
             heldCertificates: [CertificateKind.ChampionCertificate],
         });
 
-        expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(false);
+        expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(false);
     });
 });
 
@@ -215,21 +218,21 @@ describe('FciClassEligibilityPolicy — requiresBreederHandler', () => {
         const classDef = makeClass({ bredByExhibitor: true });
         const profile = makeProfile();
 
-        expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(false);
+        expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(false);
     });
 
     it('is eligible when bredByExhibitor is true and handlerIsBreeder is true', () => {
         const classDef = makeClass({ bredByExhibitor: true });
-        const profile = makeProfile();
+        const profile = makeProfile({ handlerIsBreeder: true });
 
-        expect(policy.isEligible(classDef, profile, SHOW_DATE, true)).toBe(true);
+        expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(true);
     });
 
     it('is eligible when bredByExhibitor is false regardless of handlerIsBreeder', () => {
         const classDef = makeClass({ bredByExhibitor: false });
         const profile = makeProfile();
 
-        expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
+        expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(true);
     });
 });
 
@@ -246,6 +249,6 @@ describe('FciClassEligibilityPolicy — class with no certificate restrictions',
         });
         const profile = makeProfile({ dateOfBirth: BORN_OVER_3M, heldCertificates: [] });
 
-        expect(policy.isEligible(classDef, profile, SHOW_DATE, false)).toBe(true);
+        expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(true);
     });
 });

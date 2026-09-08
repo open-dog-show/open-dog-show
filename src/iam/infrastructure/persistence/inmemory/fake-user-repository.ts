@@ -25,6 +25,25 @@ export class FakeUserRepository implements UserRepository {
         this.store.set(user.id, user);
     }
 
+    async saveProfileFacts(user: User): Promise<void> {
+        // Merge only the refreshable profile facts, preserving the stored
+        // identity (id, external subject) and — critically — `status`, so a
+        // profile refresh on a returning login can never clobber a concurrent
+        // suspension (lost-update guard).
+        const stored = this.store.get(user.id);
+        if (stored === undefined) {
+            // A profile refresh mirrors `UPDATE ... WHERE id = ?`: it cannot
+            // resurrect a row deleted between lookup and refresh, so leave it
+            // absent rather than rebuilding an aggregate from profile facts alone.
+            return;
+        }
+        this.store.set(user.id, {
+            ...stored,
+            displayName: user.displayName,
+            email: user.email,
+        });
+    }
+
     async createIfAbsent(user: User): Promise<User> {
         // Atomic in this in-memory fake: the existence check and the insert run
         // in the same synchronous step (no await between them), so two

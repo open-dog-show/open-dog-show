@@ -14,8 +14,10 @@ export class InvalidLocalDateError extends Error {
     readonly month: number;
     readonly day: number;
 
-    constructor(year: number, month: number, day: number, reason: string) {
-        super(`Invalid calendar date { year: ${year}, month: ${month}, day: ${day} }: ${reason}`);
+    constructor(year: number, month: number, day: number) {
+        super(
+            `Invalid calendar date { year: ${year}, month: ${month}, day: ${day} }: not a real Gregorian calendar date`,
+        );
         this.name = 'InvalidLocalDateError';
         this.year = year;
         this.month = month;
@@ -55,7 +57,7 @@ export class LocalDate {
             date.getUTCMonth() !== month - 1 ||
             date.getUTCDate() !== day
         ) {
-            throw new InvalidLocalDateError(year, month, day, 'not a real Gregorian calendar date');
+            throw new InvalidLocalDateError(year, month, day);
         }
         this.#date = date;
         this.#ms = date.getTime();
@@ -92,16 +94,6 @@ export class LocalDate {
     /** Value equality — two LocalDate instances are equal iff they denote the same calendar day. */
     equals(other: LocalDate): boolean {
         return this.#ms === other.#ms;
-    }
-
-    /** True when this date is strictly before `other` on the calendar. */
-    isBefore(other: LocalDate): boolean {
-        return this.#ms < other.#ms;
-    }
-
-    /** True when this date is strictly after `other` on the calendar. */
-    isAfter(other: LocalDate): boolean {
-        return this.#ms > other.#ms;
     }
 
     /**

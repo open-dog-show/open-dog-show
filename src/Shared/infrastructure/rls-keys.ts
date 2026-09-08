@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import type { ClubId, PrincipalId } from '../domain/domain-ids.js';
 import type { TransactionScope } from '../domain/transaction-scope.js';
 
 /**
@@ -11,8 +12,7 @@ import type { TransactionScope } from '../domain/transaction-scope.js';
  * `asPrincipalId` factories are plain casts and accept `''`).  Nullability is
  * therefore a function of `scope.kind`, never of string truthiness, so an
  * applicable-but-empty id is preserved verbatim — the outbox writer binds it
- * and lets PostgreSQL reject it as an invalid UUID, exactly as the
- * pre-refactor code did.
+ * and lets PostgreSQL reject it as an invalid UUID.
  *
  * The RLS session-variable setter consumes this with `?? ''` (the `set_config`
  * GUC needs text, and `nullif(current_setting(...), '')::uuid` collapses `''`
@@ -24,8 +24,8 @@ import type { TransactionScope } from '../domain/transaction-scope.js';
  * (ADR-0005); only the TypeScript field is renamed.
  */
 export interface RlsKeys {
-    readonly clubId: string | null;
-    readonly principalId: string | null;
+    readonly clubId: ClubId | null;
+    readonly principalId: PrincipalId | null;
 }
 
 /**
@@ -48,5 +48,15 @@ export function scopeToRlsKeys(scope: TransactionScope): RlsKeys {
             return { clubId: null, principalId: scope.principalId };
         case 'platform':
             return { clubId: null, principalId: null };
+        default:
+            // Exhaustiveness guard: a future TransactionScope variant added
+            // without a case here fails to compile (assertNever rejects the
+            // narrowed non-never type), rather than silently returning undefined.
+            return assertNever(scope);
     }
+}
+
+/** Compile-time exhaustiveness check for an unreachable `never` branch. */
+function assertNever(value: never): never {
+    throw new Error(`Unexpected TransactionScope kind: ${String(value)}`);
 }

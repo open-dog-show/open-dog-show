@@ -20,6 +20,23 @@ import type { EventId, EventType, AggregateId } from './domain-ids.js';
 export type EventScope = 'club' | 'exhibitor' | 'platform';
 
 /**
+ * Casts a raw string to an {@link EventScope}, **validating** it is one of the
+ * three known scopes. Mirrors `asEventType`: a corrupt `scope` from a database
+ * row or JSON must be rejected at the boundary rather than propagated as a
+ * typed event.
+ *
+ * @throws {TypeError} when `value` is not a known EventScope.
+ */
+export function asEventScope(value: string): EventScope {
+    if (value !== 'club' && value !== 'exhibitor' && value !== 'platform') {
+        throw new TypeError(
+            `Invalid EventScope '${value}': expected 'club', 'exhibitor', or 'platform'.`,
+        );
+    }
+    return value;
+}
+
+/**
  * An immutable record of something that has already happened in the domain.
  *
  * Domain events are facts — they describe state changes that have already
@@ -78,10 +95,13 @@ export interface CreateDomainEventParams<TPayload> {
 /**
  * Factory for creating a new {@link DomainEvent}.
  *
- * Using a factory instead of an object literal guarantees that `eventId`
- * and `occurredAt` are always sourced from the injected ports — making
- * every event deterministic under test and free of hidden I/O at the
- * call site.
+ * Using a factory instead of an object literal defaults `eventId` and
+ * `occurredAt` to the injected ports — making every event deterministic
+ * under test and free of hidden I/O at the call site — unless a caller
+ * overrides them via `params.eventId` / `params.occurredAt` (e.g. tests
+ * supplying deterministic values). `DomainEvent` is a structural interface,
+ * so a literal-constructed event bypasses these defaults; the factory is the
+ * recommended construction path.
  *
  * @param params - Static properties of the event; `eventId` and
  *   `occurredAt` may be omitted and will be resolved via `deps`.

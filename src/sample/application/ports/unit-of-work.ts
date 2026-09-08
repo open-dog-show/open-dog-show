@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { DomainEvent, TransactionScope } from '../../../Shared/index.js';
-import type { EntryRepository } from '../../domain/model/entry/entry.js';
-import type { ShowRepository } from '../../domain/model/show/show.js';
+import type { EntryRepository } from '../../domain/model/entry/entry-repository.js';
+import type { ShowRepository } from '../../domain/model/show/show-repository.js';
 
 /**
  * The repositories and event sink available inside one sample-context
@@ -23,7 +23,7 @@ export interface SampleUnitOfWorkContext {
      * Queues domain events for atomic outbox-write at the end of the unit of
      * work. Read-only operations simply do not call this.
      */
-    appendEvents(...events: DomainEvent<unknown>[]): void;
+    appendEvents(...events: readonly DomainEvent<unknown>[]): void;
 }
 
 /**

@@ -13,4 +13,11 @@ import type { LocalDate } from './local-date.js';
 export interface DogEligibilityProfile {
     readonly dateOfBirth: LocalDate;
     readonly heldCertificates: ReadonlyArray<CertificateKind>;
+    /**
+     * Whether the dog's handler is also its breeder — entry-side data that drives
+     * the Bred-by-Exhibitor class rule. Lives in the profile alongside the other
+     * entry-side facts (e.g. `heldCertificates`) rather than trailing the
+     * `isEligible` parameter list as a bare boolean.
+     */
+    readonly handlerIsBreeder: boolean;
 }

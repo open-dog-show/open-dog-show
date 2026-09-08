@@ -6,12 +6,12 @@ import { FciAwardPolicy } from '../../../../../src/rulesets/domain/service/fci/f
 import {
     asAwardTypeId,
     asClassId,
-    asGradeId,
     asGradeScaleId,
     asRulesetLayerId,
 } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
 import { asAgeMonths } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/age-months.js';
 import { asEntryRef } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/entry-ref.js';
+import { asPlacement } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/placement.js';
 import type {
     AwardTypeId,
     ClassId,
@@ -54,9 +54,7 @@ import {
 // Shared grade IDs
 // ---------------------------------------------------------------------------
 
-const EXCELLENT = asGradeId('excellent');
-const VERY_GOOD = asGradeId('very-good');
-const GRADE_SCALE_ID = asGradeScaleId('fci-standard');
+const GRADE_SCALE_ID = asGradeScaleId('test-standard');
 
 // ---------------------------------------------------------------------------
 // Shared award type IDs
@@ -85,62 +83,66 @@ const VETERAN_CLASS_ID = asClassId('veteran');
 const gradeScale: GradeScale = {
     id: GRADE_SCALE_ID,
     grades: [
-        { id: EXCELLENT, ordinal: 0 },
-        { id: VERY_GOOD, ordinal: 1 },
+        { id: FCI_GRADE_EXCELLENT, ordinal: 0 },
+        { id: FCI_GRADE_VERY_GOOD, ordinal: 1 },
     ],
-    placeableThresholdId: VERY_GOOD,
+    placeableThresholdId: FCI_GRADE_VERY_GOOD,
     specialOutcomes: [],
 };
 
 const awardTypes: ReadonlyArray<AwardType> = [
     {
         id: CACIB_ID,
-        minimumGradeId: EXCELLENT,
-        minimumPlacement: 1,
+        minimumGradeId: FCI_GRADE_EXCELLENT,
+        worstEligiblePlacement: asPlacement(1),
         isDiscretionary: true,
         scope: 'per-sex',
     },
     {
         id: CACIB_J_ID,
-        minimumGradeId: EXCELLENT,
-        minimumPlacement: 1,
+        minimumGradeId: FCI_GRADE_EXCELLENT,
+        worstEligiblePlacement: asPlacement(1),
         isDiscretionary: true,
         scope: 'per-sex',
     },
     {
         id: CACIB_V_ID,
-        minimumGradeId: EXCELLENT,
-        minimumPlacement: 1,
+        minimumGradeId: FCI_GRADE_EXCELLENT,
+        worstEligiblePlacement: asPlacement(1),
         isDiscretionary: true,
         scope: 'per-sex',
     },
     {
         id: BOB_ID,
-        minimumGradeId: EXCELLENT,
-        minimumPlacement: undefined,
+        minimumGradeId: FCI_GRADE_EXCELLENT,
+        worstEligiblePlacement: undefined,
         isDiscretionary: false,
         scope: 'breed',
+        fedBy: [],
     },
     {
         id: BOS_ID,
-        minimumGradeId: EXCELLENT,
-        minimumPlacement: undefined,
+        minimumGradeId: FCI_GRADE_EXCELLENT,
+        worstEligiblePlacement: undefined,
         isDiscretionary: false,
         scope: 'breed',
+        fedBy: [],
     },
     {
         id: BIG_ID,
-        minimumGradeId: EXCELLENT,
-        minimumPlacement: undefined,
+        minimumGradeId: FCI_GRADE_EXCELLENT,
+        worstEligiblePlacement: undefined,
         isDiscretionary: false,
         scope: 'group',
+        fedBy: [],
     },
     {
         id: BIS_ID,
-        minimumGradeId: EXCELLENT,
-        minimumPlacement: undefined,
+        minimumGradeId: FCI_GRADE_EXCELLENT,
+        worstEligiblePlacement: undefined,
         isDiscretionary: false,
         scope: 'show',
+        fedBy: [],
     },
 ];
 
@@ -200,8 +202,8 @@ const FCI_RULESET: EffectiveRuleset = resolveEffectiveRuleset([fciLayer], RESOLV
 /** FCI + KMSH — BOB/BOS overridden to add the national CAC feeder. */
 const KMSH_RULESET: EffectiveRuleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
 
-const cand = (dogRef: string, gradeId: GradeId): StreamCandidate => ({
-    dogRef: asEntryRef(dogRef),
+const cand = (entryRef: string, gradeId: GradeId): StreamCandidate => ({
+    entryRef: asEntryRef(entryRef),
     gradeId,
 });
 
@@ -210,32 +212,39 @@ const awardStream = (
     feederAwardTypeId: AwardTypeId,
     sex: 'male' | 'female' | undefined,
     candidates: ReadonlyArray<StreamCandidate>,
-): CandidateStream => ({ feederAwardTypeId, sex, candidates });
+): CandidateStream => ({ kind: 'award', feederAwardTypeId, sex, candidates });
 
 /** A class-feeder stream (feeder is a Class placement); `sex` is breed-scope only. */
 const classStream = (
     feederClassId: ClassId,
     sex: 'male' | 'female' | undefined,
     candidates: ReadonlyArray<StreamCandidate>,
-): CandidateStream => ({ feederClassId, sex, candidates });
+): CandidateStream => ({ kind: 'class', feederClassId, sex, candidates });
+
+/** A per-sex scope with a single dog-1 placement — the common shape of the per-sex tests. */
+const perSexScope = (
+    classId: ClassId,
+    gradeId: GradeId,
+    placement: number | undefined,
+): JudgingScopeResults => ({
+    kind: 'per-sex',
+    placements: [
+        {
+            classId,
+            entryRef: asEntryRef('dog-1'),
+            gradeId,
+            placement: placement === undefined ? undefined : asPlacement(placement),
+        },
+    ],
+});
 
 // ---------------------------------------------------------------------------
 // per-sex scope — eligibleAwardTypes
 // ---------------------------------------------------------------------------
 
 describe('FciAwardPolicy — per-sex scope — eligibleAwardTypes', () => {
-    it('returns CACIB when there is an Excellent-1st dog in a CACIB-eligible class', () => {
-        const scope: JudgingScopeResults = {
-            kind: 'per-sex',
-            placements: [
-                {
-                    classId: OPEN_CLASS_ID,
-                    dogRef: asEntryRef('dog-1'),
-                    gradeId: EXCELLENT,
-                    placement: 1,
-                },
-            ],
-        };
+    it('returns CACIB when there is an FCI_GRADE_EXCELLENT-1st dog in a CACIB-eligible class', () => {
+        const scope = perSexScope(OPEN_CLASS_ID, FCI_GRADE_EXCELLENT, 1);
 
         const result = policy.eligibleAwardTypes(scope, RULESET);
 
@@ -243,53 +252,23 @@ describe('FciAwardPolicy — per-sex scope — eligibleAwardTypes', () => {
     });
 
     it('does not include CACIB when the top dog received Very Good', () => {
-        const scope: JudgingScopeResults = {
-            kind: 'per-sex',
-            placements: [
-                {
-                    classId: OPEN_CLASS_ID,
-                    dogRef: asEntryRef('dog-1'),
-                    gradeId: VERY_GOOD,
-                    placement: 1,
-                },
-            ],
-        };
+        const scope = perSexScope(OPEN_CLASS_ID, FCI_GRADE_VERY_GOOD, 1);
 
         const result = policy.eligibleAwardTypes(scope, RULESET);
 
         expect(result).not.toContain(CACIB_ID);
     });
 
-    it('does not include CACIB when an Excellent dog placed 2nd', () => {
-        const scope: JudgingScopeResults = {
-            kind: 'per-sex',
-            placements: [
-                {
-                    classId: OPEN_CLASS_ID,
-                    dogRef: asEntryRef('dog-1'),
-                    gradeId: EXCELLENT,
-                    placement: 2,
-                },
-            ],
-        };
+    it('does not include CACIB when an FCI_GRADE_EXCELLENT dog placed 2nd', () => {
+        const scope = perSexScope(OPEN_CLASS_ID, FCI_GRADE_EXCELLENT, 2);
 
         const result = policy.eligibleAwardTypes(scope, RULESET);
 
         expect(result).not.toContain(CACIB_ID);
     });
 
-    it('returns CACIB-J (not CACIB) for a Junior class with Excellent-1st', () => {
-        const scope: JudgingScopeResults = {
-            kind: 'per-sex',
-            placements: [
-                {
-                    classId: JUNIOR_CLASS_ID,
-                    dogRef: asEntryRef('dog-1'),
-                    gradeId: EXCELLENT,
-                    placement: 1,
-                },
-            ],
-        };
+    it('returns CACIB-J (not CACIB) for a Junior class with FCI_GRADE_EXCELLENT-1st', () => {
+        const scope = perSexScope(JUNIOR_CLASS_ID, FCI_GRADE_EXCELLENT, 1);
 
         const result = policy.eligibleAwardTypes(scope, RULESET);
 
@@ -297,18 +276,8 @@ describe('FciAwardPolicy — per-sex scope — eligibleAwardTypes', () => {
         expect(result).not.toContain(CACIB_ID);
     });
 
-    it('returns CACIB-V (not CACIB) for a Veteran class with Excellent-1st', () => {
-        const scope: JudgingScopeResults = {
-            kind: 'per-sex',
-            placements: [
-                {
-                    classId: VETERAN_CLASS_ID,
-                    dogRef: asEntryRef('dog-1'),
-                    gradeId: EXCELLENT,
-                    placement: 1,
-                },
-            ],
-        };
+    it('returns CACIB-V (not CACIB) for a Veteran class with FCI_GRADE_EXCELLENT-1st', () => {
+        const scope = perSexScope(VETERAN_CLASS_ID, FCI_GRADE_EXCELLENT, 1);
 
         const result = policy.eligibleAwardTypes(scope, RULESET);
 
@@ -333,20 +302,20 @@ describe('FciAwardPolicy — per-sex scope — eligibleAwardTypes', () => {
 // ---------------------------------------------------------------------------
 
 describe('FciAwardPolicy — per-sex scope — validateAwardChoices', () => {
-    it('accepts a proposed CACIB for a dog with Excellent-1st', () => {
+    it('accepts a proposed CACIB for a dog with FCI_GRADE_EXCELLENT-1st', () => {
         const scope: JudgingScopeResults = {
             kind: 'per-sex',
             placements: [
                 {
                     classId: OPEN_CLASS_ID,
-                    dogRef: asEntryRef('dog-1'),
-                    gradeId: EXCELLENT,
-                    placement: 1,
+                    entryRef: asEntryRef('dog-1'),
+                    gradeId: FCI_GRADE_EXCELLENT,
+                    placement: asPlacement(1),
                 },
             ],
         };
         const proposed: ReadonlyArray<ProposedAwardAssignment> = [
-            { dogRef: asEntryRef('dog-1'), awardTypeId: CACIB_ID },
+            { entryRef: asEntryRef('dog-1'), awardTypeId: CACIB_ID },
         ];
 
         const result = policy.validateAwardChoices(scope, proposed, RULESET);
@@ -360,14 +329,14 @@ describe('FciAwardPolicy — per-sex scope — validateAwardChoices', () => {
             placements: [
                 {
                     classId: OPEN_CLASS_ID,
-                    dogRef: asEntryRef('dog-1'),
-                    gradeId: VERY_GOOD,
-                    placement: 1,
+                    entryRef: asEntryRef('dog-1'),
+                    gradeId: FCI_GRADE_VERY_GOOD,
+                    placement: asPlacement(1),
                 },
             ],
         };
         const proposed: ReadonlyArray<ProposedAwardAssignment> = [
-            { dogRef: asEntryRef('dog-1'), awardTypeId: CACIB_ID },
+            { entryRef: asEntryRef('dog-1'), awardTypeId: CACIB_ID },
         ];
 
         const result = policy.validateAwardChoices(scope, proposed, RULESET);
@@ -381,14 +350,14 @@ describe('FciAwardPolicy — per-sex scope — validateAwardChoices', () => {
             placements: [
                 {
                     classId: OPEN_CLASS_ID,
-                    dogRef: asEntryRef('dog-1'),
-                    gradeId: EXCELLENT,
-                    placement: 2,
+                    entryRef: asEntryRef('dog-1'),
+                    gradeId: FCI_GRADE_EXCELLENT,
+                    placement: asPlacement(2),
                 },
             ],
         };
         const proposed: ReadonlyArray<ProposedAwardAssignment> = [
-            { dogRef: asEntryRef('dog-1'), awardTypeId: CACIB_ID },
+            { entryRef: asEntryRef('dog-1'), awardTypeId: CACIB_ID },
         ];
 
         const result = policy.validateAwardChoices(scope, proposed, RULESET);
@@ -402,9 +371,9 @@ describe('FciAwardPolicy — per-sex scope — validateAwardChoices', () => {
             placements: [
                 {
                     classId: OPEN_CLASS_ID,
-                    dogRef: asEntryRef('dog-1'),
-                    gradeId: EXCELLENT,
-                    placement: 1,
+                    entryRef: asEntryRef('dog-1'),
+                    gradeId: FCI_GRADE_EXCELLENT,
+                    placement: asPlacement(1),
                 },
             ],
         };
@@ -423,14 +392,14 @@ describe('FciAwardPolicy — per-sex scope — validateAwardChoices', () => {
             placements: [
                 {
                     classId: OPEN_CLASS_ID,
-                    dogRef: asEntryRef('dog-1'),
-                    gradeId: EXCELLENT,
-                    placement: 1,
+                    entryRef: asEntryRef('dog-1'),
+                    gradeId: FCI_GRADE_EXCELLENT,
+                    placement: asPlacement(1),
                 },
             ],
         };
         const proposed: ReadonlyArray<ProposedAwardAssignment> = [
-            { dogRef: asEntryRef('dog-1'), awardTypeId: CACIB_J_ID },
+            { entryRef: asEntryRef('dog-1'), awardTypeId: CACIB_J_ID },
         ];
 
         const result = policy.validateAwardChoices(scope, proposed, RULESET);
@@ -515,7 +484,7 @@ describe('FciAwardPolicy — breed scope — eligibleAwardTypes', () => {
         expect(result).toHaveLength(0);
     });
 
-    it('returns no breed awards when both sexes are present but graded below Excellent', () => {
+    it('returns no breed awards when both sexes are present but graded below FCI_GRADE_EXCELLENT', () => {
         const scope: JudgingScopeResults = {
             kind: 'breed',
             streams: [
@@ -551,7 +520,7 @@ describe('FciAwardPolicy — breed scope — eligibleAwardTypes', () => {
 // ---------------------------------------------------------------------------
 
 describe('FciAwardPolicy — group scope — eligibleAwardTypes', () => {
-    it('returns BIG when a BOB feeder stream has a candidate graded Excellent', () => {
+    it('returns BIG when a BOB feeder stream has a candidate graded FCI_GRADE_EXCELLENT', () => {
         const scope: JudgingScopeResults = {
             kind: 'group',
             streams: [awardStream(FCI_AWARD_BOB, undefined, [cand('bob-1', FCI_GRADE_EXCELLENT)])],
@@ -562,7 +531,7 @@ describe('FciAwardPolicy — group scope — eligibleAwardTypes', () => {
         expect(result).toContain(FCI_AWARD_BIG);
     });
 
-    it('returns no group awards when the BOB feeder stream candidate is below Excellent', () => {
+    it('returns no group awards when the BOB feeder stream candidate is below FCI_GRADE_EXCELLENT', () => {
         const scope: JudgingScopeResults = {
             kind: 'group',
             streams: [awardStream(FCI_AWARD_BOB, undefined, [cand('bob-1', FCI_GRADE_VERY_GOOD)])],
@@ -587,7 +556,7 @@ describe('FciAwardPolicy — group scope — eligibleAwardTypes', () => {
 // ---------------------------------------------------------------------------
 
 describe('FciAwardPolicy — show scope — eligibleAwardTypes', () => {
-    it('returns BIS only when a BIG feeder stream has a candidate graded Excellent', () => {
+    it('returns BIS only when a BIG feeder stream has a candidate graded FCI_GRADE_EXCELLENT', () => {
         const scope: JudgingScopeResults = {
             kind: 'show',
             streams: [awardStream(FCI_AWARD_BIG, undefined, [cand('big-1', FCI_GRADE_EXCELLENT)])],
@@ -600,7 +569,7 @@ describe('FciAwardPolicy — show scope — eligibleAwardTypes', () => {
         expect(result).not.toContain(FCI_AWARD_BEST_PUPPY);
     });
 
-    it('returns Best Junior only when a junior class-win stream has a candidate graded Excellent', () => {
+    it('returns Best Junior only when a junior class-win stream has a candidate graded FCI_GRADE_EXCELLENT', () => {
         const scope: JudgingScopeResults = {
             kind: 'show',
             streams: [
@@ -657,7 +626,7 @@ describe('FciAwardPolicy — show scope — eligibleAwardTypes', () => {
         expect(result).toContain(FCI_AWARD_BEST_MINOR_PUPPY);
     });
 
-    it('returns Best Veteran when a veteran class-win stream has a candidate graded Excellent', () => {
+    it('returns Best Veteran when a veteran class-win stream has a candidate graded FCI_GRADE_EXCELLENT', () => {
         const scope: JudgingScopeResults = {
             kind: 'show',
             streams: [
@@ -712,8 +681,8 @@ describe('FciAwardPolicy — breed scope — validateAwardChoices', () => {
             ],
         };
         const proposed: ReadonlyArray<ProposedAwardAssignment> = [
-            { dogRef: asEntryRef('male-1'), awardTypeId: FCI_AWARD_BOB },
-            { dogRef: asEntryRef('female-1'), awardTypeId: FCI_AWARD_BOS },
+            { entryRef: asEntryRef('male-1'), awardTypeId: FCI_AWARD_BOB },
+            { entryRef: asEntryRef('female-1'), awardTypeId: FCI_AWARD_BOS },
         ];
 
         const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
@@ -730,8 +699,8 @@ describe('FciAwardPolicy — breed scope — validateAwardChoices', () => {
             ],
         };
         const proposed: ReadonlyArray<ProposedAwardAssignment> = [
-            { dogRef: asEntryRef('intruder'), awardTypeId: FCI_AWARD_BOB },
-            { dogRef: asEntryRef('female-1'), awardTypeId: FCI_AWARD_BOS },
+            { entryRef: asEntryRef('intruder'), awardTypeId: FCI_AWARD_BOB },
+            { entryRef: asEntryRef('female-1'), awardTypeId: FCI_AWARD_BOS },
         ];
 
         const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
@@ -748,8 +717,8 @@ describe('FciAwardPolicy — breed scope — validateAwardChoices', () => {
             ],
         };
         const proposed: ReadonlyArray<ProposedAwardAssignment> = [
-            { dogRef: asEntryRef('male-1'), awardTypeId: FCI_AWARD_BOB },
-            { dogRef: asEntryRef('female-1'), awardTypeId: FCI_AWARD_BOS },
+            { entryRef: asEntryRef('male-1'), awardTypeId: FCI_AWARD_BOB },
+            { entryRef: asEntryRef('female-1'), awardTypeId: FCI_AWARD_BOS },
         ];
 
         const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
@@ -766,7 +735,7 @@ describe('FciAwardPolicy — breed scope — validateAwardChoices', () => {
             ],
         };
         const proposed: ReadonlyArray<ProposedAwardAssignment> = [
-            { dogRef: asEntryRef('male-1'), awardTypeId: FCI_AWARD_BOB },
+            { entryRef: asEntryRef('male-1'), awardTypeId: FCI_AWARD_BOB },
         ];
 
         const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
@@ -783,8 +752,8 @@ describe('FciAwardPolicy — breed scope — validateAwardChoices', () => {
             ],
         };
         const proposed: ReadonlyArray<ProposedAwardAssignment> = [
-            { dogRef: asEntryRef('male-1'), awardTypeId: FCI_AWARD_BOB },
-            { dogRef: asEntryRef('male-2'), awardTypeId: FCI_AWARD_BOS },
+            { entryRef: asEntryRef('male-1'), awardTypeId: FCI_AWARD_BOB },
+            { entryRef: asEntryRef('male-2'), awardTypeId: FCI_AWARD_BOS },
         ];
 
         const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
@@ -801,8 +770,8 @@ describe('FciAwardPolicy — breed scope — validateAwardChoices', () => {
             ],
         };
         const proposed: ReadonlyArray<ProposedAwardAssignment> = [
-            { dogRef: asEntryRef('male-1'), awardTypeId: FCI_AWARD_BOB },
-            { dogRef: asEntryRef('male-1'), awardTypeId: FCI_AWARD_BOS },
+            { entryRef: asEntryRef('male-1'), awardTypeId: FCI_AWARD_BOB },
+            { entryRef: asEntryRef('male-1'), awardTypeId: FCI_AWARD_BOS },
         ];
 
         const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
@@ -815,13 +784,13 @@ describe('FciAwardPolicy — breed scope — validateAwardChoices', () => {
 // ---------------------------------------------------------------------------
 
 describe('FciAwardPolicy — group & show scope — validateAwardChoices', () => {
-    it('accepts a valid BIS proposal from a BIG-stream candidate graded Excellent', () => {
+    it('accepts a valid BIS proposal from a BIG-stream candidate graded FCI_GRADE_EXCELLENT', () => {
         const scope: JudgingScopeResults = {
             kind: 'show',
             streams: [awardStream(FCI_AWARD_BIG, undefined, [cand('big-1', FCI_GRADE_EXCELLENT)])],
         };
         const proposed: ReadonlyArray<ProposedAwardAssignment> = [
-            { dogRef: asEntryRef('big-1'), awardTypeId: FCI_AWARD_BIS },
+            { entryRef: asEntryRef('big-1'), awardTypeId: FCI_AWARD_BIS },
         ];
 
         const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
@@ -829,13 +798,13 @@ describe('FciAwardPolicy — group & show scope — validateAwardChoices', () =>
         expect(result.valid).toBe(true);
     });
 
-    it('rejects a BIS proposal for a dog graded below Excellent', () => {
+    it('rejects a BIS proposal for a dog graded below FCI_GRADE_EXCELLENT', () => {
         const scope: JudgingScopeResults = {
             kind: 'show',
             streams: [awardStream(FCI_AWARD_BIG, undefined, [cand('big-1', FCI_GRADE_VERY_GOOD)])],
         };
         const proposed: ReadonlyArray<ProposedAwardAssignment> = [
-            { dogRef: asEntryRef('big-1'), awardTypeId: FCI_AWARD_BIS },
+            { entryRef: asEntryRef('big-1'), awardTypeId: FCI_AWARD_BIS },
         ];
 
         const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
@@ -849,7 +818,7 @@ describe('FciAwardPolicy — group & show scope — validateAwardChoices', () =>
             streams: [awardStream(FCI_AWARD_BIG, undefined, [cand('big-1', FCI_GRADE_EXCELLENT)])],
         };
         const proposed: ReadonlyArray<ProposedAwardAssignment> = [
-            { dogRef: asEntryRef('intruder'), awardTypeId: FCI_AWARD_BIS },
+            { entryRef: asEntryRef('intruder'), awardTypeId: FCI_AWARD_BIS },
         ];
 
         const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
@@ -879,7 +848,7 @@ describe('FciAwardPolicy — group & show scope — validateAwardChoices', () =>
             ],
         };
         const proposed: ReadonlyArray<ProposedAwardAssignment> = [
-            { dogRef: asEntryRef('pup-1'), awardTypeId: FCI_AWARD_BEST_PUPPY },
+            { entryRef: asEntryRef('pup-1'), awardTypeId: FCI_AWARD_BEST_PUPPY },
         ];
 
         const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);
@@ -899,13 +868,13 @@ describe('FciAwardPolicy — group & show scope — validateAwardChoices', () =>
         expect(result.valid).toBe(true);
     });
 
-    it('accepts a valid BIG proposal from a BOB-stream candidate graded Excellent', () => {
+    it('accepts a valid BIG proposal from a BOB-stream candidate graded FCI_GRADE_EXCELLENT', () => {
         const scope: JudgingScopeResults = {
             kind: 'group',
             streams: [awardStream(FCI_AWARD_BOB, undefined, [cand('bob-1', FCI_GRADE_EXCELLENT)])],
         };
         const proposed: ReadonlyArray<ProposedAwardAssignment> = [
-            { dogRef: asEntryRef('bob-1'), awardTypeId: FCI_AWARD_BIG },
+            { entryRef: asEntryRef('bob-1'), awardTypeId: FCI_AWARD_BIG },
         ];
 
         const result = policy.validateAwardChoices(scope, proposed, FCI_RULESET);

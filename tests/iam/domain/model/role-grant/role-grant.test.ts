@@ -12,8 +12,8 @@ import type {
 } from '../../../../../src/iam/domain/model/role-grant/role-grant.js';
 import {
     grantRole,
-    revokeRoleGrant,
-    hasRoleGrant,
+    revokeRole,
+    hasRole,
     assertGrantsOwnedBy,
     DuplicateRoleGrantError,
     RoleGrantOwnerMismatchError,
@@ -110,13 +110,13 @@ describe('grantRole', () => {
 });
 
 // ---------------------------------------------------------------------------
-// revokeRoleGrant
+// revokeRole
 // ---------------------------------------------------------------------------
 
-describe('revokeRoleGrant', () => {
+describe('revokeRole', () => {
     it('removes a matching RoleGrant', () => {
         const grants = [aliceShowSecretary, aliceJudge];
-        const result = revokeRoleGrant(grants, aliceShowSecretary);
+        const result = revokeRole(grants, aliceShowSecretary);
 
         expect(result).toHaveLength(1);
         expect(result[0]).toEqual(aliceJudge);
@@ -124,21 +124,21 @@ describe('revokeRoleGrant', () => {
 
     it('is a no-op when the grant does not exist', () => {
         const grants = [aliceJudge];
-        const result = revokeRoleGrant(grants, aliceShowSecretary);
+        const result = revokeRole(grants, aliceShowSecretary);
 
         expect(result).toHaveLength(1);
         expect(result[0]).toEqual(aliceJudge);
     });
 
     it('is a no-op on an empty collection', () => {
-        const result = revokeRoleGrant([], aliceShowSecretary);
+        const result = revokeRole([], aliceShowSecretary);
 
         expect(result).toHaveLength(0);
     });
 
     it('removes only the matching grant, leaving others intact', () => {
         const grants = [aliceShowSecretary, aliceJudge, bobPlatformAdmin];
-        const result = revokeRoleGrant(grants, aliceJudge);
+        const result = revokeRole(grants, aliceJudge);
 
         expect(result).toHaveLength(2);
         expect(result).toContainEqual(aliceShowSecretary);
@@ -147,35 +147,35 @@ describe('revokeRoleGrant', () => {
 
     it('does not mutate the original collection', () => {
         const original = [aliceShowSecretary, aliceJudge];
-        revokeRoleGrant(original, aliceShowSecretary);
+        revokeRole(original, aliceShowSecretary);
 
         expect(original).toHaveLength(2);
     });
 });
 
 // ---------------------------------------------------------------------------
-// hasRoleGrant
+// hasRole
 // ---------------------------------------------------------------------------
 
-describe('hasRoleGrant', () => {
+describe('hasRole', () => {
     const grants = [aliceShowSecretary, aliceJudge, bobPlatformAdmin];
 
     // ShowSecretary is Club-scoped: a grant is tied to one specific ClubId
     describe('ShowSecretary (Club-scoped)', () => {
         it('returns true for the correct Club', () => {
-            expect(
-                hasRoleGrant(grants, ALICE_ID, { role: 'ShowSecretary', scope: clubAScope }),
-            ).toBe(true);
+            expect(hasRole(grants, ALICE_ID, { role: 'ShowSecretary', scope: clubAScope })).toBe(
+                true,
+            );
         });
 
         it('returns false for a different Club', () => {
-            expect(
-                hasRoleGrant(grants, ALICE_ID, { role: 'ShowSecretary', scope: clubBScope }),
-            ).toBe(false);
+            expect(hasRole(grants, ALICE_ID, { role: 'ShowSecretary', scope: clubBScope })).toBe(
+                false,
+            );
         });
 
         it('returns false when the user does not hold the role', () => {
-            expect(hasRoleGrant(grants, BOB_ID, { role: 'ShowSecretary', scope: clubAScope })).toBe(
+            expect(hasRole(grants, BOB_ID, { role: 'ShowSecretary', scope: clubAScope })).toBe(
                 false,
             );
         });
@@ -185,7 +185,7 @@ describe('hasRoleGrant', () => {
                 userId: ALICE_ID,
                 role: 'ShowSecretary',
                 scope: platformScope,
-                // @ts-expect-error � ShowSecretary requires ClubScope; PlatformScope is structurally invalid here
+                // @ts-expect-error — ShowSecretary requires ClubScope; PlatformScope is structurally invalid here
             } satisfies RoleGrant);
         });
     });
@@ -193,19 +193,15 @@ describe('hasRoleGrant', () => {
     // Judge is platform-scoped: no ClubId is involved
     describe('Judge (platform-scoped)', () => {
         it('returns true when granted', () => {
-            expect(hasRoleGrant(grants, ALICE_ID, { role: 'Judge', scope: platformScope })).toBe(
-                true,
-            );
+            expect(hasRole(grants, ALICE_ID, { role: 'Judge', scope: platformScope })).toBe(true);
         });
 
         it('returns false when not granted', () => {
-            expect(hasRoleGrant(grants, BOB_ID, { role: 'Judge', scope: platformScope })).toBe(
-                false,
-            );
+            expect(hasRole(grants, BOB_ID, { role: 'Judge', scope: platformScope })).toBe(false);
         });
 
         it('type system rejects Judge at Club scope', () => {
-            // @ts-expect-error � Judge requires PlatformScope; ClubScope is structurally invalid here
+            // @ts-expect-error — Judge requires PlatformScope; ClubScope is structurally invalid here
             void ({ userId: ALICE_ID, role: 'Judge', scope: clubAScope } satisfies RoleGrant);
         });
     });
@@ -214,7 +210,7 @@ describe('hasRoleGrant', () => {
     describe('PlatformAdministrator (platform-scoped)', () => {
         it('returns true when granted', () => {
             expect(
-                hasRoleGrant(grants, BOB_ID, {
+                hasRole(grants, BOB_ID, {
                     role: 'PlatformAdministrator',
                     scope: platformScope,
                 }),
@@ -223,7 +219,7 @@ describe('hasRoleGrant', () => {
 
         it('returns false when not granted', () => {
             expect(
-                hasRoleGrant(grants, ALICE_ID, {
+                hasRole(grants, ALICE_ID, {
                     role: 'PlatformAdministrator',
                     scope: platformScope,
                 }),
@@ -235,13 +231,13 @@ describe('hasRoleGrant', () => {
                 userId: ALICE_ID,
                 role: 'PlatformAdministrator',
                 scope: clubAScope,
-                // @ts-expect-error � PlatformAdministrator requires PlatformScope; ClubScope is structurally invalid here
+                // @ts-expect-error — PlatformAdministrator requires PlatformScope; ClubScope is structurally invalid here
             } satisfies RoleGrant);
         });
     });
 
     it('returns false for an empty grants collection', () => {
-        expect(hasRoleGrant([], ALICE_ID, { role: 'Judge', scope: platformScope })).toBe(false);
+        expect(hasRole([], ALICE_ID, { role: 'Judge', scope: platformScope })).toBe(false);
     });
 });
 
@@ -259,12 +255,10 @@ describe('Exhibitor boundary', () => {
     it('an Active User with zero RoleGrants is still an Exhibitor — no grant required', () => {
         const grants: RoleGrant[] = [];
 
-        expect(hasRoleGrant(grants, ALICE_ID, { role: 'ShowSecretary', scope: clubAScope })).toBe(
-            false,
-        );
-        expect(hasRoleGrant(grants, ALICE_ID, { role: 'Judge', scope: platformScope })).toBe(false);
+        expect(hasRole(grants, ALICE_ID, { role: 'ShowSecretary', scope: clubAScope })).toBe(false);
+        expect(hasRole(grants, ALICE_ID, { role: 'Judge', scope: platformScope })).toBe(false);
         expect(
-            hasRoleGrant(grants, ALICE_ID, { role: 'PlatformAdministrator', scope: platformScope }),
+            hasRole(grants, ALICE_ID, { role: 'PlatformAdministrator', scope: platformScope }),
         ).toBe(false);
         // Zero grants → zero explicit roles, but Exhibitor capability is still present
         // via user.status === 'Active' — no RoleGrant entry is needed or exists.

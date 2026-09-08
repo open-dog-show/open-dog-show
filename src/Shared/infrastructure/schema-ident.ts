@@ -9,9 +9,10 @@
  * PostgreSQL's escape rule for quoted identifiers, so a schema name containing
  * a `"` can never break out of the identifier.
  *
- * Shared by `PgOutboxWriter` (the `INSERT … <schema>.outbox` statement) and
- * `PgPollingDispatcher` (the `SELECT … / UPDATE … <schema>.outbox` statements).
- * Internal — not part of the kernel's public surface.
+ * Shared by `PgOutboxWriter` (the `INSERT … <schema>.outbox` statement),
+ * `PgPollingDispatcher` (the `SELECT … / UPDATE … <schema>.outbox` statements),
+ * and the test-kit migration runner. Exported from the kernel's public
+ * surface so the test-kit does not reach into an internal module.
  */
 export function quoteSchemaIdent(schema: string): string {
     return `"${schema.replaceAll('"', '""')}"`;

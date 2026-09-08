@@ -64,7 +64,7 @@ describe('Postgres harness + migration runner', () => {
     });
 
     // -------------------------------------------------------------------------
-    // Deepened harness surface: superPool / appUserPool / seed()
+    // Harness surface: superPool / appUserPool / seed()
     // -------------------------------------------------------------------------
 
     it('superPool and appUserPool are lazily created, cached, and distinct', () => {

@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { asUserId } from '../../../../../src/iam/domain/shared/domain-ids.js';
+import {
+    asUserId,
+    asEmailAddress,
+    asExternalSubject,
+} from '../../../../../src/iam/domain/shared/domain-ids.js';
 import type { User } from '../../../../../src/iam/domain/model/user/user.js';
 import {
     suspendUser,
@@ -10,6 +14,7 @@ import {
     createUser,
     refreshUserProfile,
     InvalidProviderClaimsError,
+    InvalidUserStatusTransitionError,
 } from '../../../../../src/iam/domain/model/user/user.js';
 import { FakeUserRepository } from '../../../../../src/iam/infrastructure/persistence/inmemory/index.js';
 
@@ -19,17 +24,17 @@ const BOB_ID = asUserId('user-bob');
 const activeAlice: User = {
     id: ALICE_ID,
     displayName: 'Alice',
-    email: 'alice@example.com',
+    email: asEmailAddress('alice@example.com'),
     status: 'Active',
-    externalSubject: 'sub|alice',
+    externalSubject: asExternalSubject('sub|alice'),
 };
 
 const suspendedBob: User = {
     id: BOB_ID,
     displayName: 'Bob',
-    email: 'bob@example.com',
+    email: asEmailAddress('bob@example.com'),
     status: 'Suspended',
-    externalSubject: 'sub|bob',
+    externalSubject: asExternalSubject('sub|bob'),
 };
 
 // ---------------------------------------------------------------------------
@@ -61,8 +66,8 @@ describe('suspendUser', () => {
         expect(result.externalSubject).toBe(activeAlice.externalSubject);
     });
 
-    it('throws when called on an already-Suspended user', () => {
-        expect(() => suspendUser(suspendedBob)).toThrow();
+    it('throws InvalidUserStatusTransitionError when called on an already-Suspended user', () => {
+        expect(() => suspendUser(suspendedBob)).toThrow(InvalidUserStatusTransitionError);
     });
 });
 
@@ -81,8 +86,8 @@ describe('reactivateUser', () => {
         expect(result.externalSubject).toBe(suspendedBob.externalSubject);
     });
 
-    it('throws when called on an already-Active user', () => {
-        expect(() => reactivateUser(activeAlice)).toThrow();
+    it('throws InvalidUserStatusTransitionError when called on an already-Active user', () => {
+        expect(() => reactivateUser(activeAlice)).toThrow(InvalidUserStatusTransitionError);
     });
 });
 
@@ -92,7 +97,10 @@ describe('reactivateUser', () => {
 
 describe('createUser', () => {
     it('creates an Active user with the given id, external subject, display name, and email', () => {
-        const user = createUser(ALICE_ID, 'sub|alice', 'Alice', 'alice@example.com');
+        const user = createUser(ALICE_ID, 'sub|alice', {
+            displayName: 'Alice',
+            email: 'alice@example.com',
+        });
 
         expect(user).toEqual({
             id: ALICE_ID,
@@ -106,67 +114,82 @@ describe('createUser', () => {
     // -- canonicalization (ADR-0015) ---------------------------------------
 
     it('throws InvalidProviderClaimsError (field: sub) when the sub is empty', () => {
-        expect(() => createUser(ALICE_ID, '', 'Alice', 'alice@example.com')).toThrow(
-            InvalidProviderClaimsError,
-        );
-        expect(() => createUser(ALICE_ID, '', 'Alice', 'alice@example.com')).toThrow(
-            expect.objectContaining({ field: 'sub' }),
-        );
+        expect(() =>
+            createUser(ALICE_ID, '', { displayName: 'Alice', email: 'alice@example.com' }),
+        ).toThrow(InvalidProviderClaimsError);
+        expect(() =>
+            createUser(ALICE_ID, '', { displayName: 'Alice', email: 'alice@example.com' }),
+        ).toThrow(expect.objectContaining({ field: 'sub' }));
     });
 
     it('throws InvalidProviderClaimsError (field: sub) when the sub is whitespace-only', () => {
-        expect(() => createUser(ALICE_ID, '   ', 'Alice', 'alice@example.com')).toThrow(
-            InvalidProviderClaimsError,
-        );
-        expect(() => createUser(ALICE_ID, '   ', 'Alice', 'alice@example.com')).toThrow(
-            expect.objectContaining({ field: 'sub' }),
-        );
+        expect(() =>
+            createUser(ALICE_ID, '   ', { displayName: 'Alice', email: 'alice@example.com' }),
+        ).toThrow(InvalidProviderClaimsError);
+        expect(() =>
+            createUser(ALICE_ID, '   ', { displayName: 'Alice', email: 'alice@example.com' }),
+        ).toThrow(expect.objectContaining({ field: 'sub' }));
     });
 
     it('throws InvalidProviderClaimsError (field: email) when the email is empty', () => {
-        expect(() => createUser(ALICE_ID, 'sub|alice', 'Alice', '')).toThrow(
-            InvalidProviderClaimsError,
-        );
-        expect(() => createUser(ALICE_ID, 'sub|alice', 'Alice', '')).toThrow(
-            expect.objectContaining({ field: 'email' }),
-        );
+        expect(() =>
+            createUser(ALICE_ID, 'sub|alice', { displayName: 'Alice', email: '' }),
+        ).toThrow(InvalidProviderClaimsError);
+        expect(() =>
+            createUser(ALICE_ID, 'sub|alice', { displayName: 'Alice', email: '' }),
+        ).toThrow(expect.objectContaining({ field: 'email' }));
     });
 
     it('throws InvalidProviderClaimsError (field: email) when the email is whitespace-only', () => {
-        expect(() => createUser(ALICE_ID, 'sub|alice', 'Alice', '   ')).toThrow(
-            InvalidProviderClaimsError,
-        );
-        expect(() => createUser(ALICE_ID, 'sub|alice', 'Alice', '   ')).toThrow(
-            expect.objectContaining({ field: 'email' }),
-        );
+        expect(() =>
+            createUser(ALICE_ID, 'sub|alice', { displayName: 'Alice', email: '   ' }),
+        ).toThrow(InvalidProviderClaimsError);
+        expect(() =>
+            createUser(ALICE_ID, 'sub|alice', { displayName: 'Alice', email: '   ' }),
+        ).toThrow(expect.objectContaining({ field: 'email' }));
     });
 
     it('normalizes email by trimming and lowercasing', () => {
-        const user = createUser(ALICE_ID, 'sub|alice', 'Alice', '  Alice@Example.COM  ');
+        const user = createUser(ALICE_ID, 'sub|alice', {
+            displayName: 'Alice',
+            email: '  Alice@Example.COM  ',
+        });
 
         expect(user.email).toBe('alice@example.com');
     });
 
     it('normalizes displayName by trimming (case is preserved)', () => {
-        const user = createUser(ALICE_ID, 'sub|alice', '  Alice Smith  ', 'alice@example.com');
+        const user = createUser(ALICE_ID, 'sub|alice', {
+            displayName: '  Alice Smith  ',
+            email: 'alice@example.com',
+        });
 
         expect(user.displayName).toBe('Alice Smith');
     });
 
     it('accepts an empty displayName (a display name is cosmetic)', () => {
-        const user = createUser(ALICE_ID, 'sub|alice', '', 'alice@example.com');
+        const user = createUser(ALICE_ID, 'sub|alice', {
+            displayName: '',
+            email: 'alice@example.com',
+        });
 
         expect(user.displayName).toBe('');
     });
 
     it('accepts a whitespace-only displayName (trimmed to empty)', () => {
-        const user = createUser(ALICE_ID, 'sub|alice', '   ', 'alice@example.com');
+        const user = createUser(ALICE_ID, 'sub|alice', {
+            displayName: '   ',
+            email: 'alice@example.com',
+        });
 
         expect(user.displayName).toBe('');
     });
 
     it('stores the externalSubject verbatim (no trim, no lowercase)', () => {
-        const user = createUser(ALICE_ID, '  Sub|Alice  ', 'Alice', 'alice@example.com');
+        const user = createUser(ALICE_ID, '  Sub|Alice  ', {
+            displayName: 'Alice',
+            email: 'alice@example.com',
+        });
 
         expect(user.externalSubject).toBe('  Sub|Alice  ');
     });
@@ -178,7 +201,10 @@ describe('createUser', () => {
 
 describe('refreshUserProfile', () => {
     it('returns a copy with refreshed displayName and email, preserving id, external subject, and status', () => {
-        const refreshed = refreshUserProfile(activeAlice, 'Alice Smith', 'alice.smith@example.com');
+        const refreshed = refreshUserProfile(activeAlice, {
+            displayName: 'Alice Smith',
+            email: 'alice.smith@example.com',
+        });
 
         expect(refreshed).toEqual({
             id: ALICE_ID,
@@ -190,7 +216,10 @@ describe('refreshUserProfile', () => {
     });
 
     it('preserves a Suspended status (refresh never changes account status)', () => {
-        const refreshed = refreshUserProfile(suspendedBob, 'Robert', 'robert@example.com');
+        const refreshed = refreshUserProfile(suspendedBob, {
+            displayName: 'Robert',
+            email: 'robert@example.com',
+        });
 
         expect(refreshed.status).toBe('Suspended');
         expect(refreshed.id).toBe(BOB_ID);
@@ -202,19 +231,28 @@ describe('refreshUserProfile', () => {
     // -- canonicalization (ADR-0015) ---------------------------------------
 
     it('normalizes incoming email by trimming and lowercasing', () => {
-        const refreshed = refreshUserProfile(activeAlice, 'Alice', '  Alice@Example.COM  ');
+        const refreshed = refreshUserProfile(activeAlice, {
+            displayName: 'Alice',
+            email: '  Alice@Example.COM  ',
+        });
 
         expect(refreshed.email).toBe('alice@example.com');
     });
 
     it('normalizes incoming displayName by trimming (case is preserved)', () => {
-        const refreshed = refreshUserProfile(activeAlice, '  Alice Smith  ', 'alice@example.com');
+        const refreshed = refreshUserProfile(activeAlice, {
+            displayName: '  Alice Smith  ',
+            email: 'alice@example.com',
+        });
 
         expect(refreshed.displayName).toBe('Alice Smith');
     });
 
     it('keeps the existing email when the incoming email is blank (keep-existing guard)', () => {
-        const refreshed = refreshUserProfile(activeAlice, 'Alice Smith', '   ');
+        const refreshed = refreshUserProfile(activeAlice, {
+            displayName: 'Alice Smith',
+            email: '   ',
+        });
 
         expect(refreshed.email).toBe(activeAlice.email);
         // The non-blank displayName is still applied.
@@ -222,13 +260,19 @@ describe('refreshUserProfile', () => {
     });
 
     it('keeps the existing email when the incoming email is empty (keep-existing guard)', () => {
-        const refreshed = refreshUserProfile(activeAlice, 'Alice Smith', '');
+        const refreshed = refreshUserProfile(activeAlice, {
+            displayName: 'Alice Smith',
+            email: '',
+        });
 
         expect(refreshed.email).toBe(activeAlice.email);
     });
 
     it('keeps the existing displayName when the incoming displayName is blank (keep-existing guard)', () => {
-        const refreshed = refreshUserProfile(activeAlice, '   ', 'alice.smith@example.com');
+        const refreshed = refreshUserProfile(activeAlice, {
+            displayName: '   ',
+            email: 'alice.smith@example.com',
+        });
 
         expect(refreshed.displayName).toBe(activeAlice.displayName);
         // The non-blank email is still applied.
@@ -236,26 +280,32 @@ describe('refreshUserProfile', () => {
     });
 
     it('keeps the existing displayName when the incoming displayName is empty (keep-existing guard)', () => {
-        const refreshed = refreshUserProfile(activeAlice, '', 'alice.smith@example.com');
+        const refreshed = refreshUserProfile(activeAlice, {
+            displayName: '',
+            email: 'alice.smith@example.com',
+        });
 
         expect(refreshed.displayName).toBe(activeAlice.displayName);
     });
 
     it('keeps both existing profile facts when both incoming claims are blank', () => {
-        const refreshed = refreshUserProfile(activeAlice, '   ', '   ');
+        const refreshed = refreshUserProfile(activeAlice, { displayName: '   ', email: '   ' });
 
         expect(refreshed.displayName).toBe(activeAlice.displayName);
         expect(refreshed.email).toBe(activeAlice.email);
     });
 
     it('can still change a non-empty email to a different non-empty email', () => {
-        const refreshed = refreshUserProfile(activeAlice, 'Alice', 'alice.smith@example.com');
+        const refreshed = refreshUserProfile(activeAlice, {
+            displayName: 'Alice',
+            email: 'alice.smith@example.com',
+        });
 
         expect(refreshed.email).toBe('alice.smith@example.com');
     });
 
     it('preserves the stable id, external subject, and status on a keep-existing refresh', () => {
-        const refreshed = refreshUserProfile(activeAlice, '   ', '   ');
+        const refreshed = refreshUserProfile(activeAlice, { displayName: '   ', email: '   ' });
 
         expect(refreshed.id).toBe(activeAlice.id);
         expect(refreshed.externalSubject).toBe(activeAlice.externalSubject);

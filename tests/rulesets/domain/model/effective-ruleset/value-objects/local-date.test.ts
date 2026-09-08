@@ -122,30 +122,6 @@ describe('LocalDate', () => {
         });
     });
 
-    describe('isBefore / isAfter', () => {
-        it('orders dates across years, months, and days', () => {
-            const aug4 = LocalDate.of(2026, 8, 4);
-            const aug5 = LocalDate.of(2026, 8, 5);
-            const sep4 = LocalDate.of(2026, 9, 4);
-            const aug2025 = LocalDate.of(2025, 8, 4);
-
-            expect(aug4.isBefore(aug5)).toBe(true);
-            expect(aug5.isBefore(aug4)).toBe(false);
-            expect(aug4.isBefore(sep4)).toBe(true);
-            expect(aug4.isBefore(aug2025)).toBe(false);
-
-            expect(aug4.isAfter(aug5)).toBe(false);
-            expect(aug4.isAfter(aug2025)).toBe(true);
-            expect(sep4.isAfter(aug4)).toBe(true);
-        });
-
-        it('is neither before nor after itself', () => {
-            const date = LocalDate.of(2026, 8, 4);
-            expect(date.isBefore(date)).toBe(false);
-            expect(date.isAfter(date)).toBe(false);
-        });
-    });
-
     describe('completedMonthsSince', () => {
         it('returns the elapsed completed calendar months (same day-of-month)', () => {
             // born 2026-05-04, show 2026-08-04 → 3 completed months

@@ -4,6 +4,9 @@
 import type { EventIdGenerator } from '../domain/domain-ports.js';
 import { asEventId, type EventId } from '../domain/domain-ids.js';
 
+/** Fixed width of the trailing 12-digit counter segment in the fake UUID. */
+const UUID_SUFFIX_WIDTH = 12;
+
 /**
  * In-memory {@link EventIdGenerator} implementation for use in unit tests.
  *
@@ -44,7 +47,7 @@ export class FakeEventIdGenerator implements EventIdGenerator {
     /** Returns the next deterministic UUID and increments the counter. */
     generate(): EventId {
         const n = this.counter++;
-        const suffix = n.toString(10).padStart(12, '0');
+        const suffix = n.toString(10).padStart(UUID_SUFFIX_WIDTH, '0');
         return asEventId(`00000000-0000-4000-8000-${suffix}`);
     }
 

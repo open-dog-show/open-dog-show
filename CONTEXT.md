@@ -63,7 +63,7 @@ The award-or-class source that qualifies a Dog as a candidate for a higher-scope
 _Avoid_: Source, Qualifier, Feeder Award (a Feeder may be a Class, not an Award)
 
 **Candidate Stream**:
-A feeder-keyed stream of candidate Dogs for a higher-scope Award (ADR-0017), carried by the breed/group/show variants of the judging-scope results. Each stream declares its **Feeder** (an Award Type or a Class), an optional `sex` tag (breed scope only, for BOB/BOS male/female separation), and a uniform list of `{dogRef, gradeId}` candidates. The **Award Policy** matches each higher-scope Award's `fedBy` against the streams by Feeder key (and `sex` at breed scope). The downstream Judging & Results context assembles one stream per in-scope Feeder.
+A feeder-keyed stream of candidate Dogs for a higher-scope Award (ADR-0017), carried by the breed/group/show variants of the judging-scope results. Each stream declares its **Feeder** (an Award Type or a Class), an optional `sex` tag (breed scope only, for BOB/BOS male/female separation), and a uniform list of `{entryRef, gradeId}` candidates. The **Award Policy** matches each higher-scope Award's `fedBy` against the streams by Feeder key (and `sex` at breed scope). The downstream Judging & Results context assembles one stream per in-scope Feeder.
 _Avoid_: Candidate Bag, Candidate List
 
 **Collective Award Policy**:

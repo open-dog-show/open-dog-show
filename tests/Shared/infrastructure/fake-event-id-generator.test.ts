@@ -2,38 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, expectTypeOf, it } from 'vitest';
-import { FakeClock } from '../../../src/Shared/infrastructure/fake-clock.js';
 import { FakeEventIdGenerator } from '../../../src/Shared/infrastructure/fake-event-id-generator.js';
 import type { EventId } from '../../../src/Shared/domain/domain-ids.js';
-
-describe('FakeClock', () => {
-    it('returns the fixed date on every call', () => {
-        const fixed = new Date('2026-01-01T00:00:00.000Z');
-        const clock = new FakeClock(fixed);
-
-        expect(clock.now()).toStrictEqual(fixed);
-        expect(clock.now()).toStrictEqual(fixed);
-    });
-
-    it('advances when tick() is called', () => {
-        const fixed = new Date('2026-01-01T00:00:00.000Z');
-        const clock = new FakeClock(fixed);
-
-        clock.tick(1000);
-
-        expect(clock.now()).toStrictEqual(new Date('2026-01-01T00:00:01.000Z'));
-    });
-
-    it('accumulates multiple ticks', () => {
-        const fixed = new Date('2026-01-01T00:00:00.000Z');
-        const clock = new FakeClock(fixed);
-
-        clock.tick(500);
-        clock.tick(500);
-
-        expect(clock.now()).toStrictEqual(new Date('2026-01-01T00:00:01.000Z'));
-    });
-});
 
 describe('FakeEventIdGenerator', () => {
     it('returns deterministic UUIDs starting from seed 1', () => {
@@ -65,5 +35,17 @@ describe('FakeEventIdGenerator', () => {
         const gen = new FakeEventIdGenerator();
 
         expectTypeOf(gen.generate()).toEqualTypeOf<EventId>();
+    });
+
+    it('produces ids matching the UUID v4 format (version 4, variant 8 nibbles)', () => {
+        // The docstring advertises valid UUID v4 format with a fixed version
+        // (4) and variant (8) nibble; pin the shape so a refactor that breaks
+        // those nibbles while keeping the incrementing counter still fails.
+        const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+        const gen = new FakeEventIdGenerator();
+
+        expect(gen.generate()).toMatch(UUID_V4);
+        expect(gen.generate()).toMatch(UUID_V4);
+        expect(new FakeEventIdGenerator(99).generate()).toMatch(UUID_V4);
     });
 });

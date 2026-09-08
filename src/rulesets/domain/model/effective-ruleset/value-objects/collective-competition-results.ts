@@ -3,6 +3,18 @@
 
 import type { BreedId, VarietyId } from './domain-ids.js';
 import type { EntryRef } from './entry-ref.js';
+import type { Sex } from './sex.js';
+
+/**
+ * A breed (and optional variety) pair — the shared breed/variety identity that
+ * several collective competitions require participants to share. Bundled as one
+ * value object so the `(breedId, varietyId)` pair travels together and a
+ * caller cannot pass one without the other.
+ */
+export interface BreedVarietyRef {
+    readonly breedId: BreedId;
+    readonly varietyId: VarietyId | undefined;
+}
 
 /**
  * A single dog competing within a Collective Competition.
@@ -10,8 +22,8 @@ import type { EntryRef } from './entry-ref.js';
  */
 export interface CollectiveEntry {
     /** Opaque reference to the judged entry. */
-    readonly dogRef: EntryRef;
-    readonly sex: 'dog' | 'bitch';
+    readonly entryRef: EntryRef;
+    readonly sex: Sex;
 }
 
 /**
@@ -26,21 +38,19 @@ export type CollectiveCompetitionKind = CollectiveCompetitionResults['kind'];
  * three FCI collective competition types and the dogs participating in each.
  *
  * Variants:
- * - `brace-couple`   — one dog + one bitch of the same breed/variety
+ * - `brace-couple`   — one male + one female of the same breed/variety
  * - `breeders-group` — 3–5 dogs of the same breed/variety from one kennel
  * - `progeny-group`  — a sire or dam with 3–5 first-generation offspring
  */
 export type CollectiveCompetitionResults =
     | {
           readonly kind: 'brace-couple';
-          readonly breedId: BreedId;
-          readonly varietyId: VarietyId | undefined;
+          readonly breed: BreedVarietyRef;
           readonly entries: ReadonlyArray<CollectiveEntry>;
       }
     | {
           readonly kind: 'breeders-group';
-          readonly breedId: BreedId;
-          readonly varietyId: VarietyId | undefined;
+          readonly breed: BreedVarietyRef;
           /** Name of the kennel that bred all competing dogs. */
           readonly kennelName: string;
           readonly entries: ReadonlyArray<CollectiveEntry>;
@@ -48,6 +58,6 @@ export type CollectiveCompetitionResults =
     | {
           readonly kind: 'progeny-group';
           /** Opaque reference to the sire or dam whose offspring are competing. */
-          readonly parentDogRef: EntryRef;
+          readonly parentEntryRef: EntryRef;
           readonly entries: ReadonlyArray<CollectiveEntry>;
       };

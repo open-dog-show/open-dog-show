@@ -43,13 +43,13 @@ Make the feeder relationship **explicit ruleset data** and the candidate contain
         feederAwardTypeId: AwardTypeId | undefined;
         feederClassId: ClassId | undefined;
         sex: 'male' | 'female' | undefined; // breed-scope only
-        candidates: ReadonlyArray<{ dogRef: EntryRef; gradeId: GradeId }>;
+        candidates: ReadonlyArray<{ entryRef: EntryRef; gradeId: GradeId }>;
     }
     ```
 
-    `dogRef` is `EntryRef` — the branded opaque entry reference introduced in #141 (opaque to the Rulesets context; Rulesets must not model `Entry`) — so consumers construct `EntryRef`s, not bare strings.
+    `entryRef` is `EntryRef` — the branded opaque entry reference introduced in #141 (opaque to the Rulesets context; Rulesets must not model `Entry`) — so consumers construct `EntryRef`s, not bare strings.
 
-    Candidates are a uniform `{dogRef, gradeId}` — the policy matcher checks only `minimumGradeId` (every higher-scope award has `minimumPlacement: undefined`); picking the 1st-place dog is a construction-time filter in the Judging context, not a policy check. The optional `sex` tag carries breed scope's male/female separation (BOB/BOS); group/show awards are not sex-split.
+    Candidates are a uniform `{entryRef, gradeId}` — the policy matcher checks only `minimumGradeId` (every higher-scope award has `worstEligiblePlacement: undefined`); picking the 1st-place dog is a construction-time filter in the Judging context, not a policy check. The optional `sex` tag carries breed scope's male/female separation (BOB/BOS); group/show awards are not sex-split.
 
 3. **`AwardPolicy` becomes a generic feeder matcher** across breed/group/show: `eligibleAwardTypes` returns an award id only when at least one candidate across its `fedBy` streams meets the award's `minimumGradeId`; `validateAwardChoices` checks each proposed dog is in an award feeder stream and meets its `minimumGradeId`, and that non-discretionary awards are proposed when their feeder stream is non-empty. No per-scope special-casing of field names.
 

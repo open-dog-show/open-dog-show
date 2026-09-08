@@ -19,26 +19,31 @@ import type { LocalDate } from '../../model/effective-ruleset/value-objects/loca
  *    `classDefinition.requiredCertificates` must appear in
  *    `dogProfile.heldCertificates`.
  * 4. **Bred-by-Exhibitor** — when `classDefinition.bredByExhibitor` is
- *    `true`, `handlerIsBreeder` must also be `true`.
+ *    `true`, `dogProfile.handlerIsBreeder` must also be `true`.
  *
  * This is a pure in-memory domain service (ADR-0001: concrete rulesets are
- * pure domain modules that depend only on the domain core). It lives in
- * `domain/services/fci/` and is exported via the `@ods/rulesets/fci` sub-path
- * so the main `@ods/rulesets` export stays the abstraction surface (the ports
- * + data model); the composition root (`apps/api`) will wire it. See ADR-0019
- * § "Subpath exports".
+ * pure domain modules that depend only on the domain core) — not a test
+ * double. It lives in the domain layer (`domain/service/fci/`) and is exported
+ * from the `domain/service/fci/` relative-import barrel, kept separate from
+ * `src/rulesets/index.ts` so the main export stays the abstraction surface
+ * (the ports + data model); the composition root (`apps/api`) will wire it.
+ * See ADR-0021.
  */
 export class FciClassEligibilityPolicy implements ClassEligibilityPolicy {
     isEligible(
         classDefinition: ClassDefinition,
         dogProfile: DogEligibilityProfile,
         showDate: LocalDate,
-        handlerIsBreeder: boolean,
     ): boolean {
         const age = showDate.completedMonthsSince(dogProfile.dateOfBirth);
 
         if (age < 0) {
-            return false; // show date is before date of birth — fail closed
+            // A show date before the dog's date of birth is a corrupt profile
+            // (or a mis-ordered show date). Surface it rather than silently
+            // filtering the dog out — a silent `false` hides bad data.
+            throw new RangeError(
+                `Show date ${showDate.year}-${showDate.month}-${showDate.day} is before the dog's date of birth ${dogProfile.dateOfBirth.year}-${dogProfile.dateOfBirth.month}-${dogProfile.dateOfBirth.day}; a corrupt eligibility profile must surface, not silently fail closed`,
+            );
         }
 
         if (classDefinition.fromAgeMonths !== undefined && age < classDefinition.fromAgeMonths) {
@@ -58,7 +63,7 @@ export class FciClassEligibilityPolicy implements ClassEligibilityPolicy {
             }
         }
 
-        if (classDefinition.bredByExhibitor && !handlerIsBreeder) {
+        if (classDefinition.bredByExhibitor && !dogProfile.handlerIsBreeder) {
             return false;
         }
 

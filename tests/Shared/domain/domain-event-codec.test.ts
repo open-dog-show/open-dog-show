@@ -81,6 +81,10 @@ describe('decodeDomainEvent', () => {
         expect(() => decodeDomainEvent({ ...raw, type: 'bogus' })).toThrow(TypeError);
     });
 
+    it('throws TypeError when the JSON scope is not a valid EventScope', () => {
+        expect(() => decodeDomainEvent({ ...raw, scope: 'invalid' })).toThrow(TypeError);
+    });
+
     it('restores aggregateId as a branded AggregateId', () => {
         const event = decodeDomainEvent(raw);
 

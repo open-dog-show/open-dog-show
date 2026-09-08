@@ -67,6 +67,12 @@ export default function (plop) {
             },
             {
                 type: 'add',
+                path: 'src/{{name}}/infrastructure/persistence/postgres/migrations/0001_outbox_poison_pill.sql',
+                templateFile:
+                    'plop-templates/context/infrastructure/persistence/postgres/migrations/0001_outbox_poison_pill.sql.hbs',
+            },
+            {
+                type: 'add',
                 path: 'tests/{{name}}/__tests__/save-item.test.ts',
                 templateFile: 'plop-templates/context/tests/__tests__/save-item.test.ts.hbs',
             },
