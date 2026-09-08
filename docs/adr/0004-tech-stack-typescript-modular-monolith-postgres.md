@@ -12,6 +12,18 @@ status: accepted
 > deployment"; the RLS key `tenant_id` is now `club_id`. The 2026-08-01 amendment
 > note above is left intact as historical record.
 
+> **Amended 2026-09-07:** decision 2 (monorepo with each bounded context as its
+> own pnpm workspace package) is superseded by [ADR-0020](0020-single-package-source-tree.md):
+> the repo is now a single package with contexts as `src/<name>/` folders
+> and relative imports. The modular-monolith, single-Postgres, transactional-outbox,
+> and Drizzle-behind-ports decisions are unchanged.
+
+> **Amended 2026-09-07 by [ADR-0021](0021-adopt-canonical-directory-structure.md):**
+> the source layout is now the canonical four-layer directory structure
+> (`.github/skills/placement/STRUCTURE.md`): per-context `interfaces/` delivery
+> replaces the single composition-root model of decision 1; `apps/` is the
+> entry-point root.
+
 ## Context
 
 ADRs 0001–0003 fixed the _shape_ of the system (data-first composable rulesets, nine event-integrated bounded contexts, AGPL-3.0) but left the technology stack open, under one standing constraint — **framework-agnostic, "don't marry the framework"** — plus the product goal of **keeping the cost of running a show low for small clubs** (README) and a later-added goal of **integrating with a club's existing website / CMS**.

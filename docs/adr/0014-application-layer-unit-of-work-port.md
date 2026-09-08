@@ -1,4 +1,4 @@
-﻿---
+---
 status: accepted
 ---
 
@@ -9,6 +9,13 @@ status: accepted
 > _how_ use cases hide the transaction / repository / outbox wiring. Originated
 > from issue #120 (architecture-review finding: "introduce an application-layer
 > use case in the context generator/sample").
+
+> **Amended 2026-09-07:** the `@ods/kernel` package import shown in the code
+> examples below is now a relative import (`../../Shared/index.js` per
+> [ADR-0020](0020-single-package-source-tree.md)/[ADR-0021](0021-adopt-canonical-directory-structure.md);
+> the kernel is `src/Shared/`). The `UnitOfWork` port pattern itself is unchanged;
+> [ADR-0021](0021-adopt-canonical-directory-structure.md) places the use case in
+> an `application/<UseCase>/` folder.
 
 ## Context
 

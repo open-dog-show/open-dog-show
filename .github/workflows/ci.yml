@@ -104,4 +104,4 @@ jobs:
               run: pnpm install --no-frozen-lockfile
 
             - name: Run generated integration test
-              run: pnpm exec vitest run --config vitest.integration.config.ts packages/contexts/smoke-test
+              run: pnpm exec vitest run --config vitest.integration.config.ts tests/smoke-test

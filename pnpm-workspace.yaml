@@ -1,13 +1,12 @@
 # SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 # SPDX-License-Identifier: AGPL-3.0-only
 
-packages:
-    - 'packages/*'
-    - 'packages/contexts/*'
-    - 'apps/*'
 allowBuilds:
     cpu-features: false
     esbuild: false
     protobufjs: true
     ssh2: true
     unrs-resolver: false
+
+packages:
+    - '.'

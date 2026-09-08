@@ -1,0 +1,175 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import pg from 'pg';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { PostgresHarness, runMigrations } from '../../test-kit/index.js';
+import {
+    asAggregateId,
+    asClubId,
+    asPrincipalId,
+    asEventId,
+    asEventType,
+    createDomainEvent,
+    FakeClock,
+    FakeEventIdGenerator,
+    PgOutboxWriter,
+    PgPollingDispatcher,
+    type DomainEvent,
+} from '../../../src/Shared/index.js';
+import { PgItemUnitOfWork } from '../../../src/{{name}}/infrastructure/persistence/postgres/pg-unit-of-work.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Fixed deterministic IDs.
+const CLUB_ID = '00000000-0000-4000-8000-000000000001';
+const USER_ID = '00000000-0000-4000-8000-000000000011';
+const ITEM_ID = '00000000-0000-4000-8000-000000000031';
+const EVENT_ID = '00000000-0000-4000-8000-000000000041';
+
+const scope = {
+    kind: 'club' as const,
+    clubId: asClubId(CLUB_ID),
+    principalId: asPrincipalId(USER_ID),
+};
+const item = {
+    id: ITEM_ID,
+    clubId: asClubId(CLUB_ID),
+    name: 'test-item',
+};
+
+describe('Transactional outbox — {{name}} context', () => {
+    const harness = new PostgresHarness();
+    let superPool: pg.Pool;
+    let appPool: pg.Pool;
+    let unitOfWork: PgItemUnitOfWork;
+
+    beforeAll(async () => {
+        await harness.start();
+
+        await runMigrations(harness.connectionUrl, [
+            {
+                name: '{{name}}',
+                migrationsDir: resolve(__dirname, '../../../src/{{name}}/infrastructure/persistence/postgres/migrations'),
+            },
+        ]);
+
+        superPool = harness.superPool;
+        appPool = harness.appUserPool;
+        unitOfWork = new PgItemUnitOfWork(appPool, new PgOutboxWriter('{{snakeCase name}}'));
+    }, 120_000);
+
+    afterAll(async () => {
+        await harness.stop();
+    });
+
+    function makeEvent(): DomainEvent<unknown> {
+        return createDomainEvent(
+            {
+                type: asEventType('{{eventContext name}}.ItemSaved'),
+                scope: 'club',
+                aggregateId: asAggregateId(ITEM_ID),
+                payload: { name: 'test-item' },
+                eventId: asEventId(EVENT_ID),
+            },
+            {
+                clock: new FakeClock(new Date('2026-08-01T12:00:00.000Z')),
+                eventIdGenerator: new FakeEventIdGenerator(),
+            },
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Seam 1: transactional write — outbox + domain record in one transaction
+    // -------------------------------------------------------------------------
+
+    describe('transactional write', () => {
+        it('rolls back both the item and the outbox row when the transaction fails', async () => {
+            await expect(
+                unitOfWork.run(scope, async (ctx) => {
+                    await ctx.items.save(item);
+                    ctx.appendEvents(makeEvent());
+                    throw new Error('simulated failure');
+                }),
+            ).rejects.toThrow('simulated failure');
+
+            const { rows: itemRows } = await superPool.query(
+                `SELECT id FROM {{snakeCase name}}.items WHERE id = $1`,
+                [ITEM_ID],
+            );
+            expect(itemRows).toHaveLength(0);
+
+            const { rows: outboxRows } = await superPool.query(
+                `SELECT event_id FROM {{snakeCase name}}.outbox WHERE event_id = $1`,
+                [EVENT_ID],
+            );
+            expect(outboxRows).toHaveLength(0);
+        });
+
+        it('writes both the item and the outbox row when the transaction succeeds', async () => {
+            await unitOfWork.run(scope, async (ctx) => {
+                await ctx.items.save(item);
+                ctx.appendEvents(makeEvent());
+            });
+
+            const { rows: itemRows } = await superPool.query(
+                `SELECT id FROM {{snakeCase name}}.items WHERE id = $1`,
+                [ITEM_ID],
+            );
+            expect(itemRows).toHaveLength(1);
+
+            const { rows: outboxRows } = await superPool.query(
+                `SELECT event_id, club_id, dispatched_at FROM {{snakeCase name}}.outbox WHERE event_id = $1`,
+                [EVENT_ID],
+            );
+            expect(outboxRows).toHaveLength(1);
+            expect(outboxRows[0]?.club_id).toBe(CLUB_ID);
+            expect(outboxRows[0]?.dispatched_at).toBeNull();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // Seam 2: dispatcher round-trip
+    // -------------------------------------------------------------------------
+
+    const DISPATCHER_EVENT_ID = '00000000-0000-4000-8000-000000000042';
+
+    describe('polling dispatcher', () => {
+        beforeEach(async () => {
+            await superPool.query(`DELETE FROM {{snakeCase name}}.outbox`);
+            await superPool.query(
+                `INSERT INTO {{snakeCase name}}.outbox
+                   (event_id, type, occurred_at, scope, aggregate_id, payload)
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [
+                    DISPATCHER_EVENT_ID,
+                    '{{eventContext name}}.ItemSaved',
+                    '2026-08-01T12:00:00.000Z',
+                    'club',
+                    ITEM_ID,
+                    JSON.stringify({ name: 'test-item' }),
+                ],
+            );
+        });
+
+        it('delivers the pending outbox row to the handler and marks it dispatched', async () => {
+            const received: string[] = [];
+            const dispatcher = new PgPollingDispatcher(superPool, '{{snakeCase name}}', async (event) => {
+                received.push(event.eventId);
+            });
+
+            const count = await dispatcher.poll();
+
+            expect(count).toBe(1);
+            expect(received).toEqual([DISPATCHER_EVENT_ID]);
+
+            const { rows } = await superPool.query(
+                `SELECT dispatched_at FROM {{snakeCase name}}.outbox WHERE event_id = $1`,
+                [DISPATCHER_EVENT_ID],
+            );
+            expect(rows[0]?.dispatched_at).not.toBeNull();
+        });
+    });
+});

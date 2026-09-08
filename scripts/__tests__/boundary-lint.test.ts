@@ -6,6 +6,15 @@
  * illegal cross-layer and cross-context imports.
  *
  * Seam: the `boundaries/dependencies` ESLint rule, configured in eslint.config.js.
+ *
+ * ADR-0020: the @ods/* workspace packages were replaced by a single src/ tree
+ * with relative imports. Cross-context imports are now relative paths to another
+ * context's folder; the same-context `capture` constraint plus `default:
+ * 'disallow'` blocks them. The ADR-0013 `UserId`-ownership specifier ban (which
+ * was keyed on the `@ods/kernel` module source) is no longer a boundaries rule —
+ * the kernel barrel does not export `UserId`/`asUserId`/`ExhibitorId`/
+ * `asExhibitorId`, so importing them from the kernel is a `tsc` error, and the
+ * cross-context ban prevents importing them from IAM directly.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -28,16 +37,15 @@ async function lint(code: string, virtualPath: string): Promise<string[]> {
         .map((m) => m.message);
 }
 
-const domainPath = 'packages/contexts/sample/src/domain/check.ts';
-const infraPath = 'packages/contexts/sample/src/infrastructure/check.ts';
-const iamDomainPath = 'packages/contexts/iam/src/domain/check.ts';
+const domainPath = 'src/sample/domain/check.ts';
+const infraPath = 'src/sample/infrastructure/check.ts';
 
 // ── Cross-layer violations ─────────────────────────────────────────────────
 
 describe('cross-layer boundary enforcement', () => {
     it('blocks domain layer from importing infrastructure', async () => {
         const violations = await lint(
-            `import { entriesTable } from '../infrastructure/schema.js';\n`,
+            `import { entriesTable } from '../infrastructure/persistence/postgres/schema.js';\n`,
             domainPath,
         );
         expect(violations.length, 'expected a boundaries/dependencies error').toBeGreaterThan(0);
@@ -45,92 +53,79 @@ describe('cross-layer boundary enforcement', () => {
 
     it('allows infrastructure layer to import domain', async () => {
         const violations = await lint(
-            `import type { Entry } from '../domain/entry.js';\n`,
+            `import type { Entry } from '../domain/model/entry/entry.js';\n`,
             infraPath,
         );
         expect(violations, 'infra → domain should be allowed').toHaveLength(0);
-    });
-
-    it('blocks infrastructure from importing another context via its package', async () => {
-        // Context-zone enforcement: no @ods/* context package other than
-        // @ods/kernel is importable from infrastructure. Any Payments/Identity
-        // integration must go through an explicit ACL adapter entry in the policy.
-        const violations = await lint(`import type { x } from '@ods/judging';\n`, infraPath);
-        expect(
-            violations.length,
-            'cross-context package import from infra expected a boundaries/dependencies error',
-        ).toBeGreaterThan(0);
     });
 });
 
 // ── Cross-context violations ───────────────────────────────────────────────
 
 describe('cross-context boundary enforcement', () => {
-    it('blocks domain from importing another @ods context package', async () => {
-        const violations = await lint(`import type { Dog } from '@ods/judging';\n`, domainPath);
-        expect(violations.length, 'expected a boundaries/dependencies error').toBeGreaterThan(0);
+    // A relative import that crosses into another context's source tree. The
+    // target (src/iam/domain/user.ts) matches a `context-domain` element with a
+    // different captured contextName, so it falls through to `default: 'disallow'`.
+    it('blocks domain from importing another context via a relative path', async () => {
+        const violations = await lint(
+            `import type { User } from '../../iam/domain/model/user/user.js';\n`,
+            domainPath,
+        );
+        expect(
+            violations.length,
+            'cross-context relative import from domain expected a boundaries/dependencies error',
+        ).toBeGreaterThan(0);
     });
 
-    it('allows domain to import @ods/kernel', async () => {
-        const violations = await lint(`import type { ClubId } from '@ods/kernel';\n`, domainPath);
-        expect(violations, 'domain → @ods/kernel should be allowed').toHaveLength(0);
+    it('blocks infrastructure from importing another context via a relative path', async () => {
+        const violations = await lint(
+            `import type { User } from '../../iam/domain/model/user/user.js';\n`,
+            infraPath,
+        );
+        expect(
+            violations.length,
+            'cross-context relative import from infra expected a boundaries/dependencies error',
+        ).toBeGreaterThan(0);
+    });
+
+    it('allows domain to import the shared kernel', async () => {
+        const violations = await lint(
+            `import type { ClubId } from '../../Shared/index.js';\n`,
+            domainPath,
+        );
+        expect(violations, 'domain → kernel should be allowed').toHaveLength(0);
     });
 });
 
-// ── IAM-identity ownership (ADR-0013) ───────────────────────────────────────
-// The kernel owns the context-neutral `PrincipalId`; `UserId` is owned by
-// `@ods/iam`. A downstream context domain layer must not import IAM's
-// `UserId` (or the dead `ExhibitorId` brand) from the kernel — the ownership
-// split is enforced in CI, not just by convention. The context-neutral
-// `PrincipalId` (and `ClubId`, above) remain importable from the kernel.
+// ── Interfaces layer (ADR-0021) ────────────────────────────────────────────
 
-describe('identity-ownership boundary enforcement', () => {
-    it('blocks a downstream domain layer from importing UserId from @ods/kernel', async () => {
-        const violations = await lint(`import type { UserId } from '@ods/kernel';\n`, domainPath);
-        expect(
-            violations.length,
-            'domain importing UserId from @ods/kernel should be a boundaries/dependencies violation',
-        ).toBeGreaterThan(0);
-    });
+describe('interfaces layer boundary enforcement', () => {
+    const interfacesPath = 'src/sample/interfaces/check.ts';
 
-    it('blocks a downstream domain layer from importing asUserId from @ods/kernel', async () => {
-        const violations = await lint(`import { asUserId } from '@ods/kernel';\n`, domainPath);
-        expect(
-            violations.length,
-            'importing the UserId caster should be blocked too',
-        ).toBeGreaterThan(0);
-    });
-
-    it('blocks a downstream domain layer from importing the dead ExhibitorId brand from @ods/kernel', async () => {
+    it('blocks interfaces from importing infrastructure', async () => {
         const violations = await lint(
-            `import type { ExhibitorId } from '@ods/kernel';\n`,
-            domainPath,
+            `import { entriesTable } from '../infrastructure/persistence/postgres/schema.js';\n`,
+            interfacesPath,
         );
         expect(
             violations.length,
-            'ExhibitorId was removed from the kernel; importing it should be a boundaries/dependencies violation',
+            'interfaces → infrastructure must be blocked (ADR-0021: interfaces never imports infrastructure)',
         ).toBeGreaterThan(0);
     });
 
-    it('still allows a downstream domain layer to import PrincipalId from @ods/kernel', async () => {
+    it('allows interfaces to import same-context application', async () => {
         const violations = await lint(
-            `import type { PrincipalId } from '@ods/kernel';\n`,
-            domainPath,
+            `import { SaveEntryUseCase } from '../application/save-entry/save-entry.js';\n`,
+            interfacesPath,
         );
-        expect(
-            violations,
-            'PrincipalId is the context-neutral actor id and remains allowed from the kernel',
-        ).toHaveLength(0);
+        expect(violations, 'interfaces → application should be allowed').toHaveLength(0);
     });
 
-    it('allows @ods/iam domain to import UserId from its own package', async () => {
+    it('allows interfaces to import the shared kernel', async () => {
         const violations = await lint(
-            `import type { UserId } from './domain-ids.js';\n`,
-            iamDomainPath,
+            `import type { ClubId } from '../../Shared/index.js';\n`,
+            interfacesPath,
         );
-        expect(
-            violations,
-            '@ods/iam owns UserId; importing it from its own package should be allowed',
-        ).toHaveLength(0);
+        expect(violations, 'interfaces → kernel should be allowed').toHaveLength(0);
     });
 });

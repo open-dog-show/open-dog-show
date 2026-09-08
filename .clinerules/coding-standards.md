@@ -3,7 +3,7 @@
 > **The coding standards are canonically maintained in
 > [`AGENTS.md`](../AGENTS.md#coding-standards).** Read and follow that file
 > before doing any work — it covers the project, SPDX headers, file naming,
-> TypeScript rules, architecture (ADR-0004 / ADR-0006), package management, and
+> TypeScript rules, architecture (ADR-0004 / ADR-0006 / ADR-0020 / ADR-0021), package management, and
 > commit signing.
 
 Cline auto-loads `.clinerules/`. This file is a thin pointer kept so Cline,
