@@ -2,14 +2,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { ClubId } from '../../../../Shared/index.js';
+import type { ShowId } from '../../shared/domain-ids.js';
 
 export interface Show {
-    readonly id: string;
+    readonly id: ShowId;
     readonly clubId: ClubId;
     readonly name: string;
-}
-
-export interface ShowRepository {
-    findAll(): Promise<Show[]>;
-    save(show: Show): Promise<void>;
 }

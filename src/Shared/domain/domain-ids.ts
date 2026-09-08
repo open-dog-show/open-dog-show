@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-declare const __brand: unique symbol;
+import type { Brand } from './brand.js';
 
 /**
  * Compile-time brand helper.
@@ -11,7 +11,6 @@ declare const __brand: unique symbol;
  * accidental substitution of one ID kind for another (e.g. passing a
  * `DogId` where a `ShowId` is expected).
  */
-type Brand<T, B> = T & { readonly [__brand]: B };
 
 /** Branded string that uniquely identifies a dog show. */
 export type ShowId = Brand<string, 'ShowId'>;
@@ -24,7 +23,7 @@ export type ClubId = Brand<string, 'ClubId'>;
  *
  * A `PrincipalId` is the abstract access-control principal on whose behalf a
  * unit of work runs — independent of which identity system produced it. The
- * kernel will use it solely for RLS plumbing: `TransactionScope` will set the
+ * kernel uses it solely for RLS plumbing: `TransactionScope` sets the
  * `app.user_id` session variable from it (ADR-0005 / ADR-0013). It is a kernel
  * plumbing type, intentionally absent from `CONTEXT.md` (like `ClubId`).
  *
@@ -54,16 +53,12 @@ export type EventId = Brand<string, 'EventId'>;
  * passed where another branded id is expected.
  */
 export type AggregateId = Brand<string, 'AggregateId'>;
-/**
- * Branded string naming a domain-event type, in `<context>.<PascalName>`
- * form (e.g. `'entries.EntrySubmitted'`).
- *
- * The brand distinguishes an event-type name from an arbitrary string so a
- * context name or aggregate id can never be silently substituted for an
- * event type.  Unlike the identifier brands, an `EventType` is **only**
- * obtainable through {@link asEventType}, which validates the format.
- */
-export type EventType = Brand<string, 'EventType'>;
+// `EventType` / `asEventType` live in `domain-event-type.ts` — an event-type
+// name is not an identifier brand (its constructor validates, unlike the plain
+// `as*` casts here). Re-exported so existing `from './domain-ids.js'` imports
+// keep working.
+export type { EventType } from './domain-event-type.js';
+export { asEventType } from './domain-event-type.js';
 
 /**
  * Casts a raw string to a {@link ShowId}.
@@ -83,7 +78,7 @@ export const asClubId = (id: string): ClubId => id as ClubId;
  * Casts a raw string to a {@link PrincipalId}. See {@link asShowId}.
  *
  * Per ADR-0013: at the composition root an untyped actor id (e.g. a `User.id`
- * from `@ods/iam`) is cast to the context-neutral {@link PrincipalId} the
+ * from the IAM context) is cast to the context-neutral {@link PrincipalId} the
  * kernel carries in `TransactionScope`. Plain cast — no validation — identical
  * in shape to {@link asClubId}.
  */
@@ -104,31 +99,3 @@ export const asEventId = (id: string): EventId => id as EventId;
  * `AggregateId` when handing an event to the kernel.
  */
 export const asAggregateId = (id: string): AggregateId => id as AggregateId;
-
-/**
- * Matches the {@link EventType} format: a lowercase `<context>` word, a dot,
- * then a `<PascalName>` word (e.g. `entries.EntrySubmitted`).
- */
-const EVENT_TYPE_PATTERN = /^[a-z][a-z0-9]*\.[A-Z][a-zA-Z0-9]*(?![\s\S])/;
-
-/**
- * Casts a raw string to an {@link EventType}, **validating** it is in
- * `<context>.<PascalName>` form (e.g. `'entries.EntrySubmitted'`).
- *
- * `EventType` is the one branded id whose constructor is a validating factory
- * rather than a plain cast: an invalid event-type name must never reach the
- * outbox, so malformed values are rejected at the boundary instead of being
- * silently branded.  Use this wherever an event type enters the domain — in
- * `createDomainEvent` callers, and in `decodeDomainEvent` when restoring an
- * event from its JSON / database form.
- *
- * @throws {TypeError} when `value` does not match `<word>.<PascalWord>`.
- */
-export const asEventType = (value: string): EventType => {
-    if (!EVENT_TYPE_PATTERN.test(value)) {
-        throw new TypeError(
-            `Invalid EventType '${value}': expected '<context>.<PascalName>' (e.g. 'entries.EntrySubmitted').`,
-        );
-    }
-    return value as EventType;
-};

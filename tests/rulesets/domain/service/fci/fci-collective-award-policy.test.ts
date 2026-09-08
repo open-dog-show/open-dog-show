@@ -23,11 +23,10 @@ describe('FciCollectiveAwardPolicy — Brace/Couple', () => {
     it('returns a winning group when exactly one dog and one bitch are present', () => {
         const results: CollectiveCompetitionResults = {
             kind: 'brace-couple',
-            breedId: BREED_ID,
-            varietyId: undefined,
+            breed: { breedId: BREED_ID, varietyId: undefined },
             entries: [
-                { dogRef: asEntryRef('entry-1'), sex: 'dog' },
-                { dogRef: asEntryRef('entry-2'), sex: 'bitch' },
+                { entryRef: asEntryRef('entry-1'), sex: 'male' },
+                { entryRef: asEntryRef('entry-2'), sex: 'female' },
             ],
         };
 
@@ -44,11 +43,10 @@ describe('FciCollectiveAwardPolicy — Brace/Couple', () => {
     it('is invalid when both entries are dogs (no bitch present)', () => {
         const results: CollectiveCompetitionResults = {
             kind: 'brace-couple',
-            breedId: BREED_ID,
-            varietyId: undefined,
+            breed: { breedId: BREED_ID, varietyId: undefined },
             entries: [
-                { dogRef: asEntryRef('entry-1'), sex: 'dog' },
-                { dogRef: asEntryRef('entry-2'), sex: 'dog' },
+                { entryRef: asEntryRef('entry-1'), sex: 'male' },
+                { entryRef: asEntryRef('entry-2'), sex: 'male' },
             ],
         };
 
@@ -56,18 +54,17 @@ describe('FciCollectiveAwardPolicy — Brace/Couple', () => {
 
         expect(result.valid).toBe(false);
         if (!result.valid) {
-            expect(result.reason).toMatch(/bitch/i);
+            expect(result.reason).toMatch(/female/i);
         }
     });
 
     it('is invalid when both entries are bitches (no dog present)', () => {
         const results: CollectiveCompetitionResults = {
             kind: 'brace-couple',
-            breedId: BREED_ID,
-            varietyId: undefined,
+            breed: { breedId: BREED_ID, varietyId: undefined },
             entries: [
-                { dogRef: asEntryRef('entry-1'), sex: 'bitch' },
-                { dogRef: asEntryRef('entry-2'), sex: 'bitch' },
+                { entryRef: asEntryRef('entry-1'), sex: 'female' },
+                { entryRef: asEntryRef('entry-2'), sex: 'female' },
             ],
         };
 
@@ -75,16 +72,15 @@ describe('FciCollectiveAwardPolicy — Brace/Couple', () => {
 
         expect(result.valid).toBe(false);
         if (!result.valid) {
-            expect(result.reason).toMatch(/dog/i);
+            expect(result.reason).toMatch(/male/i);
         }
     });
 
     it('is invalid when fewer than two entries are present', () => {
         const results: CollectiveCompetitionResults = {
             kind: 'brace-couple',
-            breedId: BREED_ID,
-            varietyId: undefined,
-            entries: [{ dogRef: asEntryRef('entry-1'), sex: 'dog' }],
+            breed: { breedId: BREED_ID, varietyId: undefined },
+            entries: [{ entryRef: asEntryRef('entry-1'), sex: 'male' }],
         };
 
         const result = policy.evaluate(results);
@@ -95,8 +91,7 @@ describe('FciCollectiveAwardPolicy — Brace/Couple', () => {
     it('is invalid when no entries are present', () => {
         const results: CollectiveCompetitionResults = {
             kind: 'brace-couple',
-            breedId: BREED_ID,
-            varietyId: undefined,
+            breed: { breedId: BREED_ID, varietyId: undefined },
             entries: [],
         };
 
@@ -108,11 +103,10 @@ describe('FciCollectiveAwardPolicy — Brace/Couple', () => {
     it('is valid when a variety is specified alongside the breed', () => {
         const results: CollectiveCompetitionResults = {
             kind: 'brace-couple',
-            breedId: BREED_ID,
-            varietyId: VARIETY_ID,
+            breed: { breedId: BREED_ID, varietyId: VARIETY_ID },
             entries: [
-                { dogRef: asEntryRef('entry-1'), sex: 'dog' },
-                { dogRef: asEntryRef('entry-2'), sex: 'bitch' },
+                { entryRef: asEntryRef('entry-1'), sex: 'male' },
+                { entryRef: asEntryRef('entry-2'), sex: 'female' },
             ],
         };
 
@@ -135,13 +129,12 @@ describe("FciCollectiveAwardPolicy — Breeders' Group", () => {
     it('returns a winning group for 3 dogs of the same breed and kennel', () => {
         const results: CollectiveCompetitionResults = {
             kind: 'breeders-group',
-            breedId: BREED_ID,
-            varietyId: undefined,
+            breed: { breedId: BREED_ID, varietyId: undefined },
             kennelName: 'Von der Grafschaft',
             entries: [
-                { dogRef: asEntryRef('entry-1'), sex: 'dog' },
-                { dogRef: asEntryRef('entry-2'), sex: 'bitch' },
-                { dogRef: asEntryRef('entry-3'), sex: 'bitch' },
+                { entryRef: asEntryRef('entry-1'), sex: 'male' },
+                { entryRef: asEntryRef('entry-2'), sex: 'female' },
+                { entryRef: asEntryRef('entry-3'), sex: 'female' },
             ],
         };
 
@@ -156,15 +149,14 @@ describe("FciCollectiveAwardPolicy — Breeders' Group", () => {
     it('returns a winning group for 5 dogs (maximum)', () => {
         const results: CollectiveCompetitionResults = {
             kind: 'breeders-group',
-            breedId: BREED_ID,
-            varietyId: undefined,
+            breed: { breedId: BREED_ID, varietyId: undefined },
             kennelName: 'Von der Grafschaft',
             entries: [
-                { dogRef: asEntryRef('entry-1'), sex: 'dog' },
-                { dogRef: asEntryRef('entry-2'), sex: 'bitch' },
-                { dogRef: asEntryRef('entry-3'), sex: 'dog' },
-                { dogRef: asEntryRef('entry-4'), sex: 'bitch' },
-                { dogRef: asEntryRef('entry-5'), sex: 'dog' },
+                { entryRef: asEntryRef('entry-1'), sex: 'male' },
+                { entryRef: asEntryRef('entry-2'), sex: 'female' },
+                { entryRef: asEntryRef('entry-3'), sex: 'male' },
+                { entryRef: asEntryRef('entry-4'), sex: 'female' },
+                { entryRef: asEntryRef('entry-5'), sex: 'male' },
             ],
         };
 
@@ -179,12 +171,11 @@ describe("FciCollectiveAwardPolicy — Breeders' Group", () => {
     it('is invalid when fewer than 3 dogs are present', () => {
         const results: CollectiveCompetitionResults = {
             kind: 'breeders-group',
-            breedId: BREED_ID,
-            varietyId: undefined,
+            breed: { breedId: BREED_ID, varietyId: undefined },
             kennelName: 'Von der Grafschaft',
             entries: [
-                { dogRef: asEntryRef('entry-1'), sex: 'dog' },
-                { dogRef: asEntryRef('entry-2'), sex: 'bitch' },
+                { entryRef: asEntryRef('entry-1'), sex: 'male' },
+                { entryRef: asEntryRef('entry-2'), sex: 'female' },
             ],
         };
 
@@ -199,16 +190,15 @@ describe("FciCollectiveAwardPolicy — Breeders' Group", () => {
     it('is invalid when more than 5 dogs are present', () => {
         const results: CollectiveCompetitionResults = {
             kind: 'breeders-group',
-            breedId: BREED_ID,
-            varietyId: undefined,
+            breed: { breedId: BREED_ID, varietyId: undefined },
             kennelName: 'Von der Grafschaft',
             entries: [
-                { dogRef: asEntryRef('entry-1'), sex: 'dog' },
-                { dogRef: asEntryRef('entry-2'), sex: 'bitch' },
-                { dogRef: asEntryRef('entry-3'), sex: 'dog' },
-                { dogRef: asEntryRef('entry-4'), sex: 'bitch' },
-                { dogRef: asEntryRef('entry-5'), sex: 'dog' },
-                { dogRef: asEntryRef('entry-6'), sex: 'bitch' },
+                { entryRef: asEntryRef('entry-1'), sex: 'male' },
+                { entryRef: asEntryRef('entry-2'), sex: 'female' },
+                { entryRef: asEntryRef('entry-3'), sex: 'male' },
+                { entryRef: asEntryRef('entry-4'), sex: 'female' },
+                { entryRef: asEntryRef('entry-5'), sex: 'male' },
+                { entryRef: asEntryRef('entry-6'), sex: 'female' },
             ],
         };
 
@@ -229,11 +219,11 @@ describe('FciCollectiveAwardPolicy — Progeny Group', () => {
     it('returns a winning group for a sire with 3 offspring (minimum)', () => {
         const results: CollectiveCompetitionResults = {
             kind: 'progeny-group',
-            parentDogRef: asEntryRef('sire-1'),
+            parentEntryRef: asEntryRef('sire-1'),
             entries: [
-                { dogRef: asEntryRef('offspring-1'), sex: 'dog' },
-                { dogRef: asEntryRef('offspring-2'), sex: 'bitch' },
-                { dogRef: asEntryRef('offspring-3'), sex: 'dog' },
+                { entryRef: asEntryRef('offspring-1'), sex: 'male' },
+                { entryRef: asEntryRef('offspring-2'), sex: 'female' },
+                { entryRef: asEntryRef('offspring-3'), sex: 'male' },
             ],
         };
 
@@ -251,13 +241,13 @@ describe('FciCollectiveAwardPolicy — Progeny Group', () => {
     it('returns a winning group for a dam with 5 offspring (maximum)', () => {
         const results: CollectiveCompetitionResults = {
             kind: 'progeny-group',
-            parentDogRef: asEntryRef('dam-1'),
+            parentEntryRef: asEntryRef('dam-1'),
             entries: [
-                { dogRef: asEntryRef('offspring-1'), sex: 'dog' },
-                { dogRef: asEntryRef('offspring-2'), sex: 'bitch' },
-                { dogRef: asEntryRef('offspring-3'), sex: 'dog' },
-                { dogRef: asEntryRef('offspring-4'), sex: 'bitch' },
-                { dogRef: asEntryRef('offspring-5'), sex: 'dog' },
+                { entryRef: asEntryRef('offspring-1'), sex: 'male' },
+                { entryRef: asEntryRef('offspring-2'), sex: 'female' },
+                { entryRef: asEntryRef('offspring-3'), sex: 'male' },
+                { entryRef: asEntryRef('offspring-4'), sex: 'female' },
+                { entryRef: asEntryRef('offspring-5'), sex: 'male' },
             ],
         };
 
@@ -272,10 +262,10 @@ describe('FciCollectiveAwardPolicy — Progeny Group', () => {
     it('is invalid when fewer than 3 offspring are present', () => {
         const results: CollectiveCompetitionResults = {
             kind: 'progeny-group',
-            parentDogRef: asEntryRef('sire-1'),
+            parentEntryRef: asEntryRef('sire-1'),
             entries: [
-                { dogRef: asEntryRef('offspring-1'), sex: 'dog' },
-                { dogRef: asEntryRef('offspring-2'), sex: 'bitch' },
+                { entryRef: asEntryRef('offspring-1'), sex: 'male' },
+                { entryRef: asEntryRef('offspring-2'), sex: 'female' },
             ],
         };
 
@@ -290,14 +280,14 @@ describe('FciCollectiveAwardPolicy — Progeny Group', () => {
     it('is invalid when more than 5 offspring are present', () => {
         const results: CollectiveCompetitionResults = {
             kind: 'progeny-group',
-            parentDogRef: asEntryRef('sire-1'),
+            parentEntryRef: asEntryRef('sire-1'),
             entries: [
-                { dogRef: asEntryRef('offspring-1'), sex: 'dog' },
-                { dogRef: asEntryRef('offspring-2'), sex: 'bitch' },
-                { dogRef: asEntryRef('offspring-3'), sex: 'dog' },
-                { dogRef: asEntryRef('offspring-4'), sex: 'bitch' },
-                { dogRef: asEntryRef('offspring-5'), sex: 'dog' },
-                { dogRef: asEntryRef('offspring-6'), sex: 'bitch' },
+                { entryRef: asEntryRef('offspring-1'), sex: 'male' },
+                { entryRef: asEntryRef('offspring-2'), sex: 'female' },
+                { entryRef: asEntryRef('offspring-3'), sex: 'male' },
+                { entryRef: asEntryRef('offspring-4'), sex: 'female' },
+                { entryRef: asEntryRef('offspring-5'), sex: 'male' },
+                { entryRef: asEntryRef('offspring-6'), sex: 'female' },
             ],
         };
 
@@ -312,7 +302,7 @@ describe('FciCollectiveAwardPolicy — Progeny Group', () => {
     it('is invalid when no offspring are present', () => {
         const results: CollectiveCompetitionResults = {
             kind: 'progeny-group',
-            parentDogRef: asEntryRef('sire-1'),
+            parentEntryRef: asEntryRef('sire-1'),
             entries: [],
         };
 

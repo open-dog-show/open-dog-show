@@ -4,29 +4,31 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
 import { asClubId, asPrincipalId } from '../../../../Shared/index.js';
+import { asEntryId, asShowId } from '../../../domain/shared/domain-ids.js';
 import { entriesTable } from './schema.js';
-import type { Entry, EntryRepository } from '../../../domain/model/entry/entry.js';
+import type { Entry } from '../../../domain/model/entry/entry.js';
+import type { EntryRepository } from '../../../domain/model/entry/entry-repository.js';
 
 export class DrizzleEntryRepository implements EntryRepository {
-    private readonly db;
+    private readonly drizzle;
 
     constructor(client: pg.PoolClient) {
-        this.db = drizzle(client);
+        this.drizzle = drizzle(client);
     }
 
-    async findAll(): Promise<Entry[]> {
-        const rows = await this.db.select().from(entriesTable);
+    async findAll(): Promise<ReadonlyArray<Entry>> {
+        const rows = await this.drizzle.select().from(entriesTable);
         return rows.map((row) => ({
-            id: row.id,
+            id: asEntryId(row.id),
             clubId: asClubId(row.clubId),
             principalId: asPrincipalId(row.principalId),
-            showId: row.showId,
+            showId: asShowId(row.showId),
             dogName: row.dogName,
         }));
     }
 
     async save(entry: Entry): Promise<void> {
-        await this.db
+        await this.drizzle
             .insert(entriesTable)
             .values({
                 id: entry.id,

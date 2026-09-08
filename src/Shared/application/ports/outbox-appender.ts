@@ -10,5 +10,5 @@ import type { DomainEvent } from '../../domain/domain-event.js';
  * can queue events for atomic outbox-write without coupling to the transport.
  */
 export interface OutboxAppender {
-    append(...events: DomainEvent<unknown>[]): void;
+    append(...events: readonly DomainEvent<unknown>[]): void;
 }

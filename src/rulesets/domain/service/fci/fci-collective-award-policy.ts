@@ -12,21 +12,25 @@ const PROGENY_MAX = 5;
 /**
  * In-memory FCI implementation of {@link CollectiveAwardPolicy}.
  *
- * **Brace/Couple** — validates that exactly one dog and one bitch of the
- * same breed/variety are present; returns both entries as the winning group.
+ * **Brace/Couple** — validates the sex composition (exactly one dog and one
+ * bitch) and returns both entries as the winning group. Breed/variety
+ * consistency is not yet enforced.
  *
- * **Breeders' Group** — validates 3–5 dogs of the same breed/variety bred
- * under the same Kennel Name; returns all entries as the winning group.
+ * **Breeders' Group** — validates the group size (3–5 dogs) and returns all
+ * entries as the winning group. Same-breed/variety and same-kennel-name
+ * checks are not yet enforced.
  *
- * **Progeny Group** — validates a sire or dam with 3–5 first-generation
- * offspring present; returns all offspring entries as the winning group.
+ * **Progeny Group** — validates the group size (3–5 entries) and returns all
+ * entries as the winning group. The sire/dam-with-first-generation-offspring
+ * structure is not yet enforced.
  *
  * This is a pure in-memory domain service (ADR-0001: concrete rulesets are
- * pure domain modules that depend only on the domain core). It lives in
- * `domain/services/fci/` and is exported via the `@ods/rulesets/fci` sub-path
- * so the main `@ods/rulesets` export stays the abstraction surface (the ports
- * + data model); the composition root (`apps/api`) will wire it. See ADR-0019
- * § "Subpath exports".
+ * pure domain modules that depend only on the domain core) — not a test
+ * double. It lives in the domain layer (`domain/service/fci/`) and is exported
+ * from the `domain/service/fci/` relative-import barrel, kept separate from
+ * `src/rulesets/index.ts` so the main export stays the abstraction surface
+ * (the ports + data model); the composition root (`apps/api`) will wire it.
+ * See ADR-0021.
  */
 export class FciCollectiveAwardPolicy implements CollectiveAwardPolicy {
     evaluate(results: CollectiveCompetitionResults): CollectiveAwardResult {
@@ -47,33 +51,33 @@ export class FciCollectiveAwardPolicy implements CollectiveAwardPolicy {
     private evaluateBraceCouple(
         entries: CollectiveCompetitionResults['entries'],
     ): CollectiveAwardResult {
-        const dogs = entries.filter((e) => e.sex === 'dog');
-        const bitches = entries.filter((e) => e.sex === 'bitch');
+        const males = entries.filter((e) => e.sex === 'male');
+        const females = entries.filter((e) => e.sex === 'female');
 
-        // Check bitch absence first so the reason names the missing sex when
-        // all entries are of the same sex (e.g. "two dogs, no bitch").
-        if (bitches.length === 0) {
+        // Check female absence first so the reason names the missing sex when
+        // all entries are of the same sex (e.g. "two males, no female").
+        if (females.length === 0) {
             return {
                 valid: false,
-                reason: `Brace/Couple requires exactly one bitch; found ${bitches.length.toString()}`,
+                reason: `Brace/Couple requires exactly one female; found ${females.length.toString()}`,
             };
         }
-        if (dogs.length !== 1) {
+        if (males.length !== 1) {
             return {
                 valid: false,
-                reason: `Brace/Couple requires exactly one dog; found ${dogs.length.toString()}`,
+                reason: `Brace/Couple requires exactly one male; found ${males.length.toString()}`,
             };
         }
-        if (bitches.length !== 1) {
+        if (females.length !== 1) {
             return {
                 valid: false,
-                reason: `Brace/Couple requires exactly one bitch; found ${bitches.length.toString()}`,
+                reason: `Brace/Couple requires exactly one female; found ${females.length.toString()}`,
             };
         }
 
         return {
             valid: true,
-            winningGroupRefs: entries.map((e) => e.dogRef),
+            winningGroupRefs: entries.map((e) => e.entryRef),
         };
     }
 
@@ -95,7 +99,7 @@ export class FciCollectiveAwardPolicy implements CollectiveAwardPolicy {
 
         return {
             valid: true,
-            winningGroupRefs: entries.map((e) => e.dogRef),
+            winningGroupRefs: entries.map((e) => e.entryRef),
         };
     }
 
@@ -117,7 +121,7 @@ export class FciCollectiveAwardPolicy implements CollectiveAwardPolicy {
 
         return {
             valid: true,
-            winningGroupRefs: entries.map((e) => e.dogRef),
+            winningGroupRefs: entries.map((e) => e.entryRef),
         };
     }
 }

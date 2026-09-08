@@ -4,6 +4,7 @@
 import pg from 'pg';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { quoteSchemaIdent } from '../../src/Shared/index.js';
 
 const { Client } = pg;
 
@@ -24,10 +25,15 @@ export interface MigrationContext {
  *   2. Creates the context's schema as `migration_owner`.
  *   3. Creates a `_migrations` tracking table inside that schema.
  *   4. Reads all `.sql` files from `migrationsDir` in lexicographic order and
- *      applies every file that has not been recorded in `_migrations`.
+ *      applies every file that has not been recorded in `_migrations`. Each
+ *      migration's DDL and its `_migrations` record are applied in a single
+ *      transaction, so a failure mid-file rolls back both and the next run
+ *      retries the whole file rather than leaving a half-applied migration.
  *
  * The runner connects as the supplied superuser URL and switches to the
  * `migration_owner` role for DDL, matching how production migrations are applied.
+ * `RESET ROLE` runs in a `finally` so a thrown migration never leaves the
+ * session switched to `migration_owner`.
  */
 export async function runMigrations(
     connectionUrl: string,
@@ -96,36 +102,66 @@ async function bootstrapRole(client: pg.Client): Promise<void> {
 async function applyContext(client: pg.Client, context: MigrationContext): Promise<void> {
     const { name, migrationsDir } = context;
 
-    // All DDL for this context runs as migration_owner.
-    await client.query(`SET ROLE migration_owner`);
+    // All DDL for this context runs as migration_owner. `RESET ROLE` runs on both
+    // the success and error paths below so a thrown migration never leaves the
+    // session switched to migration_owner for a subsequent context. A reset
+    // failure is surfaced only when the migration itself succeeded; on the error
+    // path the reset is best-effort and must never mask the original error.
+    try {
+        await client.query(`SET ROLE migration_owner`);
 
-    await client.query(`CREATE SCHEMA IF NOT EXISTS ${quoteIdent(name)}`);
+        await client.query(`CREATE SCHEMA IF NOT EXISTS ${quoteSchemaIdent(name)}`);
 
-    await client.query(`
-    CREATE TABLE IF NOT EXISTS ${quoteIdent(name)}._migrations (
+        await client.query(`
+    CREATE TABLE IF NOT EXISTS ${quoteSchemaIdent(name)}._migrations (
       filename   TEXT        NOT NULL PRIMARY KEY,
       applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
 
-    const files = await migrationFiles(migrationsDir);
+        const files = await migrationFiles(migrationsDir);
 
-    for (const filename of files) {
-        const alreadyApplied = await client.query<{ filename: string }>(
-            `SELECT filename FROM ${quoteIdent(name)}._migrations WHERE filename = $1`,
-            [filename],
-        );
+        for (const filename of files) {
+            const alreadyApplied = await client.query<{ filename: string }>(
+                `SELECT filename FROM ${quoteSchemaIdent(name)}._migrations WHERE filename = $1`,
+                [filename],
+            );
 
-        if (alreadyApplied.rows.length > 0) continue;
+            if (alreadyApplied.rows.length > 0) continue;
 
-        const sql = await readFile(join(migrationsDir, filename), 'utf8');
-        await client.query(sql);
+            const sql = await readFile(join(migrationsDir, filename), 'utf8');
 
-        await client.query(`INSERT INTO ${quoteIdent(name)}._migrations (filename) VALUES ($1)`, [
-            filename,
-        ]);
+            // Apply the migration and record it atomically: a failure mid-file
+            // rolls back both the DDL and the _migrations row, so the next run
+            // retries the whole file rather than leaving a half-applied migration.
+            try {
+                await client.query('BEGIN');
+                await client.query(sql);
+                await client.query(
+                    `INSERT INTO ${quoteSchemaIdent(name)}._migrations (filename) VALUES ($1)`,
+                    [filename],
+                );
+                await client.query('COMMIT');
+            } catch (err) {
+                try {
+                    await client.query('ROLLBACK');
+                } catch {
+                    // connection may already be broken — surface the original error
+                }
+                throw err;
+            }
+        }
+    } catch (err) {
+        // Best-effort reset — a reset failure here must not mask the original
+        // migration error, which is rethrown below.
+        try {
+            await client.query(`RESET ROLE`);
+        } catch {
+            // connection may already be broken — surface the original error below
+        }
+        throw err;
     }
-
+    // Success path: a reset failure here is the only error, so let it propagate.
     await client.query(`RESET ROLE`);
 }
 
@@ -133,12 +169,4 @@ async function applyContext(client: pg.Client, context: MigrationContext): Promi
 async function migrationFiles(dir: string): Promise<string[]> {
     const entries = await readdir(dir);
     return entries.filter((f) => f.endsWith('.sql')).sort();
-}
-
-/**
- * Double-quotes a PostgreSQL identifier and escapes embedded double-quotes.
- * This guards against schema names that contain special characters.
- */
-function quoteIdent(name: string): string {
-    return `"${name.replaceAll('"', '""')}"`;
 }

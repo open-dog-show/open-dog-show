@@ -28,13 +28,13 @@ describe('kernel public surface — identity ownership (ADR-0013)', () => {
     });
 
     it('does not export the IAM-owned UserId type', () => {
-        // @ts-expect-error — UserId moved to @ods/iam (ADR-0013); the kernel owns only PrincipalId
+        // @ts-expect-error — UserId moved to the IAM context (ADR-0013); the kernel owns only PrincipalId
         const _userId: kernel.UserId = null as never;
         expect(_userId).toBeNull();
     });
 
     it('does not export the IAM-owned asUserId caster', () => {
-        // @ts-expect-error — asUserId moved to @ods/iam (ADR-0013)
+        // @ts-expect-error — asUserId moved to the IAM context (ADR-0013)
         const _asUserId = kernel.asUserId;
         expect(_asUserId).toBeUndefined();
         expect(kernel).not.toHaveProperty('asUserId');

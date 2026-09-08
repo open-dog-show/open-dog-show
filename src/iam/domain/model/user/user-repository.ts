@@ -9,6 +9,18 @@ export interface UserRepository {
     findByExternalSubject(subject: string): Promise<User | undefined>;
     save(user: User): Promise<void>;
     /**
+     * Persists only the refreshable profile facts (`displayName` and `email`)
+     * of `user`, leaving every other column — notably `status` — untouched.
+     *
+     * This is the safe write path for a profile refresh on a returning login:
+     * {@link authenticate} reads the account, checks it is not `Suspended`, then
+     * refreshes the profile. If an admin suspends the account between that read
+     * and the write, a full-aggregate `save` would clobber `status` back to
+     * `Active` (a lost update). `saveProfileFacts` writes only the profile
+     * columns, so a concurrent suspension is preserved.
+     */
+    saveProfileFacts(user: User): Promise<void>;
+    /**
      * Atomically insert `user` unless a user with the same `externalSubject`
      * already exists; returns the persisted user — the inserted one, or the
      * pre-existing one on conflict (the concurrent winner). The atomic

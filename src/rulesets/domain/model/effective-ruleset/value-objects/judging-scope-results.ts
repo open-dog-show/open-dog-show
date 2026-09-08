@@ -3,6 +3,8 @@
 
 import type { ClassId, GradeId, AwardTypeId } from './domain-ids.js';
 import type { EntryRef } from './entry-ref.js';
+import type { Sex } from './sex.js';
+import type { Placement } from './placement.js';
 
 /**
  * A single dog's result within a per-sex class judging — the grade the judge
@@ -12,14 +14,14 @@ export interface ClassPlacement {
     /** The class in which this dog was judged. */
     readonly classId: ClassId;
     /** Opaque reference to the judged entry (opaque to the Rulesets context). */
-    readonly dogRef: EntryRef;
+    readonly entryRef: EntryRef;
     /** Grade awarded by the judge. */
     readonly gradeId: GradeId;
     /**
      * Ordinal placement within the class (1 = first, 2 = second, …).
      * Undefined when the dog received a grade below the placeable threshold.
      */
-    readonly placement: number | undefined;
+    readonly placement: Placement | undefined;
 }
 
 /**
@@ -31,7 +33,7 @@ export interface ClassPlacement {
  */
 export interface StreamCandidate {
     /** Opaque reference to the judged entry (opaque to the Rulesets context). */
-    readonly dogRef: EntryRef;
+    readonly entryRef: EntryRef;
     /** Grade the dog received from its feeder. */
     readonly gradeId: GradeId;
 }
@@ -39,9 +41,9 @@ export interface StreamCandidate {
 /**
  * A feeder-keyed stream of candidate dogs for a higher-scope Award
  * (ADR-0017). A stream is either an {@link AwardFeederStream} (fed by an
- * Award Type) or a {@link ClassFeederStream} (fed by a Class placement) — the
- * discriminated union enforces that exactly one feeder key is present, so an
- * ambiguous stream (both keys, or neither) cannot be constructed. An optional
+ * Award Type) or a {@link ClassFeederStream} (fed by a Class placement); each
+ * member requires exactly one feeder key (`feederAwardTypeId` or
+ * `feederClassId`). An optional
  * `sex` tag (breed scope only) separates male/female streams for BOB/BOS;
  * group/show awards are not sex-split, so their streams carry `sex: undefined`.
  *
@@ -53,19 +55,21 @@ export type CandidateStream = AwardFeederStream | ClassFeederStream;
 
 interface CandidateStreamBase {
     /** Sex tag — breed scope only (male/female streams for BOB/BOS); undefined at group/show. */
-    readonly sex: 'male' | 'female' | undefined;
+    readonly sex: Sex | undefined;
     /** The candidate dogs this feeder supplies, each with its feeder grade. */
     readonly candidates: ReadonlyArray<StreamCandidate>;
 }
 
 /** A stream fed by an {@link AwardType} (e.g. CACIB feeds BOB; BIG feeds BIS). */
 export interface AwardFeederStream extends CandidateStreamBase {
+    readonly kind: 'award';
     /** The Award Type that qualifies these candidates. */
     readonly feederAwardTypeId: AwardTypeId;
 }
 
 /** A stream fed by a Class placement (e.g. the Puppy class 1st feeds Best Puppy). */
 export interface ClassFeederStream extends CandidateStreamBase {
+    readonly kind: 'class';
     /** The Class whose 1st-place win qualifies these candidates. */
     readonly feederClassId: ClassId;
 }
@@ -84,8 +88,7 @@ export interface ClassFeederStream extends CandidateStreamBase {
  *               each fed by its own feeder-keyed {@link CandidateStream}
  *
  * The breed/group/show variants each carry `streams: ReadonlyArray<CandidateStream>`
- * (ADR-0017) — one stream per in-scope Feeder — replacing the former named
- * candidate bags.
+ * (ADR-0017) — one stream per in-scope Feeder.
  */
 export type JudgingScopeResults =
     | {

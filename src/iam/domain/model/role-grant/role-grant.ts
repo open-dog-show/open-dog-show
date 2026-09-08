@@ -18,7 +18,7 @@ export type RoleGrant =
           readonly scope: PlatformScope;
       };
 
-/** Role+scope lookup key for hasRoleGrant. Preserves the role/scope correlation from RoleGrant. */
+/** Role+scope lookup key for hasRole. Preserves the role/scope correlation from RoleGrant. */
 export type RoleGrantKey =
     | { readonly role: 'ShowSecretary'; readonly scope: ClubScope }
     | { readonly role: 'Judge' | 'PlatformAdministrator'; readonly scope: PlatformScope };
@@ -34,9 +34,14 @@ export class DuplicateRoleGrantError extends Error {
 }
 
 export class RoleGrantOwnerMismatchError extends Error {
+    readonly userId: UserId;
+    readonly grant: RoleGrant;
+
     constructor(userId: UserId, grant: RoleGrant) {
         super(`Grant for user ${grant.userId} passed to saveAll for user ${userId}`);
         this.name = 'RoleGrantOwnerMismatchError';
+        this.userId = userId;
+        this.grant = grant;
     }
 }
 
@@ -65,10 +70,7 @@ export function grantRole(grants: readonly RoleGrant[], newGrant: RoleGrant): re
  * Returns a new collection with the matching grant removed.
  * No-op when no matching grant exists — the desired state (grant absent) is already met.
  */
-export function revokeRoleGrant(
-    grants: readonly RoleGrant[],
-    target: RoleGrant,
-): readonly RoleGrant[] {
+export function revokeRole(grants: readonly RoleGrant[], target: RoleGrant): readonly RoleGrant[] {
     return grants.filter((g) => !grantsMatch(g, target));
 }
 
@@ -77,9 +79,9 @@ export function revokeRoleGrant(
  * Returns `true` when `grants` contains an entry for `userId` with the given role and scope.
  *
  * Note: The Exhibitor capability is NOT a role grant. Any Active User is implicitly
- * an Exhibitor; ACL adapters check `user.status === 'Active'` instead of `hasRoleGrant`.
+ * an Exhibitor; ACL adapters check `user.status === 'Active'` instead of `hasRole`.
  */
-export function hasRoleGrant(
+export function hasRole(
     grants: readonly RoleGrant[],
     userId: UserId,
     grantKey: RoleGrantKey,
@@ -99,7 +101,7 @@ export function hasRoleGrant(
  * remains responsible for invoking this (or an equivalent) check to satisfy
  * the contract.
  *
- * The pure {@link grantRole} / {@link revokeRoleGrant} / {@link hasRoleGrant}
+ * The pure {@link grantRole} / {@link revokeRole} / {@link hasRole}
  * helpers already operate on `readonly RoleGrant[]` and are unchanged — this
  * function owns only the cross-grant "all grants share one owner" rule that
  * `saveAll`'s replace-all semantics rely on.

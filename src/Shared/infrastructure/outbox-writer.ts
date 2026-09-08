@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type pg from 'pg';
-import type { DomainEvent } from '../../domain/domain-event.js';
-import type { TransactionScope } from '../../domain/transaction-scope.js';
+import type { DomainEvent } from '../domain/domain-event.js';
+import type { TransactionScope } from '../domain/transaction-scope.js';
 
 /**
  * Writes queued domain events to the outbox table within the current
@@ -18,7 +18,7 @@ import type { TransactionScope } from '../../domain/transaction-scope.js';
 export interface OutboxWriter {
     write(
         client: pg.PoolClient,
-        events: DomainEvent<unknown>[],
+        events: readonly DomainEvent<unknown>[],
         scope: TransactionScope,
     ): Promise<void>;
 }

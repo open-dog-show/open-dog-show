@@ -18,6 +18,5 @@ export interface ClassEligibilityPolicy {
         classDefinition: ClassDefinition,
         dogProfile: DogEligibilityProfile,
         showDate: LocalDate,
-        handlerIsBreeder: boolean,
     ): boolean;
 }

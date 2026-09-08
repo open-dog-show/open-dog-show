@@ -65,9 +65,10 @@ function makeAwardType(id: string): AwardType {
     return {
         id: asAwardTypeId(id),
         minimumGradeId: asGradeId('g1'),
-        minimumPlacement: undefined,
+        worstEligiblePlacement: undefined,
         isDiscretionary: false,
         scope: 'breed',
+        fedBy: [],
     };
 }
 

@@ -10,8 +10,7 @@ import type { ShowType } from './show-type.js';
 /**
  * A single layer in a composed Ruleset (e.g. FCI base, SRSH national layer).
  * Layers are composed by resolveEffectiveRuleset to produce an
- * {@link EffectiveRuleset}. This type is internal to the Rulesets context
- * and is intentionally NOT exported from the package's public surface.
+ * {@link EffectiveRuleset}.
  */
 export interface RulesetLayer {
     readonly id: RulesetLayerId;

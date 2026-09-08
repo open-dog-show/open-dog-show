@@ -2,20 +2,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 /**
- * `@ods/iam`'s own domain identifiers.
+ * The IAM context's own domain identifiers.
  *
  * Per ADR-0013, the Identity & Access context owns its concrete platform-account
  * identifier (`UserId`) in its own domain layer rather than importing it from the
  * shared kernel. The kernel, in turn, owns the context-neutral `PrincipalId` it
  * needs for RLS plumbing. This module is the identity owner's identifier
- * definition — the seam the migrate step switches IAM's existing `UserId` imports
- * onto (those still import `UserId` from `@ods/kernel` during the expand step).
+ * definition.
  */
 
 declare const __brand: unique symbol;
 
 /**
- * Compile-time brand helper — local to `@ods/iam` so this context's branded ids
+ * Compile-time brand helper — local to the IAM context so this context's branded ids
  * are owned here, not in the kernel. A branded type is structurally identical to
  * `T` at runtime but is treated as a distinct type by the TypeScript compiler,
  * preventing accidental substitution of one id kind for another.
@@ -25,7 +24,7 @@ type Brand<T, B> = T & { readonly [__brand]: B };
 /**
  * Branded string that uniquely identifies a platform user account.
  *
- * This is `@ods/iam`'s own account identifier (ADR-0013). It is intentionally a
+ * This is the IAM context's own account identifier (ADR-0013). It is intentionally a
  * distinct brand from the kernel's `PrincipalId`: a `UserId` names the concrete
  * account, while a `PrincipalId` names the abstract transaction actor used only
  * for RLS plumbing. The `User → PrincipalId` cast happens at the composition
@@ -33,6 +32,20 @@ type Brand<T, B> = T & { readonly [__brand]: B };
  * `TransactionScope`.
  */
 export type UserId = Brand<string, 'UserId'>;
+
+/**
+ * Branded string: a canonicalised email address (trimmed + lowercased). Bare
+ * `string` is interchangeable with other strings (e.g. `kennelName`); the brand
+ * keeps the email concept distinct at compile time, no runtime cost.
+ */
+export type EmailAddress = Brand<string, 'EmailAddress'>;
+
+/**
+ * Branded string: the opaque external identity-provider subject (the provider
+ * `sub`), stored verbatim. Distinct from other strings so it cannot be
+ * silently swapped for an email or a name.
+ */
+export type ExternalSubject = Brand<string, 'ExternalSubject'>;
 
 /**
  * Casts a raw string to a {@link UserId}.
@@ -44,3 +57,7 @@ export type UserId = Brand<string, 'UserId'>;
  * cast — no validation.
  */
 export const asUserId = (id: string): UserId => id as UserId;
+/** Casts a raw (already-normalised) string to an {@link EmailAddress}. Plain cast — no validation. */
+export const asEmailAddress = (email: string): EmailAddress => email as EmailAddress;
+/** Casts a raw string to an {@link ExternalSubject}. Plain cast — no validation. */
+export const asExternalSubject = (subject: string): ExternalSubject => subject as ExternalSubject;

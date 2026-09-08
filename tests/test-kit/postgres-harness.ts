@@ -83,12 +83,24 @@ export class PostgresHarness {
     }
 
     async stop(): Promise<void> {
-        await this.superPoolCache?.end();
-        await this.appUserPoolCache?.end();
+        // Tear down both pools and the container in parallel, and do not let one
+        // rejection abort the others (a failing pool end would otherwise skip
+        // container stop and leak the container). Surface the first rejection
+        // after every resource has had a chance to clean up.
+        const results = await Promise.allSettled([
+            this.superPoolCache?.end(),
+            this.appUserPoolCache?.end(),
+            this.container?.stop(),
+        ]);
         this.superPoolCache = undefined;
         this.appUserPoolCache = undefined;
-        await this.container?.stop();
         this.container = undefined;
+        const firstRejection = results.find(
+            (r): r is PromiseRejectedResult => r.status === 'rejected',
+        );
+        if (firstRejection !== undefined) {
+            throw firstRejection.reason;
+        }
     }
 
     /**

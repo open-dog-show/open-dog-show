@@ -8,17 +8,12 @@ import {
     asPrincipalId,
     FakeClock,
     FakeEventIdGenerator,
-    type DomainEvent,
     type TransactionScope,
 } from '../../../../src/Shared/index.js';
-import type { Entry, EntryRepository } from '../../../../src/sample/domain/model/entry/entry.js';
-import type { Show, ShowRepository } from '../../../../src/sample/domain/model/show/show.js';
-import type {
-    SampleUnitOfWork,
-    SampleUnitOfWorkContext,
-} from '../../../../src/sample/application/ports/unit-of-work.js';
+import { FakeSampleUnitOfWork } from '../../../../src/sample/infrastructure/persistence/inmemory/fake-sample-unit-of-work.js';
 import {
     SaveEntryUseCase,
+    InvalidTransactionScopeError,
     type SaveEntryInput,
 } from '../../../../src/sample/application/save-entry/save-entry.js';
 
@@ -33,40 +28,6 @@ const clubScope: TransactionScope = {
     clubId: asClubId(CLUB_ID),
     principalId: asPrincipalId(USER_ID),
 };
-
-/**
- * In-memory {@link SampleUnitOfWork} for unit-testing the use case without
- * Docker. Captures saved entries and appended events so assertions can
- * observe the effect of a use-case call through the public seam.
- */
-class FakeSampleUnitOfWork implements SampleUnitOfWork {
-    readonly savedEntries: Entry[] = [];
-    readonly appendedEvents: DomainEvent<unknown>[] = [];
-
-    readonly entries: EntryRepository = {
-        findAll: async () => [...this.savedEntries],
-        save: async (entry: Entry) => {
-            this.savedEntries.push(entry);
-        },
-    };
-    readonly shows: ShowRepository = {
-        findAll: async () => [] as Show[],
-        save: async () => {},
-    };
-
-    async run<T>(
-        scope: TransactionScope,
-        body: (ctx: SampleUnitOfWorkContext) => Promise<T>,
-    ): Promise<T> {
-        return body({
-            entries: this.entries,
-            shows: this.shows,
-            appendEvents: (...events: DomainEvent<unknown>[]) => {
-                this.appendedEvents.push(...events);
-            },
-        });
-    }
-}
 
 describe('SaveEntryUseCase', () => {
     const fixedDate = new Date('2026-08-01T12:00:00.000Z');
@@ -128,7 +89,9 @@ describe('SaveEntryUseCase', () => {
             principalId: asPrincipalId(USER_ID),
         };
 
-        await expect(useCase.execute(input, exhibitorScope)).rejects.toThrow(/club/);
+        await expect(useCase.execute(input, exhibitorScope)).rejects.toThrow(
+            InvalidTransactionScopeError,
+        );
         expect(unitOfWork.savedEntries).toHaveLength(0);
         expect(unitOfWork.appendedEvents).toHaveLength(0);
     });

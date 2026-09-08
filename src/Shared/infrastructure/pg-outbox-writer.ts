@@ -3,7 +3,7 @@
 
 import type pg from 'pg';
 import type { DomainEvent } from '../domain/domain-event.js';
-import type { OutboxWriter } from '../application/ports/outbox-writer.js';
+import type { OutboxWriter } from './outbox-writer.js';
 import type { TransactionScope } from '../domain/transaction-scope.js';
 import { scopeToRlsKeys } from './rls-keys.js';
 import { quoteSchemaIdent } from './schema-ident.js';
@@ -33,14 +33,14 @@ export class PgOutboxWriter implements OutboxWriter {
 
     async write(
         client: pg.PoolClient,
-        events: DomainEvent<unknown>[],
+        events: readonly DomainEvent<unknown>[],
         scope: TransactionScope,
     ): Promise<void> {
         // `scopeToRlsKeys` yields `null` for the non-applicable keys and the
         // actual id otherwise, so bind the values directly — nullability is a
         // function of `scope.kind`, never of string truthiness, and an
         // applicable-but-empty id is bound and rejected by PostgreSQL as an
-        // invalid UUID (the pre-refactor behavior).
+        // invalid UUID.
         const { clubId, principalId } = scopeToRlsKeys(scope);
 
         for (const event of events) {

@@ -13,6 +13,7 @@ import {
 } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
 import { asAgeMonths } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/age-months.js';
 import { asEntryRef } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/entry-ref.js';
+import { asPlacement } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/placement.js';
 import type { IndividualAwardType } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/award-type.js';
 import type { ClassDefinition } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/class-definition.js';
 import type { GradeScale } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/grade-scale.js';
@@ -26,7 +27,7 @@ import type { ClassPlacement } from '../../../../../src/rulesets/domain/model/ef
 
 const EXCELLENT = asGradeId('excellent');
 const VERY_GOOD = asGradeId('very-good');
-const GRADE_SCALE_ID = asGradeScaleId('fci-standard');
+const GRADE_SCALE_ID = asGradeScaleId('test-standard');
 const OPEN_CLASS_ID = asClassId('open');
 const CACIB_ID = asAwardTypeId('cacib');
 const UNKNOWN_GRADE_ID = asGradeId('does-not-exist');
@@ -54,7 +55,7 @@ const classDefinition: ClassDefinition = {
 const cacib: IndividualAwardType = {
     id: CACIB_ID,
     minimumGradeId: EXCELLENT,
-    minimumPlacement: 1,
+    worstEligiblePlacement: asPlacement(1),
     isDiscretionary: true,
     scope: 'per-sex',
 };
@@ -74,9 +75,9 @@ const placement = (
     classId = OPEN_CLASS_ID,
 ): ClassPlacement => ({
     classId,
-    dogRef: asEntryRef('dog-1'),
+    entryRef: asEntryRef('dog-1'),
     gradeId,
-    placement: ordinalPlacement,
+    placement: ordinalPlacement === undefined ? undefined : asPlacement(ordinalPlacement),
 });
 
 // ---------------------------------------------------------------------------
@@ -141,9 +142,10 @@ describe('meetsAwardRequirements', () => {
         const awardWithoutPlacement: IndividualAwardType = {
             id: CACIB_ID,
             minimumGradeId: EXCELLENT,
-            minimumPlacement: undefined,
+            worstEligiblePlacement: undefined,
             isDiscretionary: false,
             scope: 'breed',
+            fedBy: [],
         };
 
         const result = meetsAwardRequirements(
@@ -166,7 +168,7 @@ describe('meetsAwardRequirements', () => {
 
         expect(result).toEqual({
             meets: false,
-            reason: `Unknown grade 'does-not-exist' in grade scale 'fci-standard'`,
+            reason: `Unknown grade 'does-not-exist' in grade scale 'test-standard'`,
         });
     });
 
@@ -174,7 +176,7 @@ describe('meetsAwardRequirements', () => {
         const awardWithUnknownMinGrade: IndividualAwardType = {
             id: CACIB_ID,
             minimumGradeId: UNKNOWN_GRADE_ID,
-            minimumPlacement: 1,
+            worstEligiblePlacement: asPlacement(1),
             isDiscretionary: true,
             scope: 'per-sex',
         };

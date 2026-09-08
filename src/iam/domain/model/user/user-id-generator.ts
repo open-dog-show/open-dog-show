@@ -9,7 +9,8 @@ import type { UserId } from '../../shared/domain-ids.js';
  * Callers must never call `crypto.randomUUID()` directly; injecting
  * `UserIdGenerator` keeps user-creation logic deterministic and trivially
  * testable with an in-memory test double — the same inversion the kernel applies
- * to `EventIdGenerator`. `@ods/iam` owns its own `UserId` brand (ADR-0013), so
+ * to `EventIdGenerator`. The IAM context owns its own `UserId` brand
+ * (ADR-0013), so
  * it owns this generator port rather than importing an id generator from the
  * kernel.
  */

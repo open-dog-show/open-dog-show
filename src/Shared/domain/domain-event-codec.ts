@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { DomainEvent, EventScope } from './domain-event.js';
+import type { DomainEvent } from './domain-event.js';
+import { asEventScope } from './domain-event.js';
 import { asAggregateId, asEventId, asEventType } from './domain-ids.js';
 
 /** The serialised (JSON-safe) form of a {@link DomainEvent}. */
@@ -10,7 +11,8 @@ export interface DomainEventJson {
     readonly type: string;
     /** ISO-8601 timestamp. */
     readonly occurredAt: string;
-    readonly scope: EventScope;
+    /** Raw scope string — validated back to {@link EventScope} by {@link decodeDomainEvent}. */
+    readonly scope: string;
     readonly aggregateId: string;
     readonly payload: unknown;
 }
@@ -49,12 +51,36 @@ export function encodeDomainEvent<TPayload>(event: DomainEvent<TPayload>): Domai
  * `DomainEvent<unknown>` from the outbox.
  */
 export function decodeDomainEvent(json: DomainEventJson): DomainEvent<unknown> {
+    return rehydrateDomainEvent(json);
+}
+
+/**
+ * Rehydrates a {@link DomainEvent} from already-decoded envelope fields,
+ * crossing the untyped strings back into their branded forms and normalising
+ * `occurredAt` (a `Date` from the `pg` driver, or an ISO string from JSON).
+ *
+ * The single source of the boundary casts so the outbox-row mapper
+ * (`PgPollingDispatcher.outboxRowToEvent`) and the JSON codec
+ * ({@link decodeDomainEvent}) do not re-implement the `asEventId` /
+ * `asEventType` / `asEventScope` / `asAggregateId` casts.
+ */
+export function rehydrateDomainEvent(envelope: {
+    readonly eventId: string;
+    readonly type: string;
+    readonly occurredAt: Date | string;
+    readonly scope: string;
+    readonly aggregateId: string;
+    readonly payload: unknown;
+}): DomainEvent<unknown> {
     return {
-        eventId: asEventId(json.eventId),
-        type: asEventType(json.type),
-        occurredAt: new Date(json.occurredAt),
-        scope: json.scope,
-        aggregateId: asAggregateId(json.aggregateId),
-        payload: json.payload,
+        eventId: asEventId(envelope.eventId),
+        type: asEventType(envelope.type),
+        occurredAt:
+            envelope.occurredAt instanceof Date
+                ? envelope.occurredAt
+                : new Date(envelope.occurredAt),
+        scope: asEventScope(envelope.scope),
+        aggregateId: asAggregateId(envelope.aggregateId),
+        payload: envelope.payload,
     };
 }

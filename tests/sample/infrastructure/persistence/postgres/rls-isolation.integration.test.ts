@@ -3,13 +3,10 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import pg from 'pg';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { PostgresHarness, runMigrations } from '../../../../test-kit/index.js';
+import { PostgresHarness } from '../../../../test-kit/index.js';
+import { bootstrapSampleSchema } from '../../../fixtures.js';
 import { asClubId, asPrincipalId, PgOutboxWriter } from '../../../../../src/Shared/index.js';
 import { PgSampleUnitOfWork } from '../../../../../src/sample/infrastructure/persistence/postgres/pg-unit-of-work.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Fixed IDs for deterministic test data.
 const CLUB_A_ID = '00000000-0000-4000-8000-000000000001';
@@ -26,17 +23,7 @@ describe('RLS isolation — sample context', () => {
     let unitOfWork: PgSampleUnitOfWork;
 
     beforeAll(async () => {
-        await harness.start();
-
-        await runMigrations(harness.connectionUrl, [
-            {
-                name: 'sample',
-                migrationsDir: resolve(
-                    __dirname,
-                    '../../../../../src/sample/infrastructure/persistence/postgres/migrations',
-                ),
-            },
-        ]);
+        await bootstrapSampleSchema(harness);
 
         appPool = harness.appUserPool;
         unitOfWork = new PgSampleUnitOfWork(appPool, new PgOutboxWriter('sample'));

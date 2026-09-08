@@ -1,8 +1,10 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-export type { Show, ShowRepository } from './domain/model/show/show.js';
-export type { Entry, EntryRepository } from './domain/model/entry/entry.js';
+export type { Show } from './domain/model/show/show.js';
+export type { ShowRepository } from './domain/model/show/show-repository.js';
+export type { Entry } from './domain/model/entry/entry.js';
+export type { EntryRepository } from './domain/model/entry/entry-repository.js';
 export type {
     SampleUnitOfWork,
     SampleUnitOfWorkContext,

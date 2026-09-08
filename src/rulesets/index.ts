@@ -31,6 +31,11 @@ export {
 } from './domain/model/effective-ruleset/value-objects/domain-ids.js';
 export { asAgeMonths } from './domain/model/effective-ruleset/value-objects/age-months.js';
 export { asEntryRef } from './domain/model/effective-ruleset/value-objects/entry-ref.js';
+export type { Sex } from './domain/model/effective-ruleset/value-objects/sex.js';
+export {
+    asPlacement,
+    type Placement,
+} from './domain/model/effective-ruleset/value-objects/placement.js';
 export {
     LocalDate,
     InvalidLocalDateError,
@@ -48,6 +53,8 @@ export type {
     AwardScope,
     AwardType,
     IndividualAwardType,
+    PerSexAwardType,
+    HigherScopeAwardType,
     CollectiveAwardType,
     Feeder,
 } from './domain/model/effective-ruleset/entities/award-type.js';
@@ -59,6 +66,12 @@ export type {
 } from './domain/model/effective-ruleset/entities/breed.js';
 export type { ShowType } from './domain/model/effective-ruleset/entities/show-type.js';
 export type { EffectiveRuleset } from './domain/model/effective-ruleset/effective-ruleset.js';
+export {
+    findAwardType,
+    findClassDefinition,
+    findGrade,
+    higherScopeAwardTypesForScope,
+} from './domain/model/effective-ruleset/effective-ruleset.js';
 export type { RulesetLayer } from './domain/model/effective-ruleset/entities/ruleset-layer.js';
 export { resolveEffectiveRuleset } from './domain/service/resolve-effective-ruleset.js';
 export type {
@@ -76,6 +89,7 @@ export type {
 } from './domain/service/award-policy.js';
 export type {
     CollectiveEntry,
+    BreedVarietyRef,
     CollectiveCompetitionResults,
     CollectiveCompetitionKind,
 } from './domain/model/effective-ruleset/value-objects/collective-competition-results.js';

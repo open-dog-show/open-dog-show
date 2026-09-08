@@ -8,11 +8,12 @@ import {
     asAwardTypeId,
     asShowTypeId,
 } from '../value-objects/domain-ids.js';
+import { asPlacement } from '../value-objects/placement.js';
 import { asAgeMonths } from '../value-objects/age-months.js';
 import { CertificateKind } from '../value-objects/certificate-kind.js';
 import {
     FCI_LAYER_ID,
-    FCI_GRADE_SCALE_ID,
+    FCI_ADULT_GRADE_SCALE_ID,
     FCI_PUPPY_GRADE_SCALE_ID,
     FCI_GRADE_EXCELLENT,
     FCI_AWARD_CACIB,
@@ -107,7 +108,7 @@ export const kmshLayer: RulesetLayer = {
             lessThanAgeMonths: undefined,
             requiredCertificates: [],
             bredByExhibitor: true,
-            gradeScaleId: FCI_GRADE_SCALE_ID,
+            gradeScaleId: FCI_ADULT_GRADE_SCALE_ID,
             awardTypeIds: [KMSH_AWARD_CAC, KMSH_AWARD_RCAC],
         },
     ],
@@ -116,7 +117,7 @@ export const kmshLayer: RulesetLayer = {
         {
             id: KMSH_AWARD_CAC,
             minimumGradeId: FCI_GRADE_EXCELLENT,
-            minimumPlacement: 1,
+            worstEligiblePlacement: asPlacement(1),
             isDiscretionary: true,
             scope: 'per-sex',
         },
@@ -125,7 +126,7 @@ export const kmshLayer: RulesetLayer = {
             // where CAC was awarded compete for RCAC (eventueel = not mandatory).
             id: KMSH_AWARD_RCAC,
             minimumGradeId: FCI_GRADE_EXCELLENT,
-            minimumPlacement: undefined,
+            worstEligiblePlacement: undefined,
             isDiscretionary: true,
             scope: 'per-sex',
         },
@@ -140,27 +141,27 @@ export const kmshLayer: RulesetLayer = {
         {
             id: FCI_AWARD_BOB,
             minimumGradeId: FCI_GRADE_EXCELLENT,
-            minimumPlacement: undefined,
+            worstEligiblePlacement: undefined,
             isDiscretionary: false,
             scope: 'breed',
             fedBy: [
-                { awardTypeId: FCI_AWARD_CACIB },
-                { awardTypeId: KMSH_AWARD_CAC },
-                { classId: asClassId('junior') },
-                { classId: asClassId('veteran') },
+                { kind: 'award', awardTypeId: FCI_AWARD_CACIB },
+                { kind: 'award', awardTypeId: KMSH_AWARD_CAC },
+                { kind: 'class', classId: asClassId('junior') },
+                { kind: 'class', classId: asClassId('veteran') },
             ],
         },
         {
             id: FCI_AWARD_BOS,
             minimumGradeId: FCI_GRADE_EXCELLENT,
-            minimumPlacement: undefined,
+            worstEligiblePlacement: undefined,
             isDiscretionary: false,
             scope: 'breed',
             fedBy: [
-                { awardTypeId: FCI_AWARD_CACIB },
-                { awardTypeId: KMSH_AWARD_CAC },
-                { classId: asClassId('junior') },
-                { classId: asClassId('veteran') },
+                { kind: 'award', awardTypeId: FCI_AWARD_CACIB },
+                { kind: 'award', awardTypeId: KMSH_AWARD_CAC },
+                { kind: 'class', classId: asClassId('junior') },
+                { kind: 'class', classId: asClassId('veteran') },
             ],
         },
     ],

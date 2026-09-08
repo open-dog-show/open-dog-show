@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, it, expect } from 'vitest';
-import { asUserId } from '../../../../src/iam/domain/shared/domain-ids.js';
+import {
+    asUserId,
+    asEmailAddress,
+    asExternalSubject,
+} from '../../../../src/iam/domain/shared/domain-ids.js';
 import type { User } from '../../../../src/iam/domain/model/user/user.js';
 import { InvalidProviderClaimsError } from '../../../../src/iam/domain/model/user/user.js';
 import type { UserRepository } from '../../../../src/iam/domain/model/user/user-repository.js';
@@ -10,7 +14,7 @@ import {
     authenticate,
     type AuthenticateDeps,
     UserSuspendedError,
-} from '../../../../src/iam/domain/service/authenticate.js';
+} from '../../../../src/iam/application/authenticate/authenticate.js';
 import {
     FakeIdentityProvider,
     FakeUserRepository,
@@ -38,7 +42,6 @@ describe('authenticate', () => {
         expect(user.externalSubject).toBe('sub|alice');
         expect(user.displayName).toBe('Alice');
         expect(user.email).toBe('alice@example.com');
-        // The new user is persisted.
         const stored = await d.users.findByExternalSubject('sub|alice');
         expect(stored).toEqual(user);
     });
@@ -73,6 +76,56 @@ describe('authenticate', () => {
         expect(stored).toEqual(second);
     });
 
+    it('does not clobber a concurrent suspension when refreshing a returning user (lost-update guard)', async () => {
+        // Seed an Active user via first login, then refresh it under a repo
+        // that suspends the stored account *inside* saveProfileFacts —
+        // simulating an admin suspending the account between authenticate's
+        // read and its profile write. A full-aggregate save would clobber the
+        // status back to Active; saveProfileFacts must preserve the suspension.
+        const base = new FakeUserRepository();
+        const raceRepo: UserRepository = {
+            findById: (id) => base.findById(id),
+            findByExternalSubject: (subject) => base.findByExternalSubject(subject),
+            save: (user) => base.save(user),
+            saveProfileFacts: async (user) => {
+                // Admin suspends the account between the read and the write.
+                const stored = await base.findById(user.id);
+                if (stored) {
+                    await base.save({ ...stored, status: 'Suspended' });
+                }
+                await base.saveProfileFacts(user);
+            },
+            createIfAbsent: (user) => base.createIfAbsent(user),
+        };
+        const d: AuthenticateDeps = {
+            identityProvider: new FakeIdentityProvider(
+                new Map([
+                    [ALICE_TOKEN, ALICE_CLAIMS],
+                    [
+                        'token-alice-2',
+                        {
+                            sub: 'sub|alice',
+                            displayName: 'Alice Smith',
+                            email: 'alice.smith@example.com',
+                        },
+                    ],
+                ]),
+            ),
+            users: raceRepo,
+            userIdGenerator: new FakeUserIdGenerator(),
+        };
+
+        await authenticate(d, ALICE_TOKEN);
+        await authenticate(d, 'token-alice-2');
+
+        // The concurrent suspension survives the profile refresh — the stored
+        // status is still Suspended, and the profile facts are refreshed.
+        const stored = await base.findByExternalSubject('sub|alice');
+        expect(stored?.status).toBe('Suspended');
+        expect(stored?.displayName).toBe('Alice Smith');
+        expect(stored?.email).toBe('alice.smith@example.com');
+    });
+
     it('throws UserSuspendedError for a known Suspended user before any profile refresh', async () => {
         const BOB_TOKEN = 'token-bob';
         const d = deps(
@@ -87,9 +140,9 @@ describe('authenticate', () => {
         const suspendedBob: User = {
             id: asUserId('user-bob'),
             displayName: 'Bob',
-            email: 'bob@example.com',
+            email: asEmailAddress('bob@example.com'),
             status: 'Suspended',
-            externalSubject: 'sub|bob',
+            externalSubject: asExternalSubject('sub|bob'),
         };
         await d.users.save(suspendedBob);
 
@@ -126,9 +179,9 @@ describe('authenticate', () => {
         const suspendedWinner: User = {
             id: asUserId('user-bob'),
             displayName: 'Bob',
-            email: 'bob@example.com',
+            email: asEmailAddress('bob@example.com'),
             status: 'Suspended',
-            externalSubject: 'sub|bob',
+            externalSubject: asExternalSubject('sub|bob'),
         };
         // Simulate the race: our lookup missed the account, but createIfAbsent
         // hands back a concurrently-created-and-suspended winner.
@@ -136,6 +189,7 @@ describe('authenticate', () => {
             findById: async () => undefined,
             findByExternalSubject: async () => undefined,
             save: async () => {},
+            saveProfileFacts: async () => {},
             createIfAbsent: async () => suspendedWinner,
         };
         const d: AuthenticateDeps = {

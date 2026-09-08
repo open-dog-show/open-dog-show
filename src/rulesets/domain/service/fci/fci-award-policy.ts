@@ -8,9 +8,14 @@ import type {
 import type { EntryRef } from '../../model/effective-ruleset/value-objects/entry-ref.js';
 import type {
     Feeder,
-    IndividualAwardType,
+    HigherScopeAwardType,
 } from '../../model/effective-ruleset/entities/award-type.js';
 import type { EffectiveRuleset } from '../../model/effective-ruleset/effective-ruleset.js';
+import {
+    findAwardType,
+    findClassDefinition,
+    higherScopeAwardTypesForScope,
+} from '../../model/effective-ruleset/effective-ruleset.js';
 import type {
     AwardPolicy,
     AwardValidationResult,
@@ -23,13 +28,27 @@ import type {
     StreamCandidate,
 } from '../../model/effective-ruleset/value-objects/judging-scope-results.js';
 import { meetsAwardRequirements } from './meets-award-requirements.js';
+import { gradeAtLeast, resolveGradePairOnSharedScale } from './grade-comparison.js';
+
+/**
+ * BOB and BOS — the two breed-scope awards that, when both proposed, must
+ * target dogs of opposite sexes (ADR-0017). Replaces the bare `=== 2` literal.
+ */
+const BOB_AND_BOS_PROPOSAL_COUNT = 2;
+
+/**
+ * The breed/group/show scopes — the {@link JudgingScopeResults} variants that
+ * carry feeder-keyed candidate `streams`.  Aliased so every higher-scope
+ * helper shares one readable parameter type.
+ */
+type StreamedScope = Extract<JudgingScopeResults, { streams: ReadonlyArray<CandidateStream> }>;
 
 /**
  * In-memory FCI implementation of {@link AwardPolicy}.
  *
  * **per-sex scope** — `eligibleAwardTypes` returns an Award Type ID when at
  * least one dog in the scope satisfies the AwardType's minimumGradeId and
- * minimumPlacement requirements within a class that feeds that award type
+ * worstEligiblePlacement requirements within a class that feeds that award type
  * (via `ClassDefinition.awardTypeIds`). `validateAwardChoices` checks each
  * proposed assignment targets a dog whose class feeds that award type and
  * whose grade and placement satisfy the AwardType requirements.
@@ -52,11 +71,12 @@ import { meetsAwardRequirements } from './meets-award-requirements.js';
  * stream, so the policy needs no show-type parameter.
  *
  * This is a pure in-memory domain service (ADR-0001: concrete rulesets are
- * pure domain modules that depend only on the domain core). It lives in
- * `domain/services/fci/` and is exported via the `@ods/rulesets/fci` sub-path
- * so the main `@ods/rulesets` export stays the abstraction surface (the ports
- * + data model); the composition root (`apps/api`) will wire it. See ADR-0019
- * § "Subpath exports".
+ * pure domain modules that depend only on the domain core) — not a test
+ * double. It lives in the domain layer (`domain/service/fci/`) and is exported
+ * from the `domain/service/fci/` relative-import barrel, kept separate from
+ * `src/rulesets/index.ts` so the main export stays the abstraction surface
+ * (the ports + data model); the composition root (`apps/api`) will wire it.
+ * See ADR-0021.
  */
 export class FciAwardPolicy implements AwardPolicy {
     eligibleAwardTypes(
@@ -99,13 +119,12 @@ export class FciAwardPolicy implements AwardPolicy {
         const eligible = new Set<AwardTypeId>();
 
         for (const placement of placements) {
-            const classDef = ruleset.classDefinitions.find((c) => c.id === placement.classId);
-            if (!classDef) continue;
+            const classDef = findClassDefinition(ruleset, placement.classId);
+            if (classDef === undefined) continue;
 
             for (const awardTypeId of classDef.awardTypeIds) {
-                const awardType = ruleset.awardTypes.find((at) => at.id === awardTypeId);
-                if (!awardType) continue;
-                if (awardType.scope === 'collective') continue;
+                const awardType = findAwardType(ruleset, awardTypeId);
+                if (awardType === undefined || awardType.scope === 'collective') continue;
 
                 if (meetsAwardRequirements(placement, awardType, classDef, ruleset).meets) {
                     eligible.add(awardTypeId);
@@ -122,49 +141,58 @@ export class FciAwardPolicy implements AwardPolicy {
         ruleset: EffectiveRuleset,
     ): AwardValidationResult {
         for (const assignment of proposed) {
-            const awardType = ruleset.awardTypes.find((at) => at.id === assignment.awardTypeId);
-            if (!awardType) {
-                return {
-                    valid: false,
-                    reason: `Unknown award type '${assignment.awardTypeId}'`,
-                };
-            }
-            if (awardType.scope === 'collective') {
-                return {
-                    valid: false,
-                    reason: `Collective award type '${awardType.id}' cannot be proposed in a per-sex scope`,
-                };
-            }
+            const result = this.validateOnePerSexAssignment(assignment, placements, ruleset);
+            if (!result.valid) return result;
+        }
+        return { valid: true };
+    }
 
-            const placement = placements.find((p) => p.dogRef === assignment.dogRef);
-            if (!placement) {
-                return {
-                    valid: false,
-                    reason: `No placement found for dog '${assignment.dogRef}' in this scope`,
-                };
-            }
-
-            const classDef = ruleset.classDefinitions.find((c) => c.id === placement.classId);
-            if (!classDef) {
-                return {
-                    valid: false,
-                    reason: `Unknown class '${placement.classId}'`,
-                };
-            }
-
-            if (!classDef.awardTypeIds.includes(assignment.awardTypeId)) {
-                return {
-                    valid: false,
-                    reason: `Award type '${awardType.id}' is not available for dogs in class '${classDef.id}'`,
-                };
-            }
-
-            const requirement = meetsAwardRequirements(placement, awardType, classDef, ruleset);
-            if (!requirement.meets) {
-                return { valid: false, reason: requirement.reason };
-            }
+    /**
+     * Validates a single proposed per-sex assignment: the award type exists and
+     * is per-sex, the proposed dog has a placement, its class feeds that award
+     * type, and the dog's grade/placement satisfy the award's requirements.
+     * Returns `{ valid: true }` when the assignment passes every check.
+     */
+    private validateOnePerSexAssignment(
+        assignment: ProposedAwardAssignment,
+        placements: ReadonlyArray<ClassPlacement>,
+        ruleset: EffectiveRuleset,
+    ): AwardValidationResult {
+        const awardType = findAwardType(ruleset, assignment.awardTypeId);
+        if (awardType === undefined) {
+            return { valid: false, reason: `Unknown award type '${assignment.awardTypeId}'` };
+        }
+        if (awardType.scope === 'collective') {
+            return {
+                valid: false,
+                reason: `Collective award type '${awardType.id}' cannot be proposed in a per-sex scope`,
+            };
         }
 
+        const placement = placements.find((p) => p.entryRef === assignment.entryRef);
+        if (placement === undefined) {
+            return {
+                valid: false,
+                reason: `No placement found for dog '${assignment.entryRef}' in this scope`,
+            };
+        }
+
+        const classDef = findClassDefinition(ruleset, placement.classId);
+        if (classDef === undefined) {
+            return { valid: false, reason: `Unknown class '${placement.classId}'` };
+        }
+
+        if (!classDef.awardTypeIds.includes(assignment.awardTypeId)) {
+            return {
+                valid: false,
+                reason: `Award type '${awardType.id}' is not available for dogs in class '${classDef.id}'`,
+            };
+        }
+
+        const requirement = meetsAwardRequirements(placement, awardType, classDef, ruleset);
+        if (!requirement.meets) {
+            return { valid: false, reason: requirement.reason };
+        }
         return { valid: true };
     }
 
@@ -173,14 +201,11 @@ export class FciAwardPolicy implements AwardPolicy {
     // -----------------------------------------------------------------------
 
     private higherScopeEligible(
-        scope: Extract<JudgingScopeResults, { streams: ReadonlyArray<CandidateStream> }>,
+        scope: StreamedScope,
         ruleset: EffectiveRuleset,
     ): ReadonlyArray<AwardTypeId> {
         const eligible = new Set<AwardTypeId>();
-        for (const at of ruleset.awardTypes) {
-            if (at.scope === 'per-sex' || at.scope === 'collective') continue;
-            if (at.scope !== scope.kind) continue;
-            const individual = at;
+        for (const individual of higherScopeAwardTypesForScope(ruleset, scope.kind)) {
             if (this.awardIsEligible(individual, scope, ruleset)) {
                 eligible.add(individual.id);
             }
@@ -189,88 +214,132 @@ export class FciAwardPolicy implements AwardPolicy {
     }
 
     private validateHigherScope(
-        scope: Extract<JudgingScopeResults, { streams: ReadonlyArray<CandidateStream> }>,
+        scope: StreamedScope,
         proposed: ReadonlyArray<ProposedAwardAssignment>,
         ruleset: EffectiveRuleset,
     ): AwardValidationResult {
         for (const assignment of proposed) {
-            const awardType = ruleset.awardTypes.find((at) => at.id === assignment.awardTypeId);
-            if (!awardType) {
-                return { valid: false, reason: `Unknown award type '${assignment.awardTypeId}'` };
-            }
-            if (awardType.scope === 'collective') {
-                return {
-                    valid: false,
-                    reason: `Collective award type '${awardType.id}' cannot be proposed in a ${scope.kind} scope`,
-                };
-            }
-            if (awardType.scope !== scope.kind) {
-                return {
-                    valid: false,
-                    reason: `Award type '${awardType.id}' (scope ${awardType.scope}) cannot be proposed in a ${scope.kind} scope`,
-                };
-            }
-            const individual = awardType;
-            if (!individual.fedBy) {
-                return {
-                    valid: false,
-                    reason: `Award type '${individual.id}' declares no feeders`,
-                };
-            }
-            const candidate = this.feederCandidates(individual.fedBy, scope.streams).find(
-                (c) => c.dogRef === assignment.dogRef,
+            const assignmentResult = this.validateOneHigherScopeAssignment(
+                scope,
+                assignment,
+                ruleset,
             );
-            if (!candidate) {
-                return {
-                    valid: false,
-                    reason: `Dog '${assignment.dogRef}' is not a candidate for award '${individual.id}' from its feeder streams`,
-                };
-            }
-            if (
-                !this.candidateMeetsMinimumGrade(
-                    candidate.gradeId,
-                    individual.minimumGradeId,
-                    ruleset,
-                )
-            ) {
-                return {
-                    valid: false,
-                    reason: `Dog '${assignment.dogRef}' received grade '${candidate.gradeId}' but '${individual.id}' requires at least '${individual.minimumGradeId}'`,
-                };
-            }
+            if (!assignmentResult.valid) return assignmentResult;
         }
 
-        // Breed scope: BOB and BOS must be opposite-sex, distinct dogs (ADR-0017).
-        if (scope.kind === 'breed') {
-            const sexOf = (dogRef: EntryRef) =>
-                scope.streams.find((s) => s.candidates.some((c) => c.dogRef === dogRef))?.sex;
-            const breedProposals = proposed.filter((p) => {
-                const at = ruleset.awardTypes.find((a) => a.id === p.awardTypeId);
-                return at !== undefined && at.scope === 'breed';
-            });
-            const refs = breedProposals.map((p) => p.dogRef);
-            if (new Set(refs).size !== refs.length) {
+        const breedInvariant = this.validateBreedScopeInvariants(scope, proposed, ruleset);
+        if (breedInvariant !== undefined) return breedInvariant;
+
+        const completeness = this.requireNonDiscretionaryAwards(scope, proposed, ruleset);
+        if (completeness !== undefined) return completeness;
+
+        return { valid: true };
+    }
+
+    /**
+     * Validates a single proposed assignment within a breed/group/show scope:
+     * the award type exists, is in the right scope, declares feeders, the
+     * proposed dog is among its feeder-stream candidates, and the dog's grade
+     * meets the award's minimum.  Returns `{ valid: true }` when the
+     * assignment passes every check.
+     */
+    private validateOneHigherScopeAssignment(
+        scope: StreamedScope,
+        assignment: ProposedAwardAssignment,
+        ruleset: EffectiveRuleset,
+    ): AwardValidationResult {
+        const awardType = findAwardType(ruleset, assignment.awardTypeId);
+        if (awardType === undefined) {
+            return { valid: false, reason: `Unknown award type '${assignment.awardTypeId}'` };
+        }
+        if (awardType.scope === 'collective') {
+            return {
+                valid: false,
+                reason: `Collective award type '${awardType.id}' cannot be proposed in a ${scope.kind} scope`,
+            };
+        }
+        if (awardType.scope !== scope.kind) {
+            return {
+                valid: false,
+                reason: `Award type '${awardType.id}' (scope ${awardType.scope}) cannot be proposed in a ${scope.kind} scope`,
+            };
+        }
+        const individual = awardType;
+        if (individual.fedBy.length === 0) {
+            return {
+                valid: false,
+                reason: `Award type '${individual.id}' declares no feeders`,
+            };
+        }
+        const candidate = this.feederCandidates(individual.fedBy, scope.streams).find(
+            (c) => c.entryRef === assignment.entryRef,
+        );
+        if (!candidate) {
+            return {
+                valid: false,
+                reason: `Dog '${assignment.entryRef}' is not a candidate for award '${individual.id}' from its feeder streams`,
+            };
+        }
+        if (
+            !this.candidateMeetsMinimumGrade(candidate.gradeId, individual.minimumGradeId, ruleset)
+        ) {
+            return {
+                valid: false,
+                reason: `Dog '${assignment.entryRef}' received grade '${candidate.gradeId}' but '${individual.id}' requires at least '${individual.minimumGradeId}'`,
+            };
+        }
+        return { valid: true };
+    }
+
+    /**
+     * Breed-scope invariants: BOB and BOS must be proposed for distinct dogs
+     * of opposite sexes (ADR-0017).  Returns the first violation, or
+     * `undefined` when the scope is not breed or the invariants hold.
+     */
+    private validateBreedScopeInvariants(
+        scope: StreamedScope,
+        proposed: ReadonlyArray<ProposedAwardAssignment>,
+        ruleset: EffectiveRuleset,
+    ): AwardValidationResult | undefined {
+        if (scope.kind !== 'breed') return undefined;
+
+        const sexOf = (entryRef: EntryRef) =>
+            scope.streams.find((s) => s.candidates.some((c) => c.entryRef === entryRef))?.sex;
+        const breedProposals = proposed.filter((p) => {
+            const at = findAwardType(ruleset, p.awardTypeId);
+            return at !== undefined && at.scope === 'breed';
+        });
+        const refs = breedProposals.map((p) => p.entryRef);
+        if (new Set(refs).size !== refs.length) {
+            return {
+                valid: false,
+                reason: 'Two breed-scope awards cannot be proposed for the same dog',
+            };
+        }
+        if (breedProposals.length === BOB_AND_BOS_PROPOSAL_COUNT) {
+            const sexes = breedProposals.map((p) => sexOf(p.entryRef));
+            if (!(sexes.includes('male') && sexes.includes('female'))) {
                 return {
                     valid: false,
-                    reason: 'Two breed-scope awards cannot be proposed for the same dog',
+                    reason: 'BOB and BOS must be proposed for dogs of opposite sexes',
                 };
             }
-            if (breedProposals.length === 2) {
-                const sexes = breedProposals.map((p) => sexOf(p.dogRef));
-                if (!(sexes.includes('male') && sexes.includes('female'))) {
-                    return {
-                        valid: false,
-                        reason: 'BOB and BOS must be proposed for dogs of opposite sexes',
-                    };
-                }
-            }
         }
-        // Non-discretionary awards must be proposed when they are eligible.
+        return undefined;
+    }
+
+    /**
+     * Non-discretionary higher-scope awards must be proposed when they are
+     * eligible (their feeder stream has a qualifying candidate).  Returns the
+     * first missing mandatory award, or `undefined` when all are satisfied.
+     */
+    private requireNonDiscretionaryAwards(
+        scope: StreamedScope,
+        proposed: ReadonlyArray<ProposedAwardAssignment>,
+        ruleset: EffectiveRuleset,
+    ): AwardValidationResult | undefined {
         const proposedIds = new Set(proposed.map((p) => p.awardTypeId));
-        for (const at of ruleset.awardTypes) {
-            if (at.scope === 'per-sex' || at.scope === 'collective') continue;
-            if (at.scope !== scope.kind) continue;
-            const individual = at;
+        for (const individual of higherScopeAwardTypesForScope(ruleset, scope.kind)) {
             if (individual.isDiscretionary) continue;
             if (proposedIds.has(individual.id)) continue;
             if (this.awardIsEligible(individual, scope, ruleset)) {
@@ -280,8 +349,7 @@ export class FciAwardPolicy implements AwardPolicy {
                 };
             }
         }
-
-        return { valid: true };
+        return undefined;
     }
 
     /**
@@ -290,24 +358,24 @@ export class FciAwardPolicy implements AwardPolicy {
      * qualifying male and female are both present via the streams' `sex` tags.
      */
     private awardIsEligible(
-        individual: IndividualAwardType,
-        scope: Extract<JudgingScopeResults, { streams: ReadonlyArray<CandidateStream> }>,
+        individual: HigherScopeAwardType,
+        scope: StreamedScope,
         ruleset: EffectiveRuleset,
     ): boolean {
-        if (!individual.fedBy || individual.fedBy.length === 0) return false;
+        if (individual.fedBy.length === 0) return false;
         const matched = this.matchedStreams(individual.fedBy, scope.streams);
         if (matched.length === 0) return false;
-        const minGrade = individual.minimumGradeId;
-        const hasQualifying = matched.some((s) => this.streamHasQualifying(s, minGrade, ruleset));
-        if (!hasQualifying) return false;
+        // Resolve the qualifying streams once and derive sex presence from
+        // that list, rather than re-scanning the matched streams per sex.
+        const qualifying = matched.filter((s) =>
+            this.streamHasQualifying(s, individual.minimumGradeId, ruleset),
+        );
+        if (qualifying.length === 0) return false;
         if (scope.kind === 'breed') {
-            const hasMale = matched.some(
-                (s) => s.sex === 'male' && this.streamHasQualifying(s, minGrade, ruleset),
+            return (
+                qualifying.some((s) => s.sex === 'male') &&
+                qualifying.some((s) => s.sex === 'female')
             );
-            const hasFemale = matched.some(
-                (s) => s.sex === 'female' && this.streamHasQualifying(s, minGrade, ruleset),
-            );
-            return hasMale && hasFemale;
         }
         return true;
     }
@@ -331,10 +399,13 @@ export class FciAwardPolicy implements AwardPolicy {
     }
 
     private feederMatchesStream(feeder: Feeder, stream: CandidateStream): boolean {
-        if ('awardTypeId' in feeder) {
-            return 'feederAwardTypeId' in stream && stream.feederAwardTypeId === feeder.awardTypeId;
+        if (feeder.kind === 'award' && stream.kind === 'award') {
+            return stream.feederAwardTypeId === feeder.awardTypeId;
         }
-        return 'feederClassId' in stream && stream.feederClassId === feeder.classId;
+        if (feeder.kind === 'class' && stream.kind === 'class') {
+            return stream.feederClassId === feeder.classId;
+        }
+        return false;
     }
 
     /** All candidates supplied by the streams matching `fedBy`. */
@@ -342,30 +413,20 @@ export class FciAwardPolicy implements AwardPolicy {
         fedBy: ReadonlyArray<Feeder>,
         streams: ReadonlyArray<CandidateStream>,
     ): ReadonlyArray<StreamCandidate> {
-        const out: StreamCandidate[] = [];
-        for (const s of this.matchedStreams(fedBy, streams)) {
-            for (const c of s.candidates) out.push(c);
-        }
-        return out;
+        return this.matchedStreams(fedBy, streams).flatMap((s) => [...s.candidates]);
     }
 
     /**
      * Whether `candidateGradeId` is at least as good as `minimumGradeId`,
-     * resolving both on the single grade scale that contains them both.
-     * Lower ordinal = better grade (Excellent = 0, Very Good = 1, …).
+     * resolving both on the single grade scale that contains them. Lower
+     * ordinal = better grade (Excellent = 0, Very Good = 1, …).
      */
     private candidateMeetsMinimumGrade(
         candidateGradeId: GradeId,
         minimumGradeId: GradeId,
         ruleset: EffectiveRuleset,
     ): boolean {
-        for (const scale of ruleset.gradeScales) {
-            const candidateGrade = scale.grades.find((g) => g.id === candidateGradeId);
-            const minGrade = scale.grades.find((g) => g.id === minimumGradeId);
-            if (candidateGrade && minGrade) {
-                return candidateGrade.ordinal <= minGrade.ordinal;
-            }
-        }
-        return false;
+        const pair = resolveGradePairOnSharedScale(candidateGradeId, minimumGradeId, ruleset);
+        return pair !== undefined && gradeAtLeast(pair.candidate, pair.minimum);
     }
 }

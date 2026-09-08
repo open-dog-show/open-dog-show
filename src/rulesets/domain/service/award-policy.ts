@@ -11,7 +11,7 @@ import type { JudgingScopeResults } from '../model/effective-ruleset/value-objec
  */
 export interface ProposedAwardAssignment {
     /** Opaque reference to the judged entry receiving the award. */
-    readonly dogRef: EntryRef;
+    readonly entryRef: EntryRef;
     readonly awardTypeId: AwardTypeId;
 }
 
@@ -27,9 +27,9 @@ export type AwardValidationResult =
  * scope, and validates whether the judge's proposed choices are legal.
  *
  * The Judging context calls this policy without knowing which kennel-club
- * ruleset is in force.  The FCI domain-service implementation lives in the
- * `@ods/rulesets/fci` sub-path (`domain/services/fci/`); the composition
- * root (`apps/api`) will wire it. See ADR-0001 / ADR-0019.
+ * ruleset is in force.  The FCI domain-service implementation lives in
+ * `domain/service/fci/` (relative-import barrel); the composition root
+ * (`apps/api`) will wire it. See ADR-0001 / ADR-0021.
  */
 export interface AwardPolicy {
     /**

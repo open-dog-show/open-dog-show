@@ -4,3 +4,4 @@
 export { PostgresHarness } from './postgres-harness.js';
 export type { MigrationContext } from './migration-runner.js';
 export { runMigrations } from './migration-runner.js';
+export { findOrFail } from './find-or-assert.js';
