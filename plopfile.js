@@ -8,7 +8,8 @@ export default function (plop) {
     plop.setHelper('eventContext', (value) => String(value).replaceAll('-', '').toLowerCase());
 
     plop.setGenerator('context', {
-        description: 'Scaffold a new bounded-context package',
+        description:
+            'Scaffold a new bounded context (canonical directory-structure layout, ADR-0021)',
         prompts: [
             {
                 type: 'input',
@@ -22,72 +23,64 @@ export default function (plop) {
         actions: [
             {
                 type: 'add',
-                path: 'packages/contexts/{{name}}/package.json',
-                templateFile: 'plop-templates/context/package.json.hbs',
+                path: 'src/{{name}}/index.ts',
+                templateFile: 'plop-templates/context/index.ts.hbs',
             },
             {
                 type: 'add',
-                path: 'packages/contexts/{{name}}/tsconfig.json',
-                templateFile: 'plop-templates/context/tsconfig.json.hbs',
+                path: 'src/{{name}}/domain/model/item/item.ts',
+                templateFile: 'plop-templates/context/domain/model/item/item.ts.hbs',
             },
             {
                 type: 'add',
-                path: 'packages/contexts/{{name}}/src/index.ts',
-                templateFile: 'plop-templates/context/src/index.ts.hbs',
+                path: 'src/{{name}}/application/ports/unit-of-work.ts',
+                templateFile: 'plop-templates/context/application/ports/unit-of-work.ts.hbs',
             },
             {
                 type: 'add',
-                path: 'packages/contexts/{{name}}/src/domain/item.ts',
-                templateFile: 'plop-templates/context/src/domain/item.ts.hbs',
+                path: 'src/{{name}}/application/save-item/save-item.ts',
+                templateFile: 'plop-templates/context/application/save-item/save-item.ts.hbs',
             },
             {
                 type: 'add',
-                path: 'packages/contexts/{{name}}/src/domain/unit-of-work.ts',
-                templateFile: 'plop-templates/context/src/domain/unit-of-work.ts.hbs',
-            },
-            {
-                type: 'add',
-                path: 'packages/contexts/{{name}}/src/application/save-item.ts',
-                templateFile: 'plop-templates/context/src/application/save-item.ts.hbs',
-            },
-            {
-                type: 'add',
-                path: 'packages/contexts/{{name}}/src/infrastructure/schema.ts',
-                templateFile: 'plop-templates/context/src/infrastructure/schema.ts.hbs',
-            },
-            {
-                type: 'add',
-                path: 'packages/contexts/{{name}}/src/infrastructure/drizzle-item-repository.ts',
+                path: 'src/{{name}}/infrastructure/persistence/postgres/schema.ts',
                 templateFile:
-                    'plop-templates/context/src/infrastructure/drizzle-item-repository.ts.hbs',
+                    'plop-templates/context/infrastructure/persistence/postgres/schema.ts.hbs',
             },
             {
                 type: 'add',
-                path: 'packages/contexts/{{name}}/src/infrastructure/pg-unit-of-work.ts',
-                templateFile: 'plop-templates/context/src/infrastructure/pg-unit-of-work.ts.hbs',
-            },
-            {
-                type: 'add',
-                path: 'packages/contexts/{{name}}/src/infrastructure/migrations/0000_bootstrap.sql',
+                path: 'src/{{name}}/infrastructure/persistence/postgres/drizzle-item-repository.ts',
                 templateFile:
-                    'plop-templates/context/src/infrastructure/migrations/0000_bootstrap.sql.hbs',
+                    'plop-templates/context/infrastructure/persistence/postgres/drizzle-item-repository.ts.hbs',
             },
             {
                 type: 'add',
-                path: 'packages/contexts/{{name}}/src/__tests__/save-item.test.ts',
-                templateFile: 'plop-templates/context/src/__tests__/save-item.test.ts.hbs',
+                path: 'src/{{name}}/infrastructure/persistence/postgres/pg-unit-of-work.ts',
+                templateFile:
+                    'plop-templates/context/infrastructure/persistence/postgres/pg-unit-of-work.ts.hbs',
             },
             {
                 type: 'add',
-                path: 'packages/contexts/{{name}}/src/__tests__/outbox.integration.test.ts',
-                templateFile: 'plop-templates/context/src/__tests__/outbox.integration.test.ts.hbs',
+                path: 'src/{{name}}/infrastructure/persistence/postgres/migrations/0000_bootstrap.sql',
+                templateFile:
+                    'plop-templates/context/infrastructure/persistence/postgres/migrations/0000_bootstrap.sql.hbs',
             },
-            // Format the generated TypeScript and JSON files so they pass `pnpm lint` immediately.
+            {
+                type: 'add',
+                path: 'tests/{{name}}/__tests__/save-item.test.ts',
+                templateFile: 'plop-templates/context/tests/__tests__/save-item.test.ts.hbs',
+            },
+            {
+                type: 'add',
+                path: 'tests/{{name}}/__tests__/outbox.integration.test.ts',
+                templateFile:
+                    'plop-templates/context/tests/__tests__/outbox.integration.test.ts.hbs',
+            },
+            // Format the generated TypeScript files so they pass `pnpm lint` immediately.
             function formatGeneratedFiles(answers) {
-                const glob = `packages/contexts/${answers.name}/src/**/*.ts`;
-                const pkgJson = `packages/contexts/${answers.name}/package.json`;
-                const tsConfig = `packages/contexts/${answers.name}/tsconfig.json`;
-                execSync(`pnpm exec prettier --write "${glob}" "${pkgJson}" "${tsConfig}"`, {
+                const srcGlob = `src/${answers.name}/**/*.ts`;
+                const testsGlob = `tests/${answers.name}/**/*.ts`;
+                execSync(`pnpm exec prettier --write "${srcGlob}" "${testsGlob}"`, {
                     stdio: 'inherit',
                 });
                 return 'formatted generated files with Prettier';

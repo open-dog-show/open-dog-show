@@ -10,7 +10,7 @@ Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, 
 
 ### Domain docs
 
-Single-context layout — `CONTEXT.md` at the repo root + `docs/adr/`. See `docs/agents/domain.md`.
+Multi-context layout — `CONTEXT-MAP.md` + `CONTEXT.md` at the repo root + `docs/adr/`. Per-context `CONTEXT.md` lives at `src/<context>/CONTEXT.md` when code lands. See `docs/agents/domain.md`.
 
 ## Coding standards
 
@@ -20,7 +20,7 @@ follows one source of truth and the docs never drift apart.
 
 ### Project
 
-OpenDogShow — AGPL-3.0-only, TypeScript pnpm monorepo, modular monolith.  
+OpenDogShow — AGPL-3.0-only, TypeScript pnpm single-package repo, modular monolith.  
 Domain model: `CONTEXT.md` · Context map: `CONTEXT-MAP.md` · ADRs: `docs/adr/`.
 
 ### Every source file
@@ -45,31 +45,54 @@ workaround.
 
 ### TypeScript rules
 
-- **ESM-only** — `"type": "module"` in every `package.json`.
+- **ESM-only** — `"type": "module"` in `package.json`.
 - **NodeNext** module + resolution — write `.js` extensions on every relative
   import even though the source file is `.ts`.
 - Strict mode with `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`.
-- `allowImportingTsExtensions` + `noEmit` — live-source packages, no compiled
-  output for internal packages.
+- `allowImportingTsExtensions` + `noEmit` — live-source, no compiled output.
 
-### Architecture (ADR-0004 / ADR-0006)
+### Architecture (ADR-0004 / ADR-0006 / ADR-0020 / ADR-0021)
+
+The repo follows the canonical directory-structure layout
+(`docs/architecture/canonical-directory-structure.md`):
+context-first, four-layer clean architecture.
 
 ```
-packages/kernel/          @ods/kernel       domain primitives, ports, and shared
-                                            transactional-outbox scaffolding
-packages/contexts/<name>/ @ods/<name>       src/domain / application / infrastructure
-apps/api/                 @ods/api          composition root
+src/Shared/              shared kernel: domain/, application/ports/, infrastructure/
+src/<name>/              a bounded context:
+  domain/model/<aggregate>/   root entity, entities/, value-objects/, events/, <Aggregate>Repository
+  domain/service/  domain/shared/   cross-aggregate services, base types
+  application/<UseCase>/       use-case folder; application/ports/ (outbound), application/dto/
+  infrastructure/persistence/{postgres,inmemory}/  + messaging/ + external/ + di/
+  interfaces/                  delivery: http/{controllers,requests,responses}/, cli/, events/ (when delivery lands)
+tests/                   mirrors src/
+apps/                    optional runnable entry points (composition root)
 ```
 
 - Domain layer: **no ORM, no framework imports**. Drizzle lives in
-  `infrastructure/` only.
-- Contexts never import each other directly; `apps/api` composes them.
-- Ports (`Clock`, `EventIdGenerator`, repository interfaces) are defined in `domain/`
-  and implemented in `infrastructure/`.
-- The kernel houses the shared transactional-outbox scaffolding
-  (`withTransaction`/`withOutboxTransaction`, `PgOutboxWriter`,
-  `PgPollingDispatcher`) and the `Clock`/`EventIdGenerator` production implementations
-  in its `infrastructure/` layer; its `domain/` layer stays ORM-free.
+  `infrastructure/persistence/` only.
+- Dependencies point inward: `interfaces`/`infrastructure` → `application` → `domain`.
+  `interfaces` imports `application`+`domain` (never `infrastructure`);
+  `infrastructure` imports `application`+`domain` (never `interfaces`).
+- Contexts never import each other; `apps/` (or `src/api/`) composes them.
+- Ports live inward (interfaces in `domain/` or `application/ports/`); adapters
+  outward in `infrastructure/`. `Clock`/`EventIdGenerator` are domain ports
+  (used by domain event creation) — they live in `src/Shared/domain/`.
+- Imports are **relative** (e.g. `../../Shared/index.js`); there is no `@ods/*`
+  package scope. Context-zone and layer boundaries are enforced by
+  `eslint-plugin-boundaries` on `src/` path patterns.
+
+### Context layout (ADR-0019 / ADR-0021)
+
+Each context (`src/<name>/`) uses aggregate-package + use-case folders:
+`domain/model/<aggregate>/` (root entity, `entities/`, `value-objects/`,
+`events/`, `<Aggregate>Repository` interface), `domain/service/`, `domain/shared/`;
+`application/<UseCase>/` (Command/Handler/Response), `application/ports/`,
+`application/dto/`; `infrastructure/persistence/{postgres,inmemory}/`, `messaging/`,
+`external/`, `di/`; `interfaces/http/{controllers,requests,responses}/`, `cli/`,
+`events/`. Folders are created only when they have content. In-memory test doubles
+live in `infrastructure/persistence/inmemory/`. Tests live under root `tests/`
+mirroring `src/`.
 
 ### Package management
 

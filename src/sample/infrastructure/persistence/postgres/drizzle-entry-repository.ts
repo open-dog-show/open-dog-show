@@ -1,0 +1,43 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type pg from 'pg';
+import { asClubId, asPrincipalId } from '../../../../Shared/index.js';
+import { entriesTable } from './schema.js';
+import type { Entry, EntryRepository } from '../../../domain/model/entry/entry.js';
+
+export class DrizzleEntryRepository implements EntryRepository {
+    private readonly db;
+
+    constructor(client: pg.PoolClient) {
+        this.db = drizzle(client);
+    }
+
+    async findAll(): Promise<Entry[]> {
+        const rows = await this.db.select().from(entriesTable);
+        return rows.map((row) => ({
+            id: row.id,
+            clubId: asClubId(row.clubId),
+            principalId: asPrincipalId(row.principalId),
+            showId: row.showId,
+            dogName: row.dogName,
+        }));
+    }
+
+    async save(entry: Entry): Promise<void> {
+        await this.db
+            .insert(entriesTable)
+            .values({
+                id: entry.id,
+                clubId: entry.clubId,
+                principalId: entry.principalId,
+                showId: entry.showId,
+                dogName: entry.dogName,
+            })
+            .onConflictDoUpdate({
+                target: entriesTable.id,
+                set: { dogName: entry.dogName },
+            });
+    }
+}

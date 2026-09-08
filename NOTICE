@@ -33,28 +33,21 @@ OpenDogShow is an independent, clean-room implementation.
 Third-party notices — runtime
 ------------------------------------------------------------------------------
 
-(packages declared in `dependencies` of any workspace package)
-
-@testcontainers/postgresql — https://github.com/testcontainers/testcontainers-node
-Copyright (c) 2018 - 2025 Cristian Greco
-MIT — runtime, used in @ods/test-kit; also dev-only in open-dog-show (root)
-
-pg — https://github.com/brianc/node-postgres
-Copyright (c) 2010 - 2021 Brian Carlson
-MIT — runtime, used in @ods/test-kit; also dev-only in open-dog-show (root)
-
-testcontainers — https://github.com/testcontainers/testcontainers-node
-Copyright (c) 2018 - 2025 Cristian Greco
-MIT — runtime, used in @ods/test-kit; also dev-only in open-dog-show (root)
+No runtime dependencies yet — the application composition root (`src/api/`)
+is not yet built. Every third-party package below is development-time only.
 
 ------------------------------------------------------------------------------
 Third-party notices — development-time
 ------------------------------------------------------------------------------
 
-(packages declared only in `devDependencies` — not distributed)
+(packages declared in `devDependencies` of the root package — not distributed)
 
 @eslint/js — https://eslint.org
 Copyright OpenJS Foundation and other contributors, <www.openjsf.org>
+MIT — dev-only, used in open-dog-show (root)
+
+@testcontainers/postgresql — https://github.com/testcontainers/testcontainers-node
+Copyright (c) 2018 - 2025 Cristian Greco
 MIT — dev-only, used in open-dog-show (root)
 
 @types/node — https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/node
@@ -63,7 +56,11 @@ MIT — dev-only, used in open-dog-show (root)
 
 @types/pg — https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/pg
 Copyright (c) Microsoft Corporation.
-MIT — dev-only, used in @ods/test-kit, open-dog-show (root)
+MIT — dev-only, used in open-dog-show (root)
+
+drizzle-orm — https://github.com/drizzle-team/drizzle-orm
+Copyright (c) Drizzle Team
+Apache-2.0 — dev-only, used in open-dog-show (root)
 
 eslint — https://eslint.org
 Copyright OpenJS Foundation and other contributors, <www.openjsf.org>
@@ -93,12 +90,20 @@ lint-staged — https://github.com/lint-staged/lint-staged
 Copyright (c) Andrey Okonetchnikov <andrey@okonet.ru>
 MIT — dev-only, used in open-dog-show (root)
 
+pg — https://github.com/brianc/node-postgres
+Copyright (c) 2010 - 2021 Brian Carlson
+MIT — dev-only, used in open-dog-show (root)
+
 plop — https://plopjs.com
 Copyright (c) Andrew Worcester <andrew@amwmedia.com>
 MIT — dev-only, used in open-dog-show (root)
 
 prettier — https://prettier.io
 Copyright © James Long and contributors
+MIT — dev-only, used in open-dog-show (root)
+
+testcontainers — https://github.com/testcontainers/testcontainers-node
+Copyright (c) 2018 - 2025 Cristian Greco
 MIT — dev-only, used in open-dog-show (root)
 
 typescript — https://www.typescriptlang.org/

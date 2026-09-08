@@ -7,8 +7,11 @@ import prettierConfig from 'eslint-config-prettier';
 import unicorn from 'eslint-plugin-unicorn';
 import boundaries from 'eslint-plugin-boundaries';
 
-// Shared allow clause: @ods/kernel is importable from any context layer.
-const allowKernel = { to: { module: { origin: 'external', source: '@ods/kernel' } } };
+// Shared allow clause: the shared kernel (src/Shared/**) is importable from any
+// context layer. ADR-0020 replaced the @ods/kernel package import with a
+// relative path to the kernel barrel; the kernel is now a path-classified
+// element rather than an external module source.
+const allowKernel = { to: { element: { type: 'kernel' } } };
 
 export default tseslint.config(
     { ignores: ['**/node_modules/**', '**/dist/**'] },
@@ -20,47 +23,57 @@ export default tseslint.config(
             'unicorn/filename-case': ['error', { case: 'kebabCase', checkDirectories: false }],
         },
     },
-    // ── ADR-0006 boundary rules ──────────────────────────────────────────────
-    // Layer taxonomy (inward-only) and context-zone taxonomy (@ods/* isolation)
-    // applied to all context source files.
+    // ── ADR-0006 / ADR-0020 / ADR-0021 boundary rules ────────────────────────
+    // Layer taxonomy (inward-only) and context-zone taxonomy (no cross-context
+    // imports) applied to context source files. Contexts live directly under
+    // src/<name>/ (ADR-0020/0021); the shared kernel (src/Shared/**) is ignored
+    // so the rule runs on context files only. The four layers (domain,
+    // application, infrastructure, interfaces) follow ADR-0021; `interfaces/`
+    // is enforced from the moment delivery code lands.
     {
-        files: ['packages/contexts/*/src/**/*.ts'],
+        files: ['src/**/*.ts'],
+        ignores: ['src/Shared/**'],
         plugins: { boundaries },
         settings: {
-            // Flag all @ods/* workspace packages as "external" so the
-            // module.origin selector in policies can distinguish them from
-            // local relative imports without needing full resolver resolution.
-            'boundaries/flag-as-external': {
-                customSourcePatterns: ['@ods/*'],
-            },
             // Layer taxonomy: the three clean-architecture layers inside every
-            // bounded context. `capture` extracts the context name from the
-            // path wildcard so same-context constraints can be expressed in
-            // policies (preventing cross-context imports via relative paths).
+            // bounded context, plus the shared kernel. `capture` extracts the
+            // context name from the path wildcard so same-context constraints
+            // can be expressed in policies (preventing cross-context imports
+            // via relative paths: an import to a different context's folder
+            // matches a context-* element with a different captured
+            // contextName and falls through to `default: 'disallow'`).
             'boundaries/elements': [
                 {
+                    type: 'kernel',
+                    pattern: 'src/Shared/**',
+                },
+                {
                     type: 'context-domain',
-                    pattern: 'packages/contexts/*/src/domain/**',
+                    pattern: 'src/*/domain/**',
                     capture: ['contextName'],
                 },
                 {
                     type: 'context-application',
-                    pattern: 'packages/contexts/*/src/application/**',
+                    pattern: 'src/*/application/**',
                     capture: ['contextName'],
                 },
                 {
                     type: 'context-infrastructure',
-                    pattern: 'packages/contexts/*/src/infrastructure/**',
+                    pattern: 'src/*/infrastructure/**',
+                    capture: ['contextName'],
+                },
+                {
+                    type: 'context-interfaces',
+                    pattern: 'src/*/interfaces/**',
                     capture: ['contextName'],
                 },
             ],
             // The public surface (index.ts) is a single file, so it is
             // classified with a file descriptor rather than an element descriptor.
-            // `capture` extracts the context name for same-context constraints.
             'boundaries/files': [
                 {
                     category: 'context-index',
-                    pattern: 'packages/contexts/*/src/index.ts',
+                    pattern: 'src/*/index.ts',
                     capture: ['contextName'],
                 },
             ],
@@ -77,13 +90,23 @@ export default tseslint.config(
                     // Default to deny; each layer's allowed dependencies are
                     // listed explicitly below.
                     default: 'disallow',
-                    // Check both local (relative) and external (@ods/*) imports.
+                    // Check both local (relative) and external (drizzle/pg) imports.
                     checkAllOrigins: true,
                     policies: [
                         // ── context-domain ────────────────────────────────────
-                        // Pure domain: @ods/kernel and same-context domain
-                        // siblings are permitted; no ORM, no other contexts,
-                        // no infrastructure references.
+                        // Pure domain: the shared kernel and same-context domain
+                        // siblings are permitted; no ORM, no other contexts, no
+                        // infrastructure references.
+                        //
+                        // ADR-0013 / ADR-0020: the kernel owns `PrincipalId`;
+                        // `UserId` is owned by IAM. The specifier-level `disallow`
+                        // that blocked importing `UserId`/`asUserId`/`ExhibitorId`/
+                        // `asExhibitorId` from `@ods/kernel` is removed — it was
+                        // keyed on the `@ods/kernel` module source, which no
+                        // longer exists. The invariant now holds because the
+                        // kernel barrel does not export those symbols (a `tsc`
+                        // error) and the cross-context ban blocks importing them
+                        // from IAM directly.
                         {
                             from: { element: { type: 'context-domain' } },
                             allow: [
@@ -100,32 +123,10 @@ export default tseslint.config(
                                     },
                                 },
                             ],
-                            // ADR-0013: the kernel owns the context-neutral `PrincipalId`;
-                            // `@ods/iam` owns `UserId`. A downstream context domain layer must
-                            // not import IAM's `UserId` (or the removed `ExhibitorId` brand)
-                            // from the kernel. The specifier-level `disallow` takes precedence
-                            // over `allowKernel`, so the rest of `@ods/kernel` (`PrincipalId`,
-                            // `ClubId`, …) stays importable while the IAM-owned identifiers are
-                            // rejected at the boundary.
-                            disallow: [
-                                {
-                                    to: {
-                                        module: { origin: 'external', source: '@ods/kernel' },
-                                    },
-                                    dependency: {
-                                        specifiers: [
-                                            'UserId',
-                                            'asUserId',
-                                            'ExhibitorId',
-                                            'asExhibitorId',
-                                        ],
-                                    },
-                                },
-                            ],
                         },
                         // ── context-application ───────────────────────────────
                         // Use-cases: may depend on same-context domain layer
-                        // and @ods/kernel.
+                        // and the shared kernel.
                         {
                             from: { element: { type: 'context-application' } },
                             allow: [
@@ -134,8 +135,6 @@ export default tseslint.config(
                                     to: {
                                         element: {
                                             type: 'context-domain',
-                                            // Same-context constraint: application in context A
-                                            // may only import domain from context A.
                                             captured: {
                                                 contextName:
                                                     '{{ from.element.captured.contextName }}',
@@ -147,9 +146,9 @@ export default tseslint.config(
                         },
                         // ── context-infrastructure ────────────────────────────
                         // Adapters: may import same-context domain and application
-                        // layers, @ods/kernel, the Drizzle ORM, and the pg driver.
-                        // Payments/Identity must be accessed through an ACL
-                        // adapter here — no other @ods context is permitted.
+                        // layers, the shared kernel, the Drizzle ORM, and the pg
+                        // driver. No other context is permitted; Payments/Identity
+                        // must be accessed through an ACL adapter here.
                         {
                             from: { element: { type: 'context-infrastructure' } },
                             allow: [
@@ -158,8 +157,6 @@ export default tseslint.config(
                                     to: {
                                         element: {
                                             type: ['context-domain', 'context-application'],
-                                            // Same-context constraint: infra in context A
-                                            // may only import domain/application from context A.
                                             captured: {
                                                 contextName:
                                                     '{{ from.element.captured.contextName }}',
@@ -200,10 +197,35 @@ export default tseslint.config(
                                 { to: { module: { origin: 'core' } } },
                             ],
                         },
+                        // ── context-interfaces ──────────────────────────────────
+                        // Delivery layer (http/cli/events). Imports same-context
+                        // domain and application, plus the shared kernel — never
+                        // infrastructure (ADR-0004/0006/0021). Add the web framework
+                        // to the allow list here when delivery code lands.
+                        {
+                            from: { element: { type: 'context-interfaces' } },
+                            allow: [
+                                allowKernel,
+                                {
+                                    to: {
+                                        element: {
+                                            type: ['context-domain', 'context-application'],
+                                            captured: {
+                                                contextName:
+                                                    '{{ from.element.captured.contextName }}',
+                                            },
+                                        },
+                                    },
+                                },
+                                // Node.js built-ins
+                                { to: { module: { origin: 'core' } } },
+                            ],
+                        },
                         // ── context-index ─────────────────────────────────────
                         // Public surface (index.ts): re-exports from same-context
-                        // layers plus kernel. Uses the file-category dimension
-                        // because index.ts is a single file, not a folder element.
+                        // layers plus the shared kernel. Uses the file-category
+                        // dimension because index.ts is a single file, not a
+                        // folder element.
                         {
                             from: { file: { categories: 'context-index' } },
                             allow: [
@@ -215,9 +237,8 @@ export default tseslint.config(
                                                 'context-domain',
                                                 'context-application',
                                                 'context-infrastructure',
+                                                'context-interfaces',
                                             ],
-                                            // Same-context constraint: index.ts from context A
-                                            // may only re-export from context A's own layers.
                                             captured: {
                                                 contextName: '{{ from.file.captured.contextName }}',
                                             },

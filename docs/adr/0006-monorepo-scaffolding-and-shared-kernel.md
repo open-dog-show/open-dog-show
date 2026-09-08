@@ -6,6 +6,20 @@ status: accepted
 
 > Implements the foundation from [ADR-0004](0004-tech-stack-typescript-modular-monolith-postgres.md) (issue #13). Records the _architectural_ scaffolding decisions and the shared-kernel shape; ordinary tooling picks (lint/test libraries) are noted but not treated as lock-in.
 
+> **Superseded 2026-09-07 by [ADR-0020](0020-single-package-source-tree.md):** the
+> two-axis **package** structure (contexts as pnpm workspace packages, `@ods/*`
+> scope) is reversed to a single-package `src/` tree with relative imports. The
+> clean-DDD **layer** layout inside each context, the `eslint-plugin-boundaries`
+> enforcement, the shared kernel, the transactional outbox, and the context
+> generator are all preserved — only the per-context package wrapper is removed.
+> Read this ADR for the original rationale; read ADR-0020 for the current shape.
+
+> **Further superseded 2026-09-07 by [ADR-0021](0021-adopt-canonical-directory-structure.md):**
+> the per-context layout is now the canonical four-layer aggregate-package
+> structure (`domain/model/<aggregate>/`, `application/<UseCase>/`,
+> `infrastructure/persistence/{postgres,inmemory}/`, `interfaces/`) and the shared
+> kernel is `src/Shared/` with root `tests/`. Read ADR-0021 for the current shape.
+
 > **Amended 2026-08-22:** the outbox scope columns are `scope` / `user_id`
 > (renamed from `scope_kind` / `account_id`, issue #76), and the kernel-role
 > note below now reflects that `@ods/kernel` houses the shared

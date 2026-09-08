@@ -14,7 +14,7 @@ Collective Competitions are structurally different: there are no grades, no clas
 
 ## Decision
 
-`CollectiveAwardPolicy` is a separate port with a single method, `evaluate(results: CollectiveCompetitionResults): CollectiveAwardResult`. It knows nothing about grades, placements, or Award Types. Its in-memory FCI implementation lives in the `@ods/rulesets/testing` sub-path alongside `FciAwardPolicy`.
+`CollectiveAwardPolicy` is a separate port with a single method, `evaluate(results: CollectiveCompetitionResults): CollectiveAwardResult`. It knows nothing about grades, placements, or Award Types. Its FCI domain-service implementation lives in `domain/service/fci/` (exported via the relative-import barrel `domain/service/fci/index.ts`) alongside `FciAwardPolicy`; see ADR-0021.
 
 ## Considered options
 

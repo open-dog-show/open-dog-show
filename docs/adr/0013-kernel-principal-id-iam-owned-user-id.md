@@ -6,6 +6,14 @@ status: accepted
 
 > Resolves issue #92. Applies [ADR-0011](0011-context-specific-identity-ports-for-iam-acl.md) (context-specific identity ports) at the kernel/identity-owner boundary, and refines [ADR-0005](0005-data-ownership-scopes-and-rls-keys.md)'s `user_id` naming.
 
+> **Amended 2026-09-07 by [ADR-0020](0020-single-package-source-tree.md):** the
+> `eslint-plugin-boundaries` specifier-level ban that blocked importing
+> `UserId`/`asUserId`/`ExhibitorId`/`asExhibitorId` from `@ods/kernel` is removed
+> (it was keyed on the `@ods/kernel` module source, which no longer exists). The
+> ownership invariant is unchanged — the kernel barrel does not export those
+> symbols, so importing them from the kernel is a `tsc` error, and the
+> cross-context import ban prevents importing them from IAM directly.
+
 > **Amended 2026-08-26:** the `tenant` data-isolation concept was renamed to
 > `club` throughout (issue #116): the branded id `TenantId` is now `ClubId`, the
 > `TransactionScope`/`EventScope` literal `'tenant'` is now `'club'`, and the RLS
