@@ -4,10 +4,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { asClubId } from '../../../../../src/Shared/index.js';
 import { asUserId } from '../../../../../src/iam/domain/shared/domain-ids.js';
-import type {
-    DomainRole,
+import {
     ClubScope,
     PlatformScope,
+} from '../../../../../src/iam/domain/model/role-grant/value-objects/role-scope.js';
+import type {
+    DomainRole,
     RoleGrant,
 } from '../../../../../src/iam/domain/model/role-grant/role-grant.js';
 import {
@@ -25,9 +27,9 @@ const BOB_ID = asUserId('user-bob');
 const CLUB_A = asClubId('club-a');
 const CLUB_B = asClubId('club-b');
 
-const clubAScope: ClubScope = { kind: 'club', clubId: CLUB_A };
-const clubBScope: ClubScope = { kind: 'club', clubId: CLUB_B };
-const platformScope: PlatformScope = { kind: 'platform' };
+const clubAScope: ClubScope = ClubScope.of(CLUB_A);
+const clubBScope: ClubScope = ClubScope.of(CLUB_B);
+const platformScope: PlatformScope = PlatformScope.of();
 
 const aliceShowSecretary: RoleGrant = {
     userId: ALICE_ID,

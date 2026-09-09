@@ -1,8 +1,16 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-export type { DomainEvent, EventScope, CreateDomainEventParams } from './domain/domain-event.js';
-export { createDomainEvent, asEventScope } from './domain/domain-event.js';
+export type { DomainEvent, CreateDomainEventParams } from './domain/domain-event.js';
+export { createDomainEvent } from './domain/domain-event.js';
+export type { EventScope } from './domain/event-scope.js';
+export {
+    asEventScope,
+    eventScopesEqual,
+    ClubEventScope,
+    ExhibitorEventScope,
+    PlatformEventScope,
+} from './domain/event-scope.js';
 export type { Clock, EventIdGenerator } from './domain/domain-ports.js';
 export type {
     ShowId,
@@ -41,5 +49,11 @@ export { PgPollingDispatcher } from './infrastructure/pg-polling-dispatcher.js';
 export type { EventHandler } from './infrastructure/pg-polling-dispatcher.js';
 export { quoteSchemaIdent } from './infrastructure/schema-ident.js';
 export type { TransactionScope } from './domain/transaction-scope.js';
+export {
+    ClubTransactionScope,
+    ExhibitorTransactionScope,
+    PlatformTransactionScope,
+    transactionScopesEqual,
+} from './domain/transaction-scope.js';
 export { FakeClock } from './infrastructure/fake-clock.js';
 export { FakeEventIdGenerator } from './infrastructure/fake-event-id-generator.js';

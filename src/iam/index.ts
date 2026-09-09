@@ -16,14 +16,13 @@ export {
 } from './domain/model/user/user.js';
 export type { UserProfileFacts } from './domain/model/user/user.js';
 export type { UserRepository } from './domain/model/user/user-repository.js';
-export type {
-    DomainRole,
+export {
     ClubScope,
     PlatformScope,
-    RoleScope,
-    RoleGrant,
-    RoleGrantKey,
-} from './domain/model/role-grant/role-grant.js';
+    roleScopesEqual,
+    type RoleScope,
+} from './domain/model/role-grant/value-objects/role-scope.js';
+export type { DomainRole, RoleGrant, RoleGrantKey } from './domain/model/role-grant/role-grant.js';
 export {
     grantRole,
     revokeRole,

@@ -3,38 +3,7 @@
 
 import type { Clock, EventIdGenerator } from './domain-ports.js';
 import type { EventId, EventType, AggregateId } from './domain-ids.js';
-
-/**
- * Ownership classification of a past fact.
- *
- * Declares which data-ownership scope produced the event:
- * - `'club'`      — the fact belongs to a kennel-club Club.
- * - `'exhibitor'` — the fact belongs to an individual exhibitor.
- * - `'platform'`  — the fact is platform-wide and has no single owner.
- *
- * This is **not** the same as `TransactionScope`, which describes the
- * database-transaction context.  An event's `EventScope` is immutable once
- * recorded; `TransactionScope` is ephemeral and lives only for the duration
- * of one unit-of-work.
- */
-export type EventScope = 'club' | 'exhibitor' | 'platform';
-
-/**
- * Casts a raw string to an {@link EventScope}, **validating** it is one of the
- * three known scopes. Mirrors `asEventType`: a corrupt `scope` from a database
- * row or JSON must be rejected at the boundary rather than propagated as a
- * typed event.
- *
- * @throws {TypeError} when `value` is not a known EventScope.
- */
-export function asEventScope(value: string): EventScope {
-    if (value !== 'club' && value !== 'exhibitor' && value !== 'platform') {
-        throw new TypeError(
-            `Invalid EventScope '${value}': expected 'club', 'exhibitor', or 'platform'.`,
-        );
-    }
-    return value;
-}
+import type { EventScope } from './event-scope.js';
 
 /**
  * An immutable record of something that has already happened in the domain.

@@ -56,7 +56,7 @@ export class PgOutboxWriter implements OutboxWriter {
                         event.eventId,
                         event.type,
                         event.occurredAt.toISOString(),
-                        event.scope,
+                        event.scope.kind,
                         clubId,
                         // Bound to the `user_id` column; the wire name is unchanged
                         // (ADR-0005), only the kernel's TS type is `PrincipalId` (ADR-0013).

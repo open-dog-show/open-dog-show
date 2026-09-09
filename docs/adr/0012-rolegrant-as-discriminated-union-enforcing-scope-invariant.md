@@ -1,3 +1,7 @@
+---
+status: superseded by ADR-0022
+---
+
 # RoleGrant as a discriminated union enforcing the role/scope invariant
 
 > **Amended 2026-08-26:** the `TenantScope` type was renamed to `ClubScope`
