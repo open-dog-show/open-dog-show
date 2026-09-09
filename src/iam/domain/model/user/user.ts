@@ -33,9 +33,10 @@ export interface UserProfileFacts {
  * (empty or whitespace-only after its normalization).
  *
  * `field` discriminates which required claim was rejected — `sub` (the
- * external subject) or `email`. {@link authenticate} does not catch this; it
- * propagates exactly as {@link UserSuspendedError} does, so the composition
- * root / API boundary can map it to an authentication failure. A blank
+ * external subject) or `email`. {@link authenticate} catches this and returns
+ * it as an `AuthenticateResult` failure (alongside {@link UserSuspendedError}),
+ * so callers branch on the `Result` rather than handling a rejected promise;
+ * the composition root / API boundary maps that failure to an auth response. A blank
  * `displayName` is *not* rejected (it is cosmetic) and never produces this
  * error.
  */

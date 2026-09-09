@@ -7,8 +7,8 @@ status: accepted
 > Decides issue #171: the repo's three variant scope value objects —
 > `TransactionScope` (`src/Shared/domain/transaction-scope.ts`),
 > `RoleScope` / `ClubScope` / `PlatformScope`
-> (`src/iam/domain/model/role-grant/role-grant.ts`), and `EventScope`
-> (`src/Shared/domain/domain-event.ts`) — **conform** to the implementation-patterns
+> (`src/iam/domain/model/role-grant/value-objects/role-scope.ts`), and `EventScope`
+> (`src/Shared/domain/event-scope.ts`) — **conform** to the implementation-patterns
 > harness's **variant value object** shape, per
 > [ADR-0022](0022-adopt-implementation-patterns-harness-as-leading-standard.md).
 > The harness promotes the variant value object to a first-class object in
