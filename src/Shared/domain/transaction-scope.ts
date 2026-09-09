@@ -15,8 +15,7 @@ import type { ClubId, PrincipalId } from './domain-ids.js';
  *
  * Modelled as a class-based **variant value object** (ADR-0023): a discriminated
  * union of value-object classes, each with a private constructor plus a
- * validating static factory, so a `TransactionScope` can only be built through
- * its `of` factory (V2/V3). The variants carry only already-validated branded
+ * validating `of` factory as the construction path (V2/V3). The variants carry only already-validated branded
  * ids, so the factories are pass-throughs that fix the `kind` tag.
  *
  * - `club` — a Club admin acting on behalf of a Club: both `clubId` and `principalId` are set.

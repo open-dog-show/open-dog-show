@@ -6,8 +6,8 @@ import type { ClubId } from '../../../../../Shared/index.js';
 /**
  * Where a {@link RoleGrant} applies — a Club (carrying the owning `ClubId`) or
  * the whole platform. Modelled as a class-based **variant value object**
- * (ADR-0023): a discriminated union of value-object classes built solely
- * through their `of` factories (V2/V3). The role/scope correlation is still
+ * (ADR-0023): a discriminated union of value-object classes, each with an
+ * `of` factory as its construction path (V2/V3). The role/scope correlation is still
  * enforced at compile time by the {@link RoleGrant} discriminated union
  * (ADR-0012, superseded by ADR-0022 only for the _aggregate_ shape — the
  * scope value object stays a variant VO per ADR-0023).

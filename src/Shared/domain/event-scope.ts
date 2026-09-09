@@ -15,8 +15,8 @@
  * of one unit-of-work.
  *
  * Modelled as a class-based **variant value object** (ADR-0023): a discriminated
- * union of data-less value-object classes, each carrying only a `kind` tag and
- * constructed solely through its `of` factory (V2/V3). The wire/DB form is the
+ * union of data-less value-object classes, each carrying only a `kind` tag,
+ * with an `of` factory as the construction path (V2/V3). The wire/DB form is the
  * `kind` string, rehydrated by {@link asEventScope} at the boundary.
  */
 export class ClubEventScope {
