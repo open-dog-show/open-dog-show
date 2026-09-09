@@ -4,6 +4,9 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
     createDomainEvent,
+    ClubEventScope,
+    ExhibitorEventScope,
+    PlatformEventScope,
     type CreateDomainEventParams,
     type DomainEvent,
 } from '../../../src/Shared/domain/domain-event.js';

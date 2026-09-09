@@ -50,6 +50,29 @@ const bobPlatformAdmin: RoleGrant = {
 };
 
 // ---------------------------------------------------------------------------
+// roleScopesEqual
+// ---------------------------------------------------------------------------
+
+describe('roleScopesEqual', () => {
+    it('equals two Club scopes with the same clubId', () => {
+        expect(roleScopesEqual(ClubScope.of(CLUB_A), ClubScope.of(CLUB_A))).toBe(true);
+    });
+
+    it('does not equal two Club scopes with differing clubIds', () => {
+        expect(roleScopesEqual(ClubScope.of(CLUB_A), ClubScope.of(CLUB_B))).toBe(false);
+    });
+
+    it('equals any two Platform scopes (data-less)', () => {
+        expect(roleScopesEqual(PlatformScope.of(), PlatformScope.of())).toBe(true);
+    });
+
+    it('does not equal a Club scope and a Platform scope (either direction)', () => {
+        expect(roleScopesEqual(ClubScope.of(CLUB_A), PlatformScope.of())).toBe(false);
+        expect(roleScopesEqual(PlatformScope.of(), ClubScope.of(CLUB_A))).toBe(false);
+    });
+});
+
+// ---------------------------------------------------------------------------
 // grantRole
 // ---------------------------------------------------------------------------
 

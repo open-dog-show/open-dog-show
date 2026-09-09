@@ -6,6 +6,20 @@ import type { UserId } from '../../shared/domain-ids.js';
 import type { ClubScope, PlatformScope } from './value-objects/role-scope.js';
 import { roleScopesEqual } from './value-objects/role-scope.js';
 
+/**
+ * Value equality for {@link RoleScope} — narrows both sides on `kind` before
+ * delegating to the variant's {@link RoleScope#equals} (V3). Two Club scopes
+ * are equal iff their `ClubId`s match; any two `PlatformScope`s are equal.
+ */
+export function roleScopesEqual(a: RoleScope, b: RoleScope): boolean {
+    switch (a.kind) {
+        case 'club':
+            return b.kind === 'club' && a.equals(b);
+        case 'platform':
+            return b.kind === 'platform' && a.equals(b);
+    }
+}
+
 export type DomainRole = 'ShowSecretary' | 'Judge' | 'PlatformAdministrator';
 
 export type RoleGrant =
