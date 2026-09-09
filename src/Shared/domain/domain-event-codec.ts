@@ -47,15 +47,17 @@ export class InvalidDomainEventEnvelopeError extends Error {
 /**
  * Encode a {@link DomainEvent} to a JSON-safe object.
  *
- * The `occurredAt` Date is converted to an ISO-8601 string; everything else
- * is left as-is (branded string ids are plain strings at runtime).
+ * The `occurredAt` Date is converted to an ISO-8601 string; the `EventScope`
+ * is flattened to its `kind` tag (the wire form — rehydrated by
+ * {@link decodeDomainEvent} via {@link asEventScope}); everything else is left
+ * as-is (branded string ids are plain strings at runtime).
  */
 export function encodeDomainEvent<TPayload>(event: DomainEvent<TPayload>): DomainEventJson {
     return {
         eventId: event.eventId,
         type: event.type,
         occurredAt: event.occurredAt.toISOString(),
-        scope: event.scope,
+        scope: event.scope.kind,
         aggregateId: event.aggregateId,
         payload: event.payload,
     };

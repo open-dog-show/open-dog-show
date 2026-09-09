@@ -4,9 +4,58 @@
 import { DomainError, type ClubId } from '../../../../Shared/index.js';
 import type { UserId } from '../../shared/domain-ids.js';
 
-export type ClubScope = { readonly kind: 'club'; readonly clubId: ClubId };
-export type PlatformScope = { readonly kind: 'platform' };
+/**
+ * Where a {@link RoleGrant} applies — a Club (carrying the owning `ClubId`) or
+ * the whole platform. Modelled as a class-based **variant value object**
+ * (ADR-0023): a discriminated union of value-object classes built solely
+ * through their `of` factories (V2/V3). The role/scope correlation is still
+ * enforced at compile time by the {@link RoleGrant} discriminated union
+ * (ADR-0012, superseded by ADR-0022 only for the _aggregate_ shape — the
+ * scope value object stays a variant VO per ADR-0023).
+ */
+export class ClubScope {
+    readonly kind = 'club' as const;
+
+    private constructor(readonly clubId: ClubId) {}
+
+    static of(clubId: ClubId): ClubScope {
+        return new ClubScope(clubId);
+    }
+
+    equals(other: ClubScope): boolean {
+        return this.clubId === other.clubId;
+    }
+}
+
+export class PlatformScope {
+    readonly kind = 'platform' as const;
+
+    private constructor() {}
+
+    static of(): PlatformScope {
+        return new PlatformScope();
+    }
+
+    equals(other: PlatformScope): boolean {
+        return this.kind === other.kind;
+    }
+}
+
 export type RoleScope = ClubScope | PlatformScope;
+
+/**
+ * Value equality for {@link RoleScope} — narrows both sides on `kind` before
+ * delegating to the variant's {@link RoleScope#equals} (V3). Two Club scopes
+ * are equal iff their `ClubId`s match; any two `PlatformScope`s are equal.
+ */
+export function roleScopesEqual(a: RoleScope, b: RoleScope): boolean {
+    switch (a.kind) {
+        case 'club':
+            return b.kind === 'club' && a.equals(b);
+        case 'platform':
+            return b.kind === 'platform' && a.equals(b);
+    }
+}
 
 export type DomainRole = 'ShowSecretary' | 'Judge' | 'PlatformAdministrator';
 
@@ -49,14 +98,8 @@ export class RoleGrantOwnerMismatchError extends DomainError {
     }
 }
 
-function scopesEqual(a: RoleScope, b: RoleScope): boolean {
-    if (a.kind !== b.kind) return false;
-    if (a.kind === 'club' && b.kind === 'club') return a.clubId === b.clubId;
-    return true;
-}
-
 function grantsMatch(a: RoleGrant, b: RoleGrant): boolean {
-    return a.userId === b.userId && a.role === b.role && scopesEqual(a.scope, b.scope);
+    return a.userId === b.userId && a.role === b.role && roleScopesEqual(a.scope, b.scope);
 }
 
 /**

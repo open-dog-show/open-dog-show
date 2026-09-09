@@ -11,6 +11,8 @@ import {
     asPrincipalId,
     asEventId,
     asEventType,
+    ClubEventScope,
+    ClubTransactionScope,
     createDomainEvent,
     FakeClock,
     FakeEventIdGenerator,
@@ -28,11 +30,7 @@ const SHOW_ID = '00000000-0000-4000-8000-000000000021';
 const ENTRY_ID = '00000000-0000-4000-8000-000000000031';
 const EVENT_ID = '00000000-0000-4000-8000-000000000041';
 
-const scope = {
-    kind: 'club' as const,
-    clubId: asClubId(CLUB_ID),
-    principalId: asPrincipalId(PRINCIPAL_ID),
-};
+const scope = ClubTransactionScope.of(asClubId(CLUB_ID), asPrincipalId(PRINCIPAL_ID));
 const entry = {
     id: asEntryId(ENTRY_ID),
     clubId: asClubId(CLUB_ID),
@@ -72,7 +70,7 @@ describe('Transactional outbox — sample context', () => {
         return createDomainEvent(
             {
                 type: asEventType('sample.EntrySubmitted'),
-                scope: 'club',
+                scope: ClubEventScope.of(),
                 aggregateId: asAggregateId(ENTRY_ID),
                 payload: { dogName: 'Fido' },
                 eventId: asEventId(EVENT_ID),

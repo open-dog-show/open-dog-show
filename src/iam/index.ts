@@ -16,10 +16,9 @@ export {
 } from './domain/model/user/user.js';
 export type { UserProfileFacts } from './domain/model/user/user.js';
 export type { UserRepository } from './domain/model/user/user-repository.js';
+export { ClubScope, PlatformScope, roleScopesEqual } from './domain/model/role-grant/role-grant.js';
 export type {
     DomainRole,
-    ClubScope,
-    PlatformScope,
     RoleScope,
     RoleGrant,
     RoleGrantKey,

@@ -4,7 +4,10 @@
 import { describe, it, expect } from 'vitest';
 import { DomainError } from '../../../src/Shared/domain/domain-error.js';
 import { UserSuspendedError } from '../../../src/iam/domain/model/user/user.js';
-import { DuplicateRoleGrantError } from '../../../src/iam/domain/model/role-grant/role-grant.js';
+import {
+    DuplicateRoleGrantError,
+    PlatformScope,
+} from '../../../src/iam/domain/model/role-grant/role-grant.js';
 import { InvalidLocalDateError } from '../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
 import {
     asUserId,
@@ -24,7 +27,7 @@ describe('DomainError base', () => {
     const duplicateGrant = new DuplicateRoleGrantError({
         userId: asUserId('user-1'),
         role: 'PlatformAdministrator',
-        scope: { kind: 'platform' },
+        scope: PlatformScope.of(),
     });
     const badDate = new InvalidLocalDateError(2026, 13, 99);
 

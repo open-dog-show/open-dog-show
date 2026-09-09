@@ -4,10 +4,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { asClubId } from '../../../../../src/Shared/index.js';
 import { asUserId } from '../../../../../src/iam/domain/shared/domain-ids.js';
-import type {
-    DomainRole,
+import {
     ClubScope,
     PlatformScope,
+    roleScopesEqual,
+} from '../../../../../src/iam/domain/model/role-grant/role-grant.js';
+import type {
+    DomainRole,
     RoleGrant,
 } from '../../../../../src/iam/domain/model/role-grant/role-grant.js';
 import {
@@ -25,9 +28,9 @@ const BOB_ID = asUserId('user-bob');
 const CLUB_A = asClubId('club-a');
 const CLUB_B = asClubId('club-b');
 
-const clubAScope: ClubScope = { kind: 'club', clubId: CLUB_A };
-const clubBScope: ClubScope = { kind: 'club', clubId: CLUB_B };
-const platformScope: PlatformScope = { kind: 'platform' };
+const clubAScope: ClubScope = ClubScope.of(CLUB_A);
+const clubBScope: ClubScope = ClubScope.of(CLUB_B);
+const platformScope: PlatformScope = PlatformScope.of();
 
 const aliceShowSecretary: RoleGrant = {
     userId: ALICE_ID,
@@ -46,6 +49,29 @@ const bobPlatformAdmin: RoleGrant = {
     role: 'PlatformAdministrator',
     scope: platformScope,
 };
+
+// ---------------------------------------------------------------------------
+// roleScopesEqual
+// ---------------------------------------------------------------------------
+
+describe('roleScopesEqual', () => {
+    it('equals two Club scopes with the same clubId', () => {
+        expect(roleScopesEqual(ClubScope.of(CLUB_A), ClubScope.of(CLUB_A))).toBe(true);
+    });
+
+    it('does not equal two Club scopes with differing clubIds', () => {
+        expect(roleScopesEqual(ClubScope.of(CLUB_A), ClubScope.of(CLUB_B))).toBe(false);
+    });
+
+    it('equals any two Platform scopes (data-less)', () => {
+        expect(roleScopesEqual(PlatformScope.of(), PlatformScope.of())).toBe(true);
+    });
+
+    it('does not equal a Club scope and a Platform scope (either direction)', () => {
+        expect(roleScopesEqual(ClubScope.of(CLUB_A), PlatformScope.of())).toBe(false);
+        expect(roleScopesEqual(PlatformScope.of(), ClubScope.of(CLUB_A))).toBe(false);
+    });
+});
 
 // ---------------------------------------------------------------------------
 // grantRole

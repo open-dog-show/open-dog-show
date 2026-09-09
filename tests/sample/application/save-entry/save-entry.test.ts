@@ -6,6 +6,8 @@ import {
     asAggregateId,
     asClubId,
     asPrincipalId,
+    ClubTransactionScope,
+    ExhibitorTransactionScope,
     FakeClock,
     FakeEventIdGenerator,
     type TransactionScope,
@@ -23,11 +25,10 @@ const USER_ID = '00000000-0000-4000-8000-000000000011';
 const SHOW_ID = '00000000-0000-4000-8000-000000000021';
 const ENTRY_ID = '00000000-0000-4000-8000-000000000031';
 
-const clubScope: TransactionScope = {
-    kind: 'club',
-    clubId: asClubId(CLUB_ID),
-    principalId: asPrincipalId(USER_ID),
-};
+const clubScope: TransactionScope = ClubTransactionScope.of(
+    asClubId(CLUB_ID),
+    asPrincipalId(USER_ID),
+);
 
 describe('SaveEntryUseCase', () => {
     const fixedDate = new Date('2026-08-01T12:00:00.000Z');
@@ -70,7 +71,7 @@ describe('SaveEntryUseCase', () => {
         expect(unitOfWork.appendedEvents).toHaveLength(1);
         const event = unitOfWork.appendedEvents[0]!;
         expect(event.type).toBe('sample.EntrySubmitted');
-        expect(event.scope).toBe('club');
+        expect(event.scope.kind).toBe('club');
         expect(event.aggregateId).toBe(asAggregateId(ENTRY_ID));
         expect(event.payload).toStrictEqual({ dogName: 'Fido' });
         expect(event.occurredAt).toStrictEqual(fixedDate);
@@ -84,10 +85,9 @@ describe('SaveEntryUseCase', () => {
             new FakeClock(fixedDate),
             new FakeEventIdGenerator(),
         );
-        const exhibitorScope: TransactionScope = {
-            kind: 'exhibitor',
-            principalId: asPrincipalId(USER_ID),
-        };
+        const exhibitorScope: TransactionScope = ExhibitorTransactionScope.of(
+            asPrincipalId(USER_ID),
+        );
 
         await expect(useCase.execute(input, exhibitorScope)).rejects.toThrow(
             InvalidTransactionScopeError,

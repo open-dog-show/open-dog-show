@@ -11,6 +11,8 @@ import {
     asEventId,
     asEventType,
     asAggregateId,
+    ClubEventScope,
+    ClubTransactionScope,
 } from '../../../src/Shared/index.js';
 import type { DomainEvent } from '../../../src/Shared/domain/domain-event.js';
 
@@ -18,16 +20,15 @@ const EVENT: DomainEvent<unknown> = {
     eventId: asEventId('00000000-0000-4000-8000-000000000001'),
     type: asEventType('entries.EntrySubmitted'),
     occurredAt: new Date('2026-01-01T00:00:00.000Z'),
-    scope: 'club',
+    scope: ClubEventScope.of(),
     aggregateId: asAggregateId('entry-1'),
     payload: { x: 1 },
 };
 
-const CLUB_SCOPE = {
-    kind: 'club' as const,
-    clubId: asClubId('00000000-0000-4000-8000-0000000000aa'),
-    principalId: asPrincipalId('00000000-0000-4000-8000-0000000000bb'),
-};
+const CLUB_SCOPE = ClubTransactionScope.of(
+    asClubId('00000000-0000-4000-8000-0000000000aa'),
+    asPrincipalId('00000000-0000-4000-8000-0000000000bb'),
+);
 
 describe('PgOutboxWriter — E3 boundary wrapping', () => {
     it('wraps a raw pg failure as OutboxWriteFailed with the original on cause', async () => {
