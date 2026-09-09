@@ -3,13 +3,14 @@
 
 import { asAgeMonths } from './age-months.js';
 import type { AgeMonths } from './age-months.js';
+import { DomainError } from '../../../../../Shared/domain/domain-error.js';
 
 /**
  * Thrown by {@link LocalDate.of} when the requested calendar date is not a real
  * Gregorian date. Follows the existing domain-error style
  * (cf. `InvalidProviderClaimsError`).
  */
-export class InvalidLocalDateError extends Error {
+export class InvalidLocalDateError extends DomainError {
     readonly year: number;
     readonly month: number;
     readonly day: number;
@@ -17,8 +18,8 @@ export class InvalidLocalDateError extends Error {
     constructor(year: number, month: number, day: number) {
         super(
             `Invalid calendar date { year: ${year}, month: ${month}, day: ${day} }: not a real Gregorian calendar date`,
+            { year, month, day },
         );
-        this.name = 'InvalidLocalDateError';
         this.year = year;
         this.month = month;
         this.day = day;

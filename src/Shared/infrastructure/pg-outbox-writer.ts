@@ -7,6 +7,7 @@ import type { OutboxWriter } from './outbox-writer.js';
 import type { TransactionScope } from '../domain/transaction-scope.js';
 import { scopeToRlsKeys } from './rls-keys.js';
 import { quoteSchemaIdent } from './schema-ident.js';
+import { OutboxWriteFailed } from './outbox-write-failed.js';
 
 /**
  * Writes domain events to a per-schema outbox table within the current
@@ -44,25 +45,32 @@ export class PgOutboxWriter implements OutboxWriter {
         const { clubId, principalId } = scopeToRlsKeys(scope);
 
         for (const event of events) {
-            await client.query(
-                `INSERT INTO ${this.quotedSchema}.outbox
-                   (event_id, type, occurred_at, scope, club_id, user_id,
-                    aggregate_id, payload)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                 ON CONFLICT (event_id) DO NOTHING`,
-                [
-                    event.eventId,
-                    event.type,
-                    event.occurredAt.toISOString(),
-                    event.scope,
-                    clubId,
-                    // Bound to the `user_id` column; the wire name is unchanged
-                    // (ADR-0005), only the kernel's TS type is `PrincipalId` (ADR-0013).
-                    principalId,
-                    event.aggregateId,
-                    JSON.stringify(event.payload),
-                ],
-            );
+            try {
+                await client.query(
+                    `INSERT INTO ${this.quotedSchema}.outbox
+                       (event_id, type, occurred_at, scope, club_id, user_id,
+                        aggregate_id, payload)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                     ON CONFLICT (event_id) DO NOTHING`,
+                    [
+                        event.eventId,
+                        event.type,
+                        event.occurredAt.toISOString(),
+                        event.scope,
+                        clubId,
+                        // Bound to the `user_id` column; the wire name is unchanged
+                        // (ADR-0005), only the kernel's TS type is `PrincipalId` (ADR-0013).
+                        principalId,
+                        event.aggregateId,
+                        JSON.stringify(event.payload),
+                    ],
+                );
+            } catch (cause) {
+                // E3: wrap the raw `pg` exception at the infrastructure boundary
+                // so no outer-circle exception type crosses inward; the original
+                // is preserved on `cause` for the boundary handler to log.
+                throw new OutboxWriteFailed('writing an outbox event', cause);
+            }
         }
     }
 }

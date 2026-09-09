@@ -3,6 +3,7 @@
 
 import type { UserId, EmailAddress, ExternalSubject } from '../../shared/domain-ids.js';
 import { asEmailAddress, asExternalSubject } from '../../shared/domain-ids.js';
+import { DomainError } from '../../../../Shared/domain/domain-error.js';
 
 export type UserStatus = 'Active' | 'Suspended';
 
@@ -38,12 +39,11 @@ export interface UserProfileFacts {
  * `displayName` is *not* rejected (it is cosmetic) and never produces this
  * error.
  */
-export class InvalidProviderClaimsError extends Error {
+export class InvalidProviderClaimsError extends DomainError {
     readonly field: 'sub' | 'email';
 
     constructor(field: 'sub' | 'email') {
-        super(`Invalid identity-provider claims: '${field}' is blank`);
-        this.name = 'InvalidProviderClaimsError';
+        super(`Invalid identity-provider claims: '${field}' is blank`, { field });
         this.field = field;
     }
 }
@@ -54,13 +54,16 @@ export class InvalidProviderClaimsError extends Error {
  * user's current status and `to` the requested status, so callers can
  * discriminate this failure by type (unlike a bare `Error`).
  */
-export class InvalidUserStatusTransitionError extends Error {
+export class InvalidUserStatusTransitionError extends DomainError {
     readonly from: UserStatus;
     readonly to: UserStatus;
 
     constructor(user: User, to: UserStatus) {
-        super(`User ${user.id} is already ${user.status}; cannot transition to ${to}`);
-        this.name = 'InvalidUserStatusTransitionError';
+        super(`User ${user.id} is already ${user.status}; cannot transition to ${to}`, {
+            userId: user.id,
+            from: user.status,
+            to,
+        });
         this.from = user.status;
         this.to = to;
     }
@@ -87,12 +90,11 @@ export function reactivateUser(user: User): User {
  * aggregate owns this rule (and the error) so the suspension check lives with
  * the `User` invariant rather than being re-implemented by each caller.
  */
-export class UserSuspendedError extends Error {
+export class UserSuspendedError extends DomainError {
     readonly userId: UserId;
 
     constructor(user: User) {
-        super(`User ${user.id} is Suspended and cannot authenticate`);
-        this.name = 'UserSuspendedError';
+        super(`User ${user.id} is Suspended and cannot authenticate`, { userId: user.id });
         this.userId = user.id;
     }
 }

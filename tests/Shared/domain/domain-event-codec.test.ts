@@ -5,6 +5,8 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
     decodeDomainEvent,
     encodeDomainEvent,
+    InvalidDomainEventEnvelopeError,
+    rehydrateDomainEvent,
 } from '../../../src/Shared/domain/domain-event-codec.js';
 import type { DomainEvent } from '../../../src/Shared/domain/domain-event.js';
 import {
@@ -61,6 +63,24 @@ describe('decodeDomainEvent', () => {
         payload: { dogId: 'dog-1', classNumber: 42 },
     };
 
+    /** Drives {@link rehydrateDomainEvent} (which accepts `Date | string`) and narrows the thrown envelope error. */
+    function catchRehydrate(occurredAt: Date | string): InvalidDomainEventEnvelopeError {
+        try {
+            rehydrateDomainEvent({
+                eventId: raw.eventId,
+                type: raw.type,
+                occurredAt,
+                scope: raw.scope,
+                aggregateId: raw.aggregateId,
+                payload: raw.payload,
+            });
+            throw new Error('expected rehydrateDomainEvent to throw');
+        } catch (err) {
+            if (err instanceof InvalidDomainEventEnvelopeError) return err;
+            throw err;
+        }
+    }
+
     it('restores occurredAt as a Date', () => {
         const event = decodeDomainEvent(raw);
 
@@ -83,6 +103,29 @@ describe('decodeDomainEvent', () => {
 
     it('throws TypeError when the JSON scope is not a valid EventScope', () => {
         expect(() => decodeDomainEvent({ ...raw, scope: 'invalid' })).toThrow(TypeError);
+    });
+
+    it('throws InvalidDomainEventEnvelopeError when occurredAt is not a real date string', () => {
+        expect(() => decodeDomainEvent({ ...raw, occurredAt: 'not-a-real-date' })).toThrow(
+            InvalidDomainEventEnvelopeError,
+        );
+    });
+
+    it('InvalidDomainEventEnvelopeError carries the offending string value (E5)', () => {
+        const error = catchRehydrate('garbage');
+        expect(error).toBeInstanceOf(InvalidDomainEventEnvelopeError);
+        expect(error.field).toBe('occurredAt');
+        expect(error.value).toBe('garbage');
+        expect(error.name).toBe('InvalidDomainEventEnvelopeError');
+    });
+
+    it('rejects an Invalid Date instance, not just a bad string', () => {
+        const invalid = new Date('garbage');
+        const error = catchRehydrate(invalid);
+        expect(error).toBeInstanceOf(InvalidDomainEventEnvelopeError);
+        expect(error.field).toBe('occurredAt');
+        expect(error.value).toBe(invalid);
+        expect(Number.isNaN((error.value as Date).getTime())).toBe(true);
     });
 
     it('restores aggregateId as a branded AggregateId', () => {
