@@ -4,8 +4,10 @@
 import { describe, it, expect } from 'vitest';
 import { DomainError } from '../../../src/Shared/domain/domain-error.js';
 import { UserSuspendedError } from '../../../src/iam/domain/model/user/user.js';
-import { DuplicateRoleGrantError } from '../../../src/iam/domain/model/role-grant/role-grant.js';
-import { PlatformScope } from '../../../src/iam/domain/model/role-grant/value-objects/role-scope.js';
+import {
+    DuplicateRoleGrantError,
+    RoleGrant,
+} from '../../../src/iam/domain/model/role-grant/role-grant.js';
 import { InvalidLocalDateError } from '../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
 import {
     asUserId,
@@ -22,11 +24,9 @@ describe('DomainError base', () => {
         status: 'Suspended',
         externalSubject: asExternalSubject('sub|1'),
     });
-    const duplicateGrant = new DuplicateRoleGrantError({
-        userId: asUserId('user-1'),
-        role: 'PlatformAdministrator',
-        scope: PlatformScope.of(),
-    });
+    const duplicateGrant = new DuplicateRoleGrantError(
+        RoleGrant.platformAdministrator(asUserId('user-1')),
+    );
     const badDate = new InvalidLocalDateError(2026, 13, 99);
 
     it('every domain error is an instance of DomainError (and Error)', () => {

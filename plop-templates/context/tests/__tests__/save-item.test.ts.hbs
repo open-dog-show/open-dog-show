@@ -6,8 +6,8 @@ import {
     asAggregateId,
     asClubId,
     asPrincipalId,
-    ClubEventScope,
     ClubTransactionScope,
+    EventScope,
     ExhibitorTransactionScope,
     FakeClock,
     FakeEventIdGenerator,
@@ -89,7 +89,7 @@ describe('SaveItemUseCase', () => {
         expect(unitOfWork.appendedEvents).toHaveLength(1);
         const event = unitOfWork.appendedEvents[0]!;
         expect(event.type).toBe('{{eventContext name}}.ItemSaved');
-        expect(event.scope).toStrictEqual(ClubEventScope.of());
+        expect(event.scope).toStrictEqual(EventScope.club());
         expect(event.aggregateId).toBe(asAggregateId(ITEM_ID));
         expect(event.payload).toStrictEqual({ name: 'test-item' });
         expect(event.occurredAt).toStrictEqual(fixedDate);

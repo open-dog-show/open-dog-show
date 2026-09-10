@@ -19,9 +19,10 @@ export interface DomainEventJson {
 
 /**
  * Thrown by {@link rehydrateDomainEvent} when an envelope field cannot be
- * restored to a valid domain value — currently the `occurredAt` timestamp,
- * which `new Date(string)` silently turns into an Invalid Date (`getTime()`
- * `NaN`) for a corrupt value rather than throwing.
+ * restored to a valid domain value — currently the `occurredAt` timestamp: the
+ * string path is parsed strictly (see {@link parseStrictIso}), which rejects
+ * non-ISO input and rollover dates, while a `Date` from the `pg` driver may
+ * still be an Invalid Date (`getTime()` `NaN`), caught by an explicit check.
  *
  * Rejecting at the boundary mirrors {@link asEventType} / {@link asEventScope}:
  * a malformed outbox row or JSON envelope must never propagate as a typed
@@ -84,6 +85,33 @@ export function decodeDomainEvent(json: DomainEventJson): DomainEvent<unknown> {
 }
 
 /**
+ * Strictly parse an ISO-8601 UTC timestamp, rejecting values `new Date(string)`
+ * would silently normalise — both non-ISO garbage (→ Invalid Date) and rollover
+ * dates such as `2026-02-30T00:00:00.000Z` (→ March 2). Mirrors the `LocalDate`
+ * round-trip check: capture the fields with a strict regex, build the instant
+ * via `Date.UTC`, and reject when the round-tripped UTC components do not match
+ * the inputs. Throws {@link InvalidDomainEventEnvelopeError} on any mismatch.
+ */
+function parseStrictIso(value: string): Date {
+    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d{3})?Z$/.exec(value);
+    if (!m) throw new InvalidDomainEventEnvelopeError('occurredAt', value);
+    const ms = m[7];
+    const d = new Date(
+        Date.UTC(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +m[6]!, ms ? +ms.slice(1) : 0),
+    );
+    if (
+        d.getUTCFullYear() !== +m[1]! ||
+        d.getUTCMonth() !== +m[2]! - 1 ||
+        d.getUTCDate() !== +m[3]! ||
+        d.getUTCHours() !== +m[4]! ||
+        d.getUTCMinutes() !== +m[5]! ||
+        d.getUTCSeconds() !== +m[6]!
+    )
+        throw new InvalidDomainEventEnvelopeError('occurredAt', value);
+    return d;
+}
+
+/**
  * Rehydrates a {@link DomainEvent} from already-decoded envelope fields,
  * crossing the untyped strings back into their branded forms and normalising
  * `occurredAt` (a `Date` from the `pg` driver, or an ISO string from JSON).
@@ -102,11 +130,15 @@ export function rehydrateDomainEvent(envelope: {
     readonly payload: unknown;
 }): DomainEvent<unknown> {
     // Restore the timestamp first so a corrupt value is rejected at the
-    // boundary: `new Date('garbage')` produces an Invalid Date (NaN) rather
-    // than throwing, so an explicit check is required — mirroring the
-    // asEventType / asEventScope reject-at-the-boundary contract.
+    // boundary. For the string path a strict ISO parse (see parseStrictIso above)
+    // rejects both non-ISO garbage (→ Invalid Date) and rollover dates that
+    // `new Date` would silently normalise (e.g. `2026-02-30` → March 2); for the
+    // `Date` path (pg driver) an explicit NaN check is still required —
+    // mirroring the asEventType / asEventScope reject-at-the-boundary contract.
     const occurredAt =
-        envelope.occurredAt instanceof Date ? envelope.occurredAt : new Date(envelope.occurredAt);
+        envelope.occurredAt instanceof Date
+            ? envelope.occurredAt
+            : parseStrictIso(envelope.occurredAt);
     if (Number.isNaN(occurredAt.getTime())) {
         throw new InvalidDomainEventEnvelopeError('occurredAt', envelope.occurredAt);
     }

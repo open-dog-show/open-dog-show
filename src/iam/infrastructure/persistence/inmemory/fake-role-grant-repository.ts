@@ -2,10 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { UserId } from '../../../domain/shared/domain-ids.js';
-import {
-    type RoleGrant,
-    assertGrantsOwnedBy,
-} from '../../../domain/model/role-grant/role-grant.js';
+import { RoleGrant } from '../../../domain/model/role-grant/role-grant.js';
 import type { RoleGrantRepository } from '../../../domain/model/role-grant/role-grant-repository.js';
 
 export class FakeRoleGrantRepository implements RoleGrantRepository {
@@ -18,7 +15,7 @@ export class FakeRoleGrantRepository implements RoleGrantRepository {
     }
 
     async saveAll(userId: UserId, grants: readonly RoleGrant[]): Promise<void> {
-        assertGrantsOwnedBy(userId, grants);
+        RoleGrant.assertOwnedBy(userId, grants);
         this.store.set(userId, [...grants]);
     }
 }

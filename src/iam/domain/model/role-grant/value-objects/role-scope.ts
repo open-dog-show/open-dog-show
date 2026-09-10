@@ -4,54 +4,36 @@
 import type { ClubId } from '../../../../../Shared/index.js';
 
 /**
- * Where a {@link RoleGrant} applies — a Club (carrying the owning `ClubId`) or
- * the whole platform. Modelled as a class-based **variant value object**
- * (ADR-0023): a discriminated union of value-object classes, each with an
- * `of` factory as its construction path (V2/V3). The role/scope correlation is still
- * enforced at compile time by the {@link RoleGrant} discriminated union
- * (ADR-0012, superseded by ADR-0022 only for the _aggregate_ shape — the
- * scope value object stays a variant VO per ADR-0023).
+ * Where a {@link RoleGrant} applies — a specific Club (carrying the owning
+ * `ClubId`) or the whole platform.
+ *
+ * A single value object with multiple named factories (the harness "same shape,
+ * multiple factories" rule): both variants share the shape `{ kind, clubId }`,
+ * differing only in whether `clubId` is present — the platform variant is the
+ * absence of a Club, not a different field set, so this is **not** a discriminated
+ * union of per-variant classes (ADR-0023 amendment). Constructed solely through
+ * {@link RoleScope.club} / {@link RoleScope.platform} (V2/V3); the role↔scope
+ * correlation itself is enforced on the {@link RoleGrant} aggregate (ADR-0024).
  */
-export class ClubScope {
-    readonly kind = 'club' as const;
+export class RoleScope {
+    readonly kind: 'club' | 'platform';
 
-    private constructor(readonly clubId: ClubId) {}
+    readonly clubId: ClubId | undefined;
 
-    static of(clubId: ClubId): ClubScope {
-        return new ClubScope(clubId);
+    private constructor(kind: 'club' | 'platform', clubId: ClubId | undefined) {
+        this.kind = kind;
+        this.clubId = clubId;
     }
 
-    equals(other: ClubScope): boolean {
-        return this.clubId === other.clubId;
-    }
-}
-
-export class PlatformScope {
-    readonly kind = 'platform' as const;
-
-    private constructor() {}
-
-    static of(): PlatformScope {
-        return new PlatformScope();
+    static club(clubId: ClubId): RoleScope {
+        return new RoleScope('club', clubId);
     }
 
-    equals(other: PlatformScope): boolean {
-        return this.kind === other.kind;
+    static platform(): RoleScope {
+        return new RoleScope('platform', undefined);
     }
-}
 
-export type RoleScope = ClubScope | PlatformScope;
-
-/**
- * Value equality for {@link RoleScope} — narrows both sides on `kind` before
- * delegating to the variant's {@link RoleScope#equals} (V3). Two Club scopes
- * are equal iff their `ClubId`s match; any two `PlatformScope`s are equal.
- */
-export function roleScopesEqual(a: RoleScope, b: RoleScope): boolean {
-    switch (a.kind) {
-        case 'club':
-            return b.kind === 'club' && a.equals(b);
-        case 'platform':
-            return b.kind === 'platform' && a.equals(b);
+    equals(other: RoleScope): boolean {
+        return this.kind === other.kind && this.clubId === other.clubId;
     }
 }

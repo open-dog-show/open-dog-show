@@ -9,7 +9,7 @@ import {
     rehydrateDomainEvent,
 } from '../../../src/Shared/domain/domain-event-codec.js';
 import type { DomainEvent } from '../../../src/Shared/domain/domain-event.js';
-import { ClubEventScope, PlatformEventScope } from '../../../src/Shared/domain/event-scope.js';
+import { EventScope } from '../../../src/Shared/domain/event-scope.js';
 import {
     asAggregateId,
     asEventId,
@@ -27,7 +27,7 @@ describe('encodeDomainEvent', () => {
         eventId: asEventId('00000000-0000-4000-8000-000000000001'),
         type: asEventType('entries.EntrySubmitted'),
         occurredAt: new Date('2026-08-01T12:00:00.000Z'),
-        scope: ClubEventScope.of(),
+        scope: EventScope.club(),
         aggregateId: asAggregateId('entry-abc'),
         payload: { dogId: 'dog-1', classNumber: 42 },
     };
@@ -129,6 +129,16 @@ describe('decodeDomainEvent', () => {
         expect(Number.isNaN((error.value as Date).getTime())).toBe(true);
     });
 
+    it('rejects a rollover calendar date that new Date would normalise (2026-02-30 → March 2)', () => {
+        // `new Date('2026-02-30T00:00:00.000Z')` silently rolls to March 2; the
+        // strict ISO parse rejects the rollover so corrupt envelope data cannot
+        // become a subtly-wrong typed event.
+        const error = catchRehydrate('2026-02-30T00:00:00.000Z');
+        expect(error).toBeInstanceOf(InvalidDomainEventEnvelopeError);
+        expect(error.field).toBe('occurredAt');
+        expect(error.value).toBe('2026-02-30T00:00:00.000Z');
+    });
+
     it('restores aggregateId as a branded AggregateId', () => {
         const event = decodeDomainEvent(raw);
 
@@ -155,7 +165,7 @@ describe('encode → JSON.stringify → JSON.parse → decode round-trip', () =>
             eventId: asEventId('00000000-0000-4000-8000-000000000099'),
             type: asEventType('shows.ShowScheduled'),
             occurredAt: new Date('2026-12-25T09:00:00.000Z'),
-            scope: PlatformEventScope.of(),
+            scope: EventScope.platform(),
             aggregateId: asAggregateId('show-1'),
             payload: { label: 'Christmas Show 2026' },
         };

@@ -16,17 +16,11 @@ export {
 } from './domain/model/user/user.js';
 export type { UserProfileFacts } from './domain/model/user/user.js';
 export type { UserRepository } from './domain/model/user/user-repository.js';
+export { RoleScope } from './domain/model/role-grant/value-objects/role-scope.js';
+export type { DomainRole, RoleGrantKey } from './domain/model/role-grant/role-grant.js';
 export {
-    ClubScope,
-    PlatformScope,
-    roleScopesEqual,
-    type RoleScope,
-} from './domain/model/role-grant/value-objects/role-scope.js';
-export type { DomainRole, RoleGrant, RoleGrantKey } from './domain/model/role-grant/role-grant.js';
-export {
-    grantRole,
-    revokeRole,
-    hasRole,
+    RoleGrant,
+    InvalidRoleScopeError,
     DuplicateRoleGrantError,
     RoleGrantOwnerMismatchError,
 } from './domain/model/role-grant/role-grant.js';

@@ -14,69 +14,43 @@
  * recorded; `TransactionScope` is ephemeral and lives only for the duration
  * of one unit-of-work.
  *
- * Modelled as a class-based **variant value object** (ADR-0023): a discriminated
- * union of data-less value-object classes, each carrying only a `kind` tag,
- * with an `of` factory as the construction path (V2/V3). The wire/DB form is the
- * `kind` string, rehydrated by {@link asEventScope} at the boundary.
+ * Modelled as a class-based value object with **multiple named factories**
+ * (ADR-0023, as amended by ADR-0024): every variant is data-less (only a
+ * `kind` tag), so the variants share one shape and one class —
+ * {@link EventScope.club} / {@link EventScope.exhibitor} /
+ * {@link EventScope.platform} — rather than a discriminated union of separate
+ * classes (the harness "same shape, multiple factories" rule). The wire/DB
+ * form is the `kind` string, rehydrated by {@link asEventScope} at the
+ * boundary.
  */
-export class ClubEventScope {
-    readonly kind = 'club' as const;
+export class EventScope {
+    readonly kind: 'club' | 'exhibitor' | 'platform';
 
-    private constructor() {}
-
-    static of(): ClubEventScope {
-        return new ClubEventScope();
+    private constructor(kind: 'club' | 'exhibitor' | 'platform') {
+        this.kind = kind;
     }
 
-    equals(other: ClubEventScope): boolean {
+    /** The fact belongs to a kennel-club Club. */
+    static club(): EventScope {
+        return new EventScope('club');
+    }
+
+    /** The fact belongs to an individual exhibitor. */
+    static exhibitor(): EventScope {
+        return new EventScope('exhibitor');
+    }
+
+    /** The fact is platform-wide and has no single owner. */
+    static platform(): EventScope {
+        return new EventScope('platform');
+    }
+
+    /**
+     * Value equality — every variant is data-less, so two scopes are equal iff
+     * their `kind` tags match (V3).
+     */
+    equals(other: EventScope): boolean {
         return this.kind === other.kind;
-    }
-}
-
-export class ExhibitorEventScope {
-    readonly kind = 'exhibitor' as const;
-
-    private constructor() {}
-
-    static of(): ExhibitorEventScope {
-        return new ExhibitorEventScope();
-    }
-
-    equals(other: ExhibitorEventScope): boolean {
-        return this.kind === other.kind;
-    }
-}
-
-export class PlatformEventScope {
-    readonly kind = 'platform' as const;
-
-    private constructor() {}
-
-    static of(): PlatformEventScope {
-        return new PlatformEventScope();
-    }
-
-    equals(other: PlatformEventScope): boolean {
-        return this.kind === other.kind;
-    }
-}
-
-export type EventScope = ClubEventScope | ExhibitorEventScope | PlatformEventScope;
-
-/**
- * Value equality for {@link EventScope} — every variant is data-less, so two
- * scopes are equal iff their `kind` tags match (V3). Narrows on `kind` and
- * delegates to the variant's {@link EventScope#equals} for shape parity with
- * the other variant value objects.
- */
-export function eventScopesEqual(a: EventScope, b: EventScope): boolean {
-    switch (a.kind) {
-        case 'club':
-            return b.kind === 'club' && a.equals(b);
-        case 'exhibitor':
-            return b.kind === 'exhibitor' && a.equals(b);
-        case 'platform':
-            return b.kind === 'platform' && a.equals(b);
     }
 }
 
@@ -91,11 +65,11 @@ export function eventScopesEqual(a: EventScope, b: EventScope): boolean {
 export function asEventScope(value: string): EventScope {
     switch (value) {
         case 'club':
-            return ClubEventScope.of();
+            return EventScope.club();
         case 'exhibitor':
-            return ExhibitorEventScope.of();
+            return EventScope.exhibitor();
         case 'platform':
-            return PlatformEventScope.of();
+            return EventScope.platform();
         default:
             throw new TypeError(
                 `Invalid EventScope '${value}': expected 'club', 'exhibitor', or 'platform'.`,

@@ -7,11 +7,7 @@ import {
     type CreateDomainEventParams,
     type DomainEvent,
 } from '../../../src/Shared/domain/domain-event.js';
-import {
-    ClubEventScope,
-    ExhibitorEventScope,
-    PlatformEventScope,
-} from '../../../src/Shared/domain/event-scope.js';
+import { EventScope } from '../../../src/Shared/domain/event-scope.js';
 import type { Clock, EventIdGenerator } from '../../../src/Shared/domain/domain-ports.js';
 import {
     asAggregateId,
@@ -32,7 +28,7 @@ describe('createDomainEvent', () => {
         const event = createDomainEvent(
             {
                 type: asEventType('entries.EntrySubmitted'),
-                scope: ClubEventScope.of(),
+                scope: EventScope.club(),
                 aggregateId: asAggregateId('entry-1'),
                 payload: { dogId: 'dog-1' },
             },
@@ -43,7 +39,7 @@ describe('createDomainEvent', () => {
             eventId: FIXED_ID,
             type: 'entries.EntrySubmitted',
             occurredAt: FIXED_DATE,
-            scope: ClubEventScope.of(),
+            scope: EventScope.club(),
             aggregateId: 'entry-1',
             payload: { dogId: 'dog-1' },
         });
@@ -56,7 +52,7 @@ describe('createDomainEvent', () => {
         const event = createDomainEvent(
             {
                 type: asEventType('rulesets.RulesetPublished'),
-                scope: PlatformEventScope.of(),
+                scope: EventScope.platform(),
                 aggregateId: asAggregateId('ruleset-1'),
                 payload: null,
                 eventId: asEventId(explicitId),
@@ -73,7 +69,7 @@ describe('createDomainEvent', () => {
         const event = createDomainEvent(
             {
                 type: asEventType('admin.ClubOnboarded'),
-                scope: PlatformEventScope.of(),
+                scope: EventScope.platform(),
                 aggregateId: asAggregateId('club-1'),
                 payload: {},
             },
@@ -87,7 +83,7 @@ describe('createDomainEvent', () => {
         const event = createDomainEvent(
             {
                 type: asEventType('entries.DogRegistered'),
-                scope: ExhibitorEventScope.of(),
+                scope: EventScope.exhibitor(),
                 aggregateId: asAggregateId('dog-1'),
                 payload: {},
             },

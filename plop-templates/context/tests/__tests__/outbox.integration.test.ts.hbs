@@ -12,8 +12,8 @@ import {
     asPrincipalId,
     asEventId,
     asEventType,
-    ClubEventScope,
     ClubTransactionScope,
+    EventScope,
     createDomainEvent,
     FakeClock,
     FakeEventIdGenerator,
@@ -67,7 +67,7 @@ describe('Transactional outbox — {{name}} context', () => {
         return createDomainEvent(
             {
                 type: asEventType('{{eventContext name}}.ItemSaved'),
-                scope: ClubEventScope.of(),
+                scope: EventScope.club(),
                 aggregateId: asAggregateId(ITEM_ID),
                 payload: { name: 'test-item' },
                 eventId: asEventId(EVENT_ID),

@@ -3,14 +3,7 @@
 
 export type { DomainEvent, CreateDomainEventParams } from './domain/domain-event.js';
 export { createDomainEvent } from './domain/domain-event.js';
-export type { EventScope } from './domain/event-scope.js';
-export {
-    asEventScope,
-    eventScopesEqual,
-    ClubEventScope,
-    ExhibitorEventScope,
-    PlatformEventScope,
-} from './domain/event-scope.js';
+export { EventScope, asEventScope } from './domain/event-scope.js';
 export type { Clock, EventIdGenerator } from './domain/domain-ports.js';
 export type {
     ShowId,
