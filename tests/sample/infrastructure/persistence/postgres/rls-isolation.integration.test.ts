@@ -5,7 +5,13 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import pg from 'pg';
 import { PostgresHarness } from '../../../../test-kit/index.js';
 import { bootstrapSampleSchema } from '../../../fixtures.js';
-import { asClubId, asPrincipalId, PgOutboxWriter } from '../../../../../src/Shared/index.js';
+import {
+    asClubId,
+    asPrincipalId,
+    ClubTransactionScope,
+    ExhibitorTransactionScope,
+    PgOutboxWriter,
+} from '../../../../../src/Shared/index.js';
 import { PgSampleUnitOfWork } from '../../../../../src/sample/infrastructure/persistence/postgres/pg-unit-of-work.js';
 
 // Fixed IDs for deterministic test data.
@@ -52,11 +58,7 @@ describe('RLS isolation — sample context', () => {
     describe('Club-scoped table isolation (shows)', () => {
         it('club-A scope sees only Club A shows', async () => {
             await unitOfWork.run(
-                {
-                    kind: 'club',
-                    clubId: asClubId(CLUB_A_ID),
-                    principalId: asPrincipalId(ACCOUNT_A_ID),
-                },
+                ClubTransactionScope.of(asClubId(CLUB_A_ID), asPrincipalId(ACCOUNT_A_ID)),
                 async (ctx) => {
                     const shows = await ctx.shows.findAll();
                     expect(shows).toHaveLength(1);
@@ -67,11 +69,7 @@ describe('RLS isolation — sample context', () => {
 
         it('club-B scope sees only Club B shows, not Club A', async () => {
             await unitOfWork.run(
-                {
-                    kind: 'club',
-                    clubId: asClubId(CLUB_B_ID),
-                    principalId: asPrincipalId(ACCOUNT_B_ID),
-                },
+                ClubTransactionScope.of(asClubId(CLUB_B_ID), asPrincipalId(ACCOUNT_B_ID)),
                 async (ctx) => {
                     const shows = await ctx.shows.findAll();
                     expect(shows).toHaveLength(1);
@@ -84,11 +82,7 @@ describe('RLS isolation — sample context', () => {
     describe('hybrid table isolation (entries)', () => {
         it('club-A scope sees the hybrid entry (matched by club_id)', async () => {
             await unitOfWork.run(
-                {
-                    kind: 'club',
-                    clubId: asClubId(CLUB_A_ID),
-                    principalId: asPrincipalId(ACCOUNT_A_ID),
-                },
+                ClubTransactionScope.of(asClubId(CLUB_A_ID), asPrincipalId(ACCOUNT_A_ID)),
                 async (ctx) => {
                     const entries = await ctx.entries.findAll();
                     expect(entries).toHaveLength(1);
@@ -99,7 +93,7 @@ describe('RLS isolation — sample context', () => {
 
         it('exhibitor-A scope sees the hybrid entry (matched by user_id)', async () => {
             await unitOfWork.run(
-                { kind: 'exhibitor', principalId: asPrincipalId(ACCOUNT_A_ID) },
+                ExhibitorTransactionScope.of(asPrincipalId(ACCOUNT_A_ID)),
                 async (ctx) => {
                     const entries = await ctx.entries.findAll();
                     expect(entries).toHaveLength(1);
@@ -110,11 +104,7 @@ describe('RLS isolation — sample context', () => {
 
         it('club-B scope cannot see the hybrid entry belonging to club-A', async () => {
             await unitOfWork.run(
-                {
-                    kind: 'club',
-                    clubId: asClubId(CLUB_B_ID),
-                    principalId: asPrincipalId(ACCOUNT_B_ID),
-                },
+                ClubTransactionScope.of(asClubId(CLUB_B_ID), asPrincipalId(ACCOUNT_B_ID)),
                 async (ctx) => {
                     const entries = await ctx.entries.findAll();
                     expect(entries).toHaveLength(0);

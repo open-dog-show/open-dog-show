@@ -16,6 +16,12 @@ status: accepted
 > the kernel is `src/Shared/`). The `UnitOfWork` port pattern itself is unchanged;
 > [ADR-0021](0021-adopt-canonical-directory-structure.md) places the use case in
 > an `application/<UseCase>/` folder.
+>
+> **Amended by [ADR-0022](0022-adopt-implementation-patterns-harness-as-leading-standard.md):**
+> the event-envelope code examples below (generic `DomainEvent<TPayload>` + `createDomainEvent`
+> factory) are superseded by the harness's class-per-event-type domain-event shape — see
+> [implementation-patterns/typescript.md](../../.github/skills/implementation-patterns/typescript.md).
+> The `UnitOfWork` _port_ decision itself is architecture (ADR-led) and stands.
 
 ## Context
 

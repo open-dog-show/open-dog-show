@@ -6,6 +6,9 @@ import {
     asAggregateId,
     asClubId,
     asPrincipalId,
+    ClubTransactionScope,
+    EventScope,
+    ExhibitorTransactionScope,
     FakeClock,
     FakeEventIdGenerator,
     type DomainEvent,
@@ -20,11 +23,10 @@ const CLUB_ID = '00000000-0000-4000-8000-000000000001';
 const USER_ID = '00000000-0000-4000-8000-000000000011';
 const ITEM_ID = '00000000-0000-4000-8000-000000000031';
 
-const clubScope: TransactionScope = {
-    kind: 'club',
-    clubId: asClubId(CLUB_ID),
-    principalId: asPrincipalId(USER_ID),
-};
+const clubScope: TransactionScope = ClubTransactionScope.of(
+    asClubId(CLUB_ID),
+    asPrincipalId(USER_ID),
+);
 
 /**
  * In-memory {@link ItemUnitOfWork} for unit-testing the use case without
@@ -87,7 +89,7 @@ describe('SaveItemUseCase', () => {
         expect(unitOfWork.appendedEvents).toHaveLength(1);
         const event = unitOfWork.appendedEvents[0]!;
         expect(event.type).toBe('{{eventContext name}}.ItemSaved');
-        expect(event.scope).toBe('club');
+        expect(event.scope).toStrictEqual(EventScope.club());
         expect(event.aggregateId).toBe(asAggregateId(ITEM_ID));
         expect(event.payload).toStrictEqual({ name: 'test-item' });
         expect(event.occurredAt).toStrictEqual(fixedDate);
@@ -101,10 +103,9 @@ describe('SaveItemUseCase', () => {
             new FakeClock(fixedDate),
             new FakeEventIdGenerator(),
         );
-        const exhibitorScope: TransactionScope = {
-            kind: 'exhibitor',
-            principalId: asPrincipalId(USER_ID),
-        };
+        const exhibitorScope: TransactionScope = ExhibitorTransactionScope.of(
+            asPrincipalId(USER_ID),
+        );
 
         await expect(useCase.execute(input, exhibitorScope)).rejects.toThrow(/club/);
         expect(unitOfWork.savedItems).toHaveLength(0);

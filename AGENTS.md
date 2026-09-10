@@ -18,6 +18,28 @@ The canonical coding standards. GitHub Copilot (`.github/copilot-instructions.md
 and Cline (`.clinerules/`) are thin pointers to this section, so every agent
 follows one source of truth and the docs never drift apart.
 
+### Documentation authority
+
+Three sources share the "how to write code" space; each leads a different concern (see
+[ADR-0022](docs/adr/0022-adopt-implementation-patterns-harness-as-leading-standard.md)):
+
+- **The harness** — [.github/skills/implementation-patterns/](.github/skills/implementation-patterns/)
+  (`RULES.md` E/B/V/N/T/L rules + `typescript.md` per-object TypeScript shapes) and
+  [.github/skills/placement/STRUCTURE.md](.github/skills/placement/STRUCTURE.md) (canonical layout)
+  — is the **leading, prescriptive** source for _how each object is implemented_ and _where each
+  thing lives_. Its code snippets are prescriptive; the repo conforms to the shapes. It evolves by
+  edit; the rule IDs are the stable contract.
+- **ADRs** ([docs/adr/](docs/adr/)) lead _architecture decisions_ (bounded contexts, RLS/ownership,
+  tech stack, identity ownership). Immutable; changed by supersession. Where an ADR touches
+  implementation it owns the _why_ and **points to** the harness for the _how_.
+- **This section** is the _conventions index_ — project setup, SPDX, file naming, ESM/NodeNext/
+  `strict`, package management, commit signing — and points to the harness for patterns/layout and
+  ADRs for architecture.
+
+**Deviation ADR.** A future ADR that deliberately deviates from the harness leads over it for that
+specific point; the harness records the carve-out. Existing deviations are reconciled _toward_ the
+harness.
+
 ### Project
 
 OpenDogShow — AGPL-3.0-only, TypeScript pnpm single-package repo, modular monolith.  

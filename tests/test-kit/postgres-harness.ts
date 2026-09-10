@@ -99,7 +99,11 @@ export class PostgresHarness {
             (r): r is PromiseRejectedResult => r.status === 'rejected',
         );
         if (firstRejection !== undefined) {
-            throw firstRejection.reason;
+            const reason = firstRejection.reason;
+            // `PromiseRejectedResult.reason` is `any`; rethrowing it unstructured
+            // loses the `Error` shape an outer handler assumes — normalise a
+            // non-Error rejection into one so the boundary always sees an Error.
+            throw reason instanceof Error ? reason : new Error(String(reason));
         }
     }
 

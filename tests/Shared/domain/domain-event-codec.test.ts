@@ -5,8 +5,11 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
     decodeDomainEvent,
     encodeDomainEvent,
+    InvalidDomainEventEnvelopeError,
+    rehydrateDomainEvent,
 } from '../../../src/Shared/domain/domain-event-codec.js';
 import type { DomainEvent } from '../../../src/Shared/domain/domain-event.js';
+import { EventScope } from '../../../src/Shared/domain/event-scope.js';
 import {
     asAggregateId,
     asEventId,
@@ -24,7 +27,7 @@ describe('encodeDomainEvent', () => {
         eventId: asEventId('00000000-0000-4000-8000-000000000001'),
         type: asEventType('entries.EntrySubmitted'),
         occurredAt: new Date('2026-08-01T12:00:00.000Z'),
-        scope: 'club',
+        scope: EventScope.club(),
         aggregateId: asAggregateId('entry-abc'),
         payload: { dogId: 'dog-1', classNumber: 42 },
     };
@@ -40,7 +43,7 @@ describe('encodeDomainEvent', () => {
 
         expect(json.eventId).toBe(event.eventId);
         expect(json.type).toBe(event.type);
-        expect(json.scope).toBe(event.scope);
+        expect(json.scope).toBe(event.scope.kind);
         expect(json.aggregateId).toBe(event.aggregateId);
     });
 
@@ -61,6 +64,24 @@ describe('decodeDomainEvent', () => {
         payload: { dogId: 'dog-1', classNumber: 42 },
     };
 
+    /** Drives {@link rehydrateDomainEvent} (which accepts `Date | string`) and narrows the thrown envelope error. */
+    function catchRehydrate(occurredAt: Date | string): InvalidDomainEventEnvelopeError {
+        try {
+            rehydrateDomainEvent({
+                eventId: raw.eventId,
+                type: raw.type,
+                occurredAt,
+                scope: raw.scope,
+                aggregateId: raw.aggregateId,
+                payload: raw.payload,
+            });
+            throw new Error('expected rehydrateDomainEvent to throw');
+        } catch (err) {
+            if (err instanceof InvalidDomainEventEnvelopeError) return err;
+            throw err;
+        }
+    }
+
     it('restores occurredAt as a Date', () => {
         const event = decodeDomainEvent(raw);
 
@@ -73,7 +94,7 @@ describe('decodeDomainEvent', () => {
 
         expect(event.eventId).toBe(raw.eventId);
         expect(event.type).toBe(raw.type);
-        expect(event.scope).toBe(raw.scope);
+        expect(event.scope.kind).toBe(raw.scope);
         expect(event.aggregateId).toBe(raw.aggregateId);
     });
 
@@ -83,6 +104,39 @@ describe('decodeDomainEvent', () => {
 
     it('throws TypeError when the JSON scope is not a valid EventScope', () => {
         expect(() => decodeDomainEvent({ ...raw, scope: 'invalid' })).toThrow(TypeError);
+    });
+
+    it('throws InvalidDomainEventEnvelopeError when occurredAt is not a real date string', () => {
+        expect(() => decodeDomainEvent({ ...raw, occurredAt: 'not-a-real-date' })).toThrow(
+            InvalidDomainEventEnvelopeError,
+        );
+    });
+
+    it('InvalidDomainEventEnvelopeError carries the offending string value (E5)', () => {
+        const error = catchRehydrate('garbage');
+        expect(error).toBeInstanceOf(InvalidDomainEventEnvelopeError);
+        expect(error.field).toBe('occurredAt');
+        expect(error.value).toBe('garbage');
+        expect(error.name).toBe('InvalidDomainEventEnvelopeError');
+    });
+
+    it('rejects an Invalid Date instance, not just a bad string', () => {
+        const invalid = new Date('garbage');
+        const error = catchRehydrate(invalid);
+        expect(error).toBeInstanceOf(InvalidDomainEventEnvelopeError);
+        expect(error.field).toBe('occurredAt');
+        expect(error.value).toBe(invalid);
+        expect(Number.isNaN((error.value as Date).getTime())).toBe(true);
+    });
+
+    it('rejects a rollover calendar date that new Date would normalise (2026-02-30 → March 2)', () => {
+        // `new Date('2026-02-30T00:00:00.000Z')` silently rolls to March 2; the
+        // strict ISO parse rejects the rollover so corrupt envelope data cannot
+        // become a subtly-wrong typed event.
+        const error = catchRehydrate('2026-02-30T00:00:00.000Z');
+        expect(error).toBeInstanceOf(InvalidDomainEventEnvelopeError);
+        expect(error.field).toBe('occurredAt');
+        expect(error.value).toBe('2026-02-30T00:00:00.000Z');
     });
 
     it('restores aggregateId as a branded AggregateId', () => {
@@ -111,7 +165,7 @@ describe('encode → JSON.stringify → JSON.parse → decode round-trip', () =>
             eventId: asEventId('00000000-0000-4000-8000-000000000099'),
             type: asEventType('shows.ShowScheduled'),
             occurredAt: new Date('2026-12-25T09:00:00.000Z'),
-            scope: 'platform',
+            scope: EventScope.platform(),
             aggregateId: asAggregateId('show-1'),
             payload: { label: 'Christmas Show 2026' },
         };
@@ -122,7 +176,7 @@ describe('encode → JSON.stringify → JSON.parse → decode round-trip', () =>
         expect(restored.eventId).toBe(original.eventId);
         expect(restored.type).toBe(original.type);
         expect(restored.occurredAt).toStrictEqual(original.occurredAt);
-        expect(restored.scope).toBe(original.scope);
+        expect(restored.scope).toStrictEqual(original.scope);
         expect(restored.aggregateId).toBe(original.aggregateId);
         expect(restored.payload).toStrictEqual(original.payload);
     });
