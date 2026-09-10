@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { DomainEvent } from './domain-event.js';
-import { asEventScope } from './domain-event.js';
+import { asEventScope } from './event-scope.js';
 import { asAggregateId, asEventId, asEventType } from './domain-ids.js';
 
 /** The serialised (JSON-safe) form of a {@link DomainEvent}. */
@@ -18,17 +18,46 @@ export interface DomainEventJson {
 }
 
 /**
+ * Thrown by {@link rehydrateDomainEvent} when an envelope field cannot be
+ * restored to a valid domain value — currently the `occurredAt` timestamp,
+ * which `new Date(string)` silently turns into an Invalid Date (`getTime()`
+ * `NaN`) for a corrupt value rather than throwing.
+ *
+ * Rejecting at the boundary mirrors {@link asEventType} / {@link asEventScope}:
+ * a malformed outbox row or JSON envelope must never propagate as a typed
+ * {@link DomainEvent} carrying an unusable timestamp. This is a
+ * technical/boundary error (corrupt data, not a domain-rule violation), so it
+ * extends `Error` rather than {@link DomainError}; `field` names which envelope
+ * field was unrecoverable and `value` the offending input.
+ */
+export class InvalidDomainEventEnvelopeError extends Error {
+    readonly field: string;
+    readonly value: unknown;
+
+    constructor(field: string, value: unknown) {
+        super(
+            `Invalid DomainEvent envelope: '${field}' could not be restored (got ${String(value)})`,
+        );
+        this.name = 'InvalidDomainEventEnvelopeError';
+        this.field = field;
+        this.value = value;
+    }
+}
+
+/**
  * Encode a {@link DomainEvent} to a JSON-safe object.
  *
- * The `occurredAt` Date is converted to an ISO-8601 string; everything else
- * is left as-is (branded string ids are plain strings at runtime).
+ * The `occurredAt` Date is converted to an ISO-8601 string; the `EventScope`
+ * is flattened to its `kind` tag (the wire form — rehydrated by
+ * {@link decodeDomainEvent} via {@link asEventScope}); everything else is left
+ * as-is (branded string ids are plain strings at runtime).
  */
 export function encodeDomainEvent<TPayload>(event: DomainEvent<TPayload>): DomainEventJson {
     return {
         eventId: event.eventId,
         type: event.type,
         occurredAt: event.occurredAt.toISOString(),
-        scope: event.scope,
+        scope: event.scope.kind,
         aggregateId: event.aggregateId,
         payload: event.payload,
     };
@@ -72,13 +101,19 @@ export function rehydrateDomainEvent(envelope: {
     readonly aggregateId: string;
     readonly payload: unknown;
 }): DomainEvent<unknown> {
+    // Restore the timestamp first so a corrupt value is rejected at the
+    // boundary: `new Date('garbage')` produces an Invalid Date (NaN) rather
+    // than throwing, so an explicit check is required — mirroring the
+    // asEventType / asEventScope reject-at-the-boundary contract.
+    const occurredAt =
+        envelope.occurredAt instanceof Date ? envelope.occurredAt : new Date(envelope.occurredAt);
+    if (Number.isNaN(occurredAt.getTime())) {
+        throw new InvalidDomainEventEnvelopeError('occurredAt', envelope.occurredAt);
+    }
     return {
         eventId: asEventId(envelope.eventId),
         type: asEventType(envelope.type),
-        occurredAt:
-            envelope.occurredAt instanceof Date
-                ? envelope.occurredAt
-                : new Date(envelope.occurredAt),
+        occurredAt,
         scope: asEventScope(envelope.scope),
         aggregateId: asAggregateId(envelope.aggregateId),
         payload: envelope.payload,

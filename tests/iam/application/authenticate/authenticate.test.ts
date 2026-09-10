@@ -13,6 +13,8 @@ import type { UserRepository } from '../../../../src/iam/domain/model/user/user-
 import {
     authenticate,
     type AuthenticateDeps,
+    type AuthenticateError,
+    type AuthenticateResult,
     UserSuspendedError,
 } from '../../../../src/iam/application/authenticate/authenticate.js';
 import {
@@ -32,11 +34,21 @@ function deps(tokens = new Map([[ALICE_TOKEN, ALICE_CLAIMS]])): AuthenticateDeps
     };
 }
 
+// Narrowing helpers so each test reads the Result without repeating the ok/error branch (E1).
+function userOf(result: AuthenticateResult): User {
+    if (!result.ok) throw new Error(`expected an ok result but got ${result.error.name}`);
+    return result.value;
+}
+function errorOf(result: AuthenticateResult): AuthenticateError {
+    if (result.ok) throw new Error('expected an error result but got ok');
+    return result.error;
+}
+
 describe('authenticate', () => {
     it('first login for an unknown sub creates an Active user saved via the UserRepository', async () => {
         const d = deps();
 
-        const user = await authenticate(d, ALICE_TOKEN);
+        const user = userOf(await authenticate(d, ALICE_TOKEN));
 
         expect(user.status).toBe('Active');
         expect(user.externalSubject).toBe('sub|alice');
@@ -61,8 +73,8 @@ describe('authenticate', () => {
             ]),
         );
 
-        const first = await authenticate(d, ALICE_TOKEN);
-        const second = await authenticate(d, 'token-alice-2');
+        const first = userOf(await authenticate(d, ALICE_TOKEN));
+        const second = userOf(await authenticate(d, 'token-alice-2'));
 
         // Same platform account — id and external subject are stable.
         expect(second.id).toBe(first.id);
@@ -126,7 +138,7 @@ describe('authenticate', () => {
         expect(stored?.email).toBe('alice.smith@example.com');
     });
 
-    it('throws UserSuspendedError for a known Suspended user before any profile refresh', async () => {
+    it('returns a UserSuspendedError failure for a known Suspended user before any profile refresh', async () => {
         const BOB_TOKEN = 'token-bob';
         const d = deps(
             new Map([
@@ -146,7 +158,9 @@ describe('authenticate', () => {
         };
         await d.users.save(suspendedBob);
 
-        await expect(authenticate(d, BOB_TOKEN)).rejects.toBeInstanceOf(UserSuspendedError);
+        const result = await authenticate(d, BOB_TOKEN);
+        expect(result.ok).toBe(false);
+        expect(errorOf(result)).toBeInstanceOf(UserSuspendedError);
 
         // No other processing: the suspended account is left untouched (the
         // provider's refreshed claims were never written).
@@ -162,10 +176,12 @@ describe('authenticate', () => {
             ]),
         );
 
-        const [u1, u2] = await Promise.all([
+        const [r1, r2] = await Promise.all([
             authenticate(d, 'token-a'),
             authenticate(d, 'token-b'),
         ]);
+        const u1 = userOf(r1);
+        const u2 = userOf(r2);
 
         // Both calls resolve to the same account — no duplicate platform account.
         expect(u1.id).toBe(u2.id);
@@ -175,7 +191,7 @@ describe('authenticate', () => {
         expect(await d.users.findById(asUserId('user-2'))).toBeUndefined();
     });
 
-    it('throws UserSuspendedError when createIfAbsent returns a concurrently-suspended winner', async () => {
+    it('returns a UserSuspendedError failure when createIfAbsent returns a concurrently-suspended winner', async () => {
         const suspendedWinner: User = {
             id: asUserId('user-bob'),
             displayName: 'Bob',
@@ -209,37 +225,47 @@ describe('authenticate', () => {
             userIdGenerator: new FakeUserIdGenerator(),
         };
 
-        await expect(authenticate(d, 'token-bob')).rejects.toBeInstanceOf(UserSuspendedError);
+        const result = await authenticate(d, 'token-bob');
+        expect(result.ok).toBe(false);
+        expect(errorOf(result)).toBeInstanceOf(UserSuspendedError);
     });
 
     // -- provider-claim canonicalization propagation (ADR-0015) ------------
 
-    it('propagates InvalidProviderClaimsError on a first login with a blank sub and creates no account', async () => {
+    it('returns an InvalidProviderClaimsError failure on a first login with a blank sub and creates no account', async () => {
         const d = deps(
             new Map([
                 ['token-blank-sub', { sub: '   ', displayName: 'X', email: 'x@example.com' }],
             ]),
         );
 
-        await expect(authenticate(d, 'token-blank-sub')).rejects.toBeInstanceOf(
-            InvalidProviderClaimsError,
-        );
+        const result = await authenticate(d, 'token-blank-sub');
+        expect(result.ok).toBe(false);
+        expect(errorOf(result)).toBeInstanceOf(InvalidProviderClaimsError);
 
         // No account was created for the blank subject.
         expect(await d.users.findByExternalSubject('   ')).toBeUndefined();
         expect(await d.users.findById(asUserId('user-1'))).toBeUndefined();
     });
 
-    it('propagates InvalidProviderClaimsError on a first login with a blank email and creates no account', async () => {
+    it('returns an InvalidProviderClaimsError failure on a first login with a blank email and creates no account', async () => {
         const d = deps(
             new Map([['token-blank-email', { sub: 'sub|new', displayName: 'X', email: '' }]]),
         );
 
-        await expect(authenticate(d, 'token-blank-email')).rejects.toBeInstanceOf(
-            InvalidProviderClaimsError,
-        );
+        const result = await authenticate(d, 'token-blank-email');
+        expect(result.ok).toBe(false);
+        expect(errorOf(result)).toBeInstanceOf(InvalidProviderClaimsError);
 
         expect(await d.users.findByExternalSubject('sub|new')).toBeUndefined();
+    });
+
+    it('propagates a technical fault (unknown token) as a throw, not a Result failure (E4)', async () => {
+        const d = deps(new Map([[ALICE_TOKEN, ALICE_CLAIMS]]));
+        // The IdentityProvider port throws on an unknown token — a technical/adapter
+        // fault that propagates to the outermost handler, distinct from the domain
+        // failures (suspended, invalid claims) returned in the Result.
+        await expect(authenticate(d, 'token-nobody')).rejects.toThrow(/unknown token/);
     });
 
     it('keeps the existing email on a subsequent login whose incoming email is blank (keep-existing guard)', async () => {
@@ -250,10 +276,10 @@ describe('authenticate', () => {
             ]),
         );
 
-        const first = await authenticate(d, 'token-a');
+        const first = userOf(await authenticate(d, 'token-a'));
         expect(first.email).toBe('alice@example.com');
 
-        const second = await authenticate(d, 'token-b');
+        const second = userOf(await authenticate(d, 'token-b'));
         // The blank incoming email preserved the stored (normalized) email.
         expect(second.email).toBe('alice@example.com');
         expect(second.displayName).toBe('Alice Smith');
@@ -271,8 +297,8 @@ describe('authenticate', () => {
             ]),
         );
 
-        const first = await authenticate(d, 'token-a');
-        const second = await authenticate(d, 'token-b');
+        const first = userOf(await authenticate(d, 'token-a'));
+        const second = userOf(await authenticate(d, 'token-b'));
 
         expect(second.displayName).toBe('Alice');
         expect(second.email).toBe('alice.smith@example.com');

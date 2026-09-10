@@ -1,12 +1,10 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { ClubId } from '../../../../Shared/index.js';
+import { DomainError } from '../../../../Shared/index.js';
 import type { UserId } from '../../shared/domain-ids.js';
-
-export type ClubScope = { readonly kind: 'club'; readonly clubId: ClubId };
-export type PlatformScope = { readonly kind: 'platform' };
-export type RoleScope = ClubScope | PlatformScope;
+import type { ClubScope, PlatformScope } from './value-objects/role-scope.js';
+import { roleScopesEqual } from './value-objects/role-scope.js';
 
 export type DomainRole = 'ShowSecretary' | 'Judge' | 'PlatformAdministrator';
 
@@ -23,36 +21,34 @@ export type RoleGrantKey =
     | { readonly role: 'ShowSecretary'; readonly scope: ClubScope }
     | { readonly role: 'Judge' | 'PlatformAdministrator'; readonly scope: PlatformScope };
 
-export class DuplicateRoleGrantError extends Error {
+export class DuplicateRoleGrantError extends DomainError {
     readonly grant: RoleGrant;
 
     constructor(grant: RoleGrant) {
-        super(`User ${grant.userId} already holds role ${grant.role} in the given scope`);
-        this.name = 'DuplicateRoleGrantError';
+        super(`User ${grant.userId} already holds role ${grant.role} in the given scope`, {
+            userId: grant.userId,
+            role: grant.role,
+        });
         this.grant = grant;
     }
 }
 
-export class RoleGrantOwnerMismatchError extends Error {
+export class RoleGrantOwnerMismatchError extends DomainError {
     readonly userId: UserId;
     readonly grant: RoleGrant;
 
     constructor(userId: UserId, grant: RoleGrant) {
-        super(`Grant for user ${grant.userId} passed to saveAll for user ${userId}`);
-        this.name = 'RoleGrantOwnerMismatchError';
+        super(`Grant for user ${grant.userId} passed to saveAll for user ${userId}`, {
+            userId,
+            grantUserId: grant.userId,
+        });
         this.userId = userId;
         this.grant = grant;
     }
 }
 
-function scopesEqual(a: RoleScope, b: RoleScope): boolean {
-    if (a.kind !== b.kind) return false;
-    if (a.kind === 'club' && b.kind === 'club') return a.clubId === b.clubId;
-    return true;
-}
-
 function grantsMatch(a: RoleGrant, b: RoleGrant): boolean {
-    return a.userId === b.userId && a.role === b.role && scopesEqual(a.scope, b.scope);
+    return a.userId === b.userId && a.role === b.role && roleScopesEqual(a.scope, b.scope);
 }
 
 /**

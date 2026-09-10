@@ -4,6 +4,7 @@
 import {
     asAggregateId,
     asEventType,
+    ClubEventScope,
     createDomainEvent,
     type Clock,
     type EventIdGenerator,
@@ -74,7 +75,7 @@ export class SaveItemUseCase {
                 createDomainEvent(
                     {
                         type: asEventType('{{eventContext name}}.ItemSaved'),
-                        scope: 'club',
+                        scope: ClubEventScope.of(),
                         aggregateId: asAggregateId(item.id),
                         payload: { name: item.name },
                     },

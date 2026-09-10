@@ -1,7 +1,12 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { ClubId, PrincipalId, TransactionScope } from '../../../../Shared/index.js';
+import {
+    DomainError,
+    type ClubId,
+    type PrincipalId,
+    type TransactionScope,
+} from '../../../../Shared/index.js';
 import type { EntryId, ShowId } from '../../shared/domain-ids.js';
 
 export interface Entry {
@@ -17,12 +22,11 @@ export interface Entry {
  * it cannot accept. `received` names the offending scope kind, so callers can
  * discriminate this failure by type.
  */
-export class InvalidTransactionScopeError extends Error {
+export class InvalidTransactionScopeError extends DomainError {
     readonly received: TransactionScope['kind'];
 
     constructor(received: TransactionScope['kind'], message: string) {
-        super(message);
-        this.name = 'InvalidTransactionScopeError';
+        super(message, { received });
         this.received = received;
     }
 }

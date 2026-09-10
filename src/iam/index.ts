@@ -16,14 +16,13 @@ export {
 } from './domain/model/user/user.js';
 export type { UserProfileFacts } from './domain/model/user/user.js';
 export type { UserRepository } from './domain/model/user/user-repository.js';
-export type {
-    DomainRole,
+export {
     ClubScope,
     PlatformScope,
-    RoleScope,
-    RoleGrant,
-    RoleGrantKey,
-} from './domain/model/role-grant/role-grant.js';
+    roleScopesEqual,
+    type RoleScope,
+} from './domain/model/role-grant/value-objects/role-scope.js';
+export type { DomainRole, RoleGrant, RoleGrantKey } from './domain/model/role-grant/role-grant.js';
 export {
     grantRole,
     revokeRole,
@@ -34,7 +33,12 @@ export {
 export type { RoleGrantRepository } from './domain/model/role-grant/role-grant-repository.js';
 export type { IdentityProvider, ProviderClaims } from './domain/model/user/identity-provider.js';
 export type { UserIdGenerator } from './domain/model/user/user-id-generator.js';
-export { authenticate, type AuthenticateDeps } from './application/authenticate/authenticate.js';
+export {
+    authenticate,
+    type AuthenticateDeps,
+    type AuthenticateError,
+    type AuthenticateResult,
+} from './application/authenticate/authenticate.js';
 // In-memory test double exported on the public surface so downstream context
 // tests can exercise the authentication flow without a real provider (issue #80).
 export { FakeIdentityProvider } from './infrastructure/persistence/inmemory/fake-identity-provider.js';

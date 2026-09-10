@@ -7,6 +7,11 @@ import {
     type CreateDomainEventParams,
     type DomainEvent,
 } from '../../../src/Shared/domain/domain-event.js';
+import {
+    ClubEventScope,
+    ExhibitorEventScope,
+    PlatformEventScope,
+} from '../../../src/Shared/domain/event-scope.js';
 import type { Clock, EventIdGenerator } from '../../../src/Shared/domain/domain-ports.js';
 import {
     asAggregateId,
@@ -27,7 +32,7 @@ describe('createDomainEvent', () => {
         const event = createDomainEvent(
             {
                 type: asEventType('entries.EntrySubmitted'),
-                scope: 'club',
+                scope: ClubEventScope.of(),
                 aggregateId: asAggregateId('entry-1'),
                 payload: { dogId: 'dog-1' },
             },
@@ -38,7 +43,7 @@ describe('createDomainEvent', () => {
             eventId: FIXED_ID,
             type: 'entries.EntrySubmitted',
             occurredAt: FIXED_DATE,
-            scope: 'club',
+            scope: ClubEventScope.of(),
             aggregateId: 'entry-1',
             payload: { dogId: 'dog-1' },
         });
@@ -51,7 +56,7 @@ describe('createDomainEvent', () => {
         const event = createDomainEvent(
             {
                 type: asEventType('rulesets.RulesetPublished'),
-                scope: 'platform',
+                scope: PlatformEventScope.of(),
                 aggregateId: asAggregateId('ruleset-1'),
                 payload: null,
                 eventId: asEventId(explicitId),
@@ -68,28 +73,28 @@ describe('createDomainEvent', () => {
         const event = createDomainEvent(
             {
                 type: asEventType('admin.ClubOnboarded'),
-                scope: 'platform',
+                scope: PlatformEventScope.of(),
                 aggregateId: asAggregateId('club-1'),
                 payload: {},
             },
             { clock, eventIdGenerator },
         );
 
-        expect(event.scope).toBe('platform');
+        expect(event.scope.kind).toBe('platform');
     });
 
     it('uses exhibitor scope for cross-Club events', () => {
         const event = createDomainEvent(
             {
                 type: asEventType('entries.DogRegistered'),
-                scope: 'exhibitor',
+                scope: ExhibitorEventScope.of(),
                 aggregateId: asAggregateId('dog-1'),
                 payload: {},
             },
             { clock, eventIdGenerator },
         );
 
-        expect(event.scope).toBe('exhibitor');
+        expect(event.scope.kind).toBe('exhibitor');
     });
 });
 

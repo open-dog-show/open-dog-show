@@ -8,6 +8,7 @@ import { asShowId } from '../../../domain/shared/domain-ids.js';
 import { showsTable } from './schema.js';
 import type { Show } from '../../../domain/model/show/show.js';
 import type { ShowRepository } from '../../../domain/model/show/show-repository.js';
+import { ShowPersistenceFailed } from './persistence-errors.js';
 
 export class DrizzleShowRepository implements ShowRepository {
     private readonly drizzle;
@@ -17,18 +18,27 @@ export class DrizzleShowRepository implements ShowRepository {
     }
 
     async findAll(): Promise<ReadonlyArray<Show>> {
-        const rows = await this.drizzle.select().from(showsTable);
-        return rows.map((row) => ({
-            id: asShowId(row.id),
-            clubId: asClubId(row.clubId),
-            name: row.name,
-        }));
+        try {
+            const rows = await this.drizzle.select().from(showsTable);
+            return rows.map((row) => ({
+                id: asShowId(row.id),
+                clubId: asClubId(row.clubId),
+                name: row.name,
+            }));
+        } catch (cause) {
+            // E3: wrap the raw drizzle/pg exception at the boundary.
+            throw new ShowPersistenceFailed('reading shows', cause);
+        }
     }
 
     async save(show: Show): Promise<void> {
-        await this.drizzle
-            .insert(showsTable)
-            .values({ id: show.id, clubId: show.clubId, name: show.name })
-            .onConflictDoUpdate({ target: showsTable.id, set: { name: show.name } });
+        try {
+            await this.drizzle
+                .insert(showsTable)
+                .values({ id: show.id, clubId: show.clubId, name: show.name })
+                .onConflictDoUpdate({ target: showsTable.id, set: { name: show.name } });
+        } catch (cause) {
+            throw new ShowPersistenceFailed('saving a show', cause);
+        }
     }
 }

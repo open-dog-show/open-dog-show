@@ -12,6 +12,8 @@ import {
     asPrincipalId,
     asEventId,
     asEventType,
+    ClubEventScope,
+    ClubTransactionScope,
     createDomainEvent,
     FakeClock,
     FakeEventIdGenerator,
@@ -29,11 +31,7 @@ const USER_ID = '00000000-0000-4000-8000-000000000011';
 const ITEM_ID = '00000000-0000-4000-8000-000000000031';
 const EVENT_ID = '00000000-0000-4000-8000-000000000041';
 
-const scope = {
-    kind: 'club' as const,
-    clubId: asClubId(CLUB_ID),
-    principalId: asPrincipalId(USER_ID),
-};
+const scope = ClubTransactionScope.of(asClubId(CLUB_ID), asPrincipalId(USER_ID));
 const item = {
     id: ITEM_ID,
     clubId: asClubId(CLUB_ID),
@@ -69,7 +67,7 @@ describe('Transactional outbox — {{name}} context', () => {
         return createDomainEvent(
             {
                 type: asEventType('{{eventContext name}}.ItemSaved'),
-                scope: 'club',
+                scope: ClubEventScope.of(),
                 aggregateId: asAggregateId(ITEM_ID),
                 payload: { name: 'test-item' },
                 eventId: asEventId(EVENT_ID),
