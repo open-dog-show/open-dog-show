@@ -3,13 +3,9 @@
 
 export type { UserId, EmailAddress, ExternalSubject } from './domain/shared/domain-ids.js';
 export { asUserId, asEmailAddress, asExternalSubject } from './domain/shared/domain-ids.js';
-export type { User, UserStatus } from './domain/model/user/user.js';
+export type { UserStatus, UserAttributes } from './domain/model/user/user.js';
 export {
-    suspendUser,
-    reactivateUser,
-    createUser,
-    refreshUserProfile,
-    assertCanAuthenticate,
+    User,
     InvalidProviderClaimsError,
     InvalidUserStatusTransitionError,
     UserSuspendedError,
