@@ -6,7 +6,7 @@ import type pg from 'pg';
 import { asClubId } from '../../../../Shared/index.js';
 import { asShowId } from '../../../domain/shared/domain-ids.js';
 import { showsTable } from './schema.js';
-import type { Show } from '../../../domain/model/show/show.js';
+import { Show } from '../../../domain/model/show/show.js';
 import type { ShowRepository } from '../../../domain/model/show/show-repository.js';
 import { ShowPersistenceFailed } from './persistence-errors.js';
 
@@ -20,11 +20,9 @@ export class DrizzleShowRepository implements ShowRepository {
     async findAll(): Promise<ReadonlyArray<Show>> {
         try {
             const rows = await this.drizzle.select().from(showsTable);
-            return rows.map((row) => ({
-                id: asShowId(row.id),
-                clubId: asClubId(row.clubId),
-                name: row.name,
-            }));
+            return rows.map((row) =>
+                Show.rehydrate(asShowId(row.id), asClubId(row.clubId), row.name),
+            );
         } catch (cause) {
             // E3: wrap the raw drizzle/pg exception at the boundary.
             throw new ShowPersistenceFailed('reading shows', cause);
