@@ -2,8 +2,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { DomainEvent } from './domain-event.js';
+import type { EventScope } from './event-scope.js';
 import { asEventScope } from './event-scope.js';
-import { asAggregateId, asEventId, asEventType } from './domain-ids.js';
+import {
+    asAggregateId,
+    asEventId,
+    asEventType,
+    type AggregateId,
+    type EventId,
+    type EventType,
+} from './domain-ids.js';
 
 /** The serialised (JSON-safe) form of a {@link DomainEvent}. */
 export interface DomainEventJson {
@@ -15,6 +23,68 @@ export interface DomainEventJson {
     readonly scope: string;
     readonly aggregateId: string;
     readonly payload: unknown;
+}
+
+/**
+ * The envelope fields after the boundary casts in {@link rehydrateDomainEvent} —
+ * branded ids restored, `occurredAt` normalised to a `Date`, `scope` rebuilt as
+ * an {@link EventScope}. This is the shape a {@link DomainEventRehydrator}
+ * receives so a class-event rehydrator can construct its class directly from
+ * already-validated values instead of re-running the casts.
+ */
+export interface RehydratedDomainEventEnvelope {
+    readonly eventId: EventId;
+    readonly type: EventType;
+    readonly occurredAt: Date;
+    readonly scope: EventScope;
+    readonly aggregateId: AggregateId;
+    /**
+     * Event-type-specific structured data, still `unknown`: the codec cannot
+     * validate a payload shape it knows nothing about. A class-event
+     * rehydrator narrows the payload to its own typed shape at its own
+     * boundary — mirroring how {@link decodeDomainEvent} returns
+     * `DomainEvent<unknown>`.
+     */
+    readonly payload: unknown;
+}
+
+/**
+ * Rehydrates a {@link DomainEvent} from a {@link RehydratedDomainEventEnvelope}
+ * — i.e. constructs the concrete class event (e.g. `EntrySubmitted`) from
+ * already-validated envelope fields. Registered in a
+ * {@link DomainEventRehydrationRegistry} keyed by event-type string so the
+ * outbox codec / polling dispatcher consume class events rather than the
+ * generic `DomainEvent<unknown>` envelope.
+ */
+export type DomainEventRehydrator = (
+    envelope: RehydratedDomainEventEnvelope,
+) => DomainEvent<unknown>;
+
+/**
+ * Event-type → class rehydration registry (ADR-0022 class events).
+ *
+ * Maps an event-type string (e.g. `'sample.EntrySubmitted'`) to the
+ * {@link DomainEventRehydrator} that constructs the concrete class event from
+ * the rehydrated envelope. The registry is populated by a context's composition
+ * root (the kernel cannot import a context's event classes), then passed to the
+ * outbox codec / polling dispatcher so a stored row is rehydrated back into its
+ * class instance instead of the generic `DomainEvent<unknown>` envelope. An
+ * unregistered type falls through to the generic envelope, so the registry is
+ * opt-in per event type — retiring the envelope model for one emitter does not
+ * require converting every emitter at once.
+ */
+export class DomainEventRehydrationRegistry {
+    private readonly rehydrators = new Map<string, DomainEventRehydrator>();
+
+    /** Associate `type` with the rehydrator that builds its class event. */
+    register(type: EventType, rehydrator: DomainEventRehydrator): void {
+        this.rehydrators.set(type, rehydrator);
+    }
+
+    /** Returns the rehydrator for `type`, or `undefined` when none is registered. */
+    rehydratorFor(type: EventType): DomainEventRehydrator | undefined {
+        return this.rehydrators.get(type);
+    }
 }
 
 /**
@@ -120,34 +190,61 @@ function parseStrictIso(value: string): Date {
  * (`PgPollingDispatcher.outboxRowToEvent`) and the JSON codec
  * ({@link decodeDomainEvent}) do not re-implement the `asEventId` /
  * `asEventType` / `asEventScope` / `asAggregateId` casts.
+ *
+ * When a `registry` is supplied and it has a rehydrator for the row's
+ * `type`, that rehydrator constructs the concrete class event (e.g.
+ * `EntrySubmitted`) from the already-validated envelope — so the polling
+ * dispatcher consumes class events. Otherwise the generic
+ * `DomainEvent<unknown>` envelope is returned, keeping the codec usable for
+ * event types that have not yet been migrated to class events.
  */
-export function rehydrateDomainEvent(envelope: {
-    readonly eventId: string;
-    readonly type: string;
-    readonly occurredAt: Date | string;
-    readonly scope: string;
-    readonly aggregateId: string;
-    readonly payload: unknown;
-}): DomainEvent<unknown> {
+export function rehydrateDomainEvent(
+    envelope: {
+        readonly eventId: string;
+        readonly type: string;
+        readonly occurredAt: Date | string;
+        readonly scope: string;
+        readonly aggregateId: string;
+        readonly payload: unknown;
+    },
+    registry?: DomainEventRehydrationRegistry,
+): DomainEvent<unknown> {
     // Restore the timestamp first so a corrupt value is rejected at the
     // boundary. For the string path a strict ISO parse (see parseStrictIso above)
     // rejects both non-ISO garbage (→ Invalid Date) and rollover dates that
     // `new Date` would silently normalise (e.g. `2026-02-30` → March 2); for the
     // `Date` path (pg driver) an explicit NaN check is still required —
     // mirroring the asEventType / asEventScope reject-at-the-boundary contract.
-    const occurredAt =
-        envelope.occurredAt instanceof Date
-            ? envelope.occurredAt
-            : parseStrictIso(envelope.occurredAt);
-    if (Number.isNaN(occurredAt.getTime())) {
-        throw new InvalidDomainEventEnvelopeError('occurredAt', envelope.occurredAt);
+    const occurredAt = normalizeOccurredAt(envelope.occurredAt);
+    const type = asEventType(envelope.type);
+    const scope = asEventScope(envelope.scope);
+    const eventId = asEventId(envelope.eventId);
+    const aggregateId = asAggregateId(envelope.aggregateId);
+
+    const rehydrator = registry?.rehydratorFor(type);
+    if (rehydrator !== undefined) {
+        return rehydrator({
+            eventId,
+            type,
+            occurredAt,
+            scope,
+            aggregateId,
+            payload: envelope.payload,
+        });
     }
-    return {
-        eventId: asEventId(envelope.eventId),
-        type: asEventType(envelope.type),
-        occurredAt,
-        scope: asEventScope(envelope.scope),
-        aggregateId: asAggregateId(envelope.aggregateId),
-        payload: envelope.payload,
-    };
+    return { eventId, type, occurredAt, scope, aggregateId, payload: envelope.payload };
+}
+
+/**
+ * Normalises `occurredAt` to a `Date`, rejecting corrupt values at the boundary:
+ * a `Date` from the `pg` driver may be an Invalid Date (`getTime()` `NaN`),
+ * while a string is parsed strictly (see {@link parseStrictIso}) so non-ISO
+ * input and rollover dates never propagate as a subtly-wrong typed event.
+ */
+function normalizeOccurredAt(value: Date | string): Date {
+    const occurredAt = value instanceof Date ? value : parseStrictIso(value);
+    if (Number.isNaN(occurredAt.getTime())) {
+        throw new InvalidDomainEventEnvelopeError('occurredAt', value);
+    }
+    return occurredAt;
 }

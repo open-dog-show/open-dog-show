@@ -6,7 +6,7 @@ import type pg from 'pg';
 import { asClubId, asPrincipalId } from '../../../../Shared/index.js';
 import { asEntryId, asShowId } from '../../../domain/shared/domain-ids.js';
 import { entriesTable } from './schema.js';
-import type { Entry } from '../../../domain/model/entry/entry.js';
+import { Entry } from '../../../domain/model/entry/entry.js';
 import type { EntryRepository } from '../../../domain/model/entry/entry-repository.js';
 import { EntryPersistenceFailed } from './persistence-errors.js';
 
@@ -20,13 +20,15 @@ export class DrizzleEntryRepository implements EntryRepository {
     async findAll(): Promise<ReadonlyArray<Entry>> {
         try {
             const rows = await this.drizzle.select().from(entriesTable);
-            return rows.map((row) => ({
-                id: asEntryId(row.id),
-                clubId: asClubId(row.clubId),
-                principalId: asPrincipalId(row.principalId),
-                showId: asShowId(row.showId),
-                dogName: row.dogName,
-            }));
+            return rows.map((row) =>
+                Entry.rehydrate({
+                    id: asEntryId(row.id),
+                    clubId: asClubId(row.clubId),
+                    principalId: asPrincipalId(row.principalId),
+                    showId: asShowId(row.showId),
+                    dogName: row.dogName,
+                }),
+            );
         } catch (cause) {
             // E3: wrap the raw drizzle/pg exception at the boundary.
             throw new EntryPersistenceFailed('reading entries', cause);

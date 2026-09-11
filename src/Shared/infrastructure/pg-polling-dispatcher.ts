@@ -3,7 +3,10 @@
 
 import type pg from 'pg';
 import type { DomainEvent } from '../domain/domain-event.js';
-import { rehydrateDomainEvent } from '../domain/domain-event-codec.js';
+import {
+    rehydrateDomainEvent,
+    type DomainEventRehydrationRegistry,
+} from '../domain/domain-event-codec.js';
 import { quoteSchemaIdent } from './schema-ident.js';
 import { runInClientTransaction } from './with-transaction.js';
 
@@ -59,6 +62,7 @@ export class PgPollingDispatcher {
     private readonly quotedSchema: string;
     private readonly maxAttempts: number;
     private readonly handlerTimeoutMs: number;
+    private readonly registry: DomainEventRehydrationRegistry | undefined;
 
     constructor(
         private readonly pool: pg.Pool,
@@ -67,11 +71,20 @@ export class PgPollingDispatcher {
         options?: {
             readonly maxAttempts?: number;
             readonly handlerTimeoutMs?: number;
+            /**
+             * Event-type → class rehydration registry. When supplied, a row
+             * whose `type` is registered is rehydrated into its concrete class
+             * event (e.g. `EntrySubmitted`) instead of the generic
+             * `DomainEvent<unknown>` envelope, so handlers can discriminate by
+             * `instanceof`. Unregistered types fall through to the envelope.
+             */
+            readonly registry?: DomainEventRehydrationRegistry;
         },
     ) {
         this.quotedSchema = quoteSchemaIdent(schema);
         this.maxAttempts = options?.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
         this.handlerTimeoutMs = options?.handlerTimeoutMs ?? DEFAULT_HANDLER_TIMEOUT_MS;
+        this.registry = options?.registry;
     }
 
     /**
@@ -134,7 +147,7 @@ export class PgPollingDispatcher {
                     if (row === undefined) return false; // no eligible row available to this worker
                     seq = row.seq;
 
-                    const event = outboxRowToEvent(row);
+                    const event = this.rowToEvent(row);
                     // Abort the handler on timeout so it can cancel in-flight I/O.
                     // The row lock is held until the handler settles — the signal
                     // is the only cancellation path (see `handlerTimeoutMs`).
@@ -191,6 +204,29 @@ export class PgPollingDispatcher {
             client.release();
         }
     }
+
+    /**
+     * Maps a raw outbox row to a {@link DomainEvent} by delegating the boundary
+     * casts (and the `occurredAt` `Date` pass-through) to the shared
+     * {@link rehydrateDomainEvent} helper, so the row mapper and the JSON codec
+     * share one rehydration path. When a registry was supplied to the constructor
+     * and the row's `type` is registered, the row is rehydrated into its concrete
+     * class event; otherwise the generic `DomainEvent<unknown>` envelope is
+     * returned.
+     */
+    private rowToEvent(row: OutboxRowRaw): DomainEvent<unknown> {
+        return rehydrateDomainEvent(
+            {
+                eventId: row.event_id,
+                type: row.type,
+                occurredAt: row.occurred_at,
+                scope: row.scope,
+                aggregateId: row.aggregate_id,
+                payload: row.payload,
+            },
+            this.registry,
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -205,21 +241,4 @@ interface OutboxRowRaw {
     scope: string; // raw text — validated to EventScope by asEventScope
     aggregate_id: string;
     payload: unknown; // pg driver parses JSONB into a JS object
-}
-
-/**
- * Maps a raw outbox row to a {@link DomainEvent} by delegating the boundary
- * casts (and the `occurredAt` `Date` pass-through) to the shared
- * {@link rehydrateDomainEvent} helper, so the row mapper and the JSON codec
- * share one rehydration path.
- */
-function outboxRowToEvent(row: OutboxRowRaw): DomainEvent<unknown> {
-    return rehydrateDomainEvent({
-        eventId: row.event_id,
-        type: row.type,
-        occurredAt: row.occurred_at,
-        scope: row.scope,
-        aggregateId: row.aggregate_id,
-        payload: row.payload,
-    });
 }
