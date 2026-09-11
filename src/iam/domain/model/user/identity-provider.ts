@@ -15,9 +15,12 @@ import type { UserProfileFacts } from './user.js';
  * un-normalized. Canonicalization (trim+lowercase of `email`, trim of
  * `displayName`, blank-`sub`/`email` rejection, the refresh keep-existing
  * guard) is an invariant of the {@link User} aggregate, enforced in
- * `createUser` / `refreshUserProfile` (ADR-0015) — so a `User` produced by
- * those operations is canonical. Other construction paths (repository
- * rehydration, test fixtures) must preserve the invariant themselves. The
+ * `User.create` / `User.prototype.refreshProfile` (ADR-0015) — so a `User`
+ * produced by those operations is canonical. `User.rehydrate` (the
+ * repository-load path) does not re-run trim/lowercase canonicalization — it
+ * trusts a stored row's values are already in canonical form — but it does
+ * still reject a blank `sub`/`email`, the one part of the invariant `User`'s
+ * constructor enforces on every construction path. The
  * ACL adapter and {@link authenticate} consume these raw claims and hand
  * them to the aggregate; the domain layer never reaches past the
  * {@link IdentityProvider} port to a concrete provider (ADR-0011).

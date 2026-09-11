@@ -7,8 +7,7 @@ import {
     asEmailAddress,
     asExternalSubject,
 } from '../../../../src/iam/domain/shared/domain-ids.js';
-import type { User } from '../../../../src/iam/domain/model/user/user.js';
-import { InvalidProviderClaimsError } from '../../../../src/iam/domain/model/user/user.js';
+import { User, InvalidProviderClaimsError } from '../../../../src/iam/domain/model/user/user.js';
 import type { UserRepository } from '../../../../src/iam/domain/model/user/user-repository.js';
 import {
     authenticate,
@@ -103,7 +102,7 @@ describe('authenticate', () => {
                 // Admin suspends the account between the read and the write.
                 const stored = await base.findById(user.id);
                 if (stored) {
-                    await base.save({ ...stored, status: 'Suspended' });
+                    await base.save(stored.suspend());
                 }
                 await base.saveProfileFacts(user);
             },
@@ -149,13 +148,13 @@ describe('authenticate', () => {
             ]),
         );
         // Pre-seed a Suspended account for the same `sub`.
-        const suspendedBob: User = {
+        const suspendedBob = User.rehydrate({
             id: asUserId('user-bob'),
             displayName: 'Bob',
             email: asEmailAddress('bob@example.com'),
             status: 'Suspended',
             externalSubject: asExternalSubject('sub|bob'),
-        };
+        });
         await d.users.save(suspendedBob);
 
         const result = await authenticate(d, BOB_TOKEN);
@@ -192,13 +191,13 @@ describe('authenticate', () => {
     });
 
     it('returns a UserSuspendedError failure when createIfAbsent returns a concurrently-suspended winner', async () => {
-        const suspendedWinner: User = {
+        const suspendedWinner = User.rehydrate({
             id: asUserId('user-bob'),
             displayName: 'Bob',
             email: asEmailAddress('bob@example.com'),
             status: 'Suspended',
             externalSubject: asExternalSubject('sub|bob'),
-        };
+        });
         // Simulate the race: our lookup missed the account, but createIfAbsent
         // hands back a concurrently-created-and-suspended winner.
         const racedUsers: UserRepository = {

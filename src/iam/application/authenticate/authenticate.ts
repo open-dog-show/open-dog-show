@@ -2,10 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import {
-    type User,
-    createUser,
-    refreshUserProfile,
-    assertCanAuthenticate,
+    User,
     UserSuspendedError,
     InvalidProviderClaimsError,
 } from '../../domain/model/user/user.js';
@@ -59,9 +56,9 @@ export type AuthenticateResult = Result<User, AuthenticateError>;
  *   suspension between the read and the write is never clobbered.
  * - **Suspended user**: returns `{ ok: false, error: UserSuspendedError }`
  *   before any other processing — the suspended account is left untouched. The
- *   check is the aggregate-owned {@link assertCanAuthenticate}, used in both the
+ *   check is the aggregate-owned {@link User.prototype.assertCanAuthenticate}, used in both the
  *   first-login and returning-login paths so the rule lives in one place.
- * - **Invalid provider claims**: on first login, `createUser` rejects a blank
+ * - **Invalid provider claims**: on first login, `User.create` rejects a blank
  *   `sub` or `email`; this is returned as
  *   `{ ok: false, error: InvalidProviderClaimsError }`, so no account is
  *   created.
@@ -89,7 +86,7 @@ export async function authenticate(
         // for the same `sub` cannot mint two platform accounts.
         let candidate: User;
         try {
-            candidate = createUser(deps.userIdGenerator.generate(), claims.sub, claims);
+            candidate = User.create(deps.userIdGenerator.generate(), claims.sub, claims);
         } catch (error) {
             // E1: an expected domain failure (invalid provider claims) becomes a
             // Result failure; anything unexpected propagates.
@@ -101,7 +98,7 @@ export async function authenticate(
         // then suspended it between our lookup and createIfAbsent; re-check the
         // returned user before authenticating, mirroring the existing-user path.
         try {
-            assertCanAuthenticate(persisted);
+            persisted.assertCanAuthenticate();
         } catch (error) {
             if (error instanceof UserSuspendedError) return { ok: false, error };
             throw error;
@@ -112,15 +109,15 @@ export async function authenticate(
     // Known account: a Suspended user cannot authenticate — reject before any
     // profile refresh or save so the suspended record is left untouched.
     try {
-        assertCanAuthenticate(existing);
+        existing.assertCanAuthenticate();
     } catch (error) {
         if (error instanceof UserSuspendedError) return { ok: false, error };
         throw error;
     }
 
     // Known Active account: refresh the profile facts from the latest claims.
-    // refreshUserProfile preserves the stable id, external subject, and status.
-    const refreshed = refreshUserProfile(existing, claims);
+    // refreshProfile preserves the stable id, external subject, and status.
+    const refreshed = existing.refreshProfile(claims);
     // Persist only the profile columns, not the whole aggregate. If an admin
     // suspends this account between the read above and the write, a full
     // `save` would clobber `status` back to `Active` (a lost update);

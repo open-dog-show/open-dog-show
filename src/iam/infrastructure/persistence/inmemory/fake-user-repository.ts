@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { UserId } from '../../../domain/shared/domain-ids.js';
-import type { User } from '../../../domain/model/user/user.js';
+import { User } from '../../../domain/model/user/user.js';
 import type { UserRepository } from '../../../domain/model/user/user-repository.js';
 
 export class FakeUserRepository implements UserRepository {
@@ -37,11 +37,16 @@ export class FakeUserRepository implements UserRepository {
             // absent rather than rebuilding an aggregate from profile facts alone.
             return;
         }
-        this.store.set(user.id, {
-            ...stored,
-            displayName: user.displayName,
-            email: user.email,
-        });
+        this.store.set(
+            user.id,
+            User.rehydrate({
+                id: stored.id,
+                displayName: user.displayName,
+                email: user.email,
+                status: stored.status,
+                externalSubject: stored.externalSubject,
+            }),
+        );
     }
 
     async createIfAbsent(user: User): Promise<User> {

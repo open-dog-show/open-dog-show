@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { DomainError } from '../../../src/Shared/domain/domain-error.js';
-import { UserSuspendedError } from '../../../src/iam/domain/model/user/user.js';
+import { User, UserSuspendedError } from '../../../src/iam/domain/model/user/user.js';
 import {
     DuplicateRoleGrantError,
     RoleGrant,
@@ -17,13 +17,15 @@ import {
 
 describe('DomainError base', () => {
     // A representative domain error from each context that migrated to the base.
-    const suspended = new UserSuspendedError({
-        id: asUserId('user-1'),
-        displayName: 'A',
-        email: asEmailAddress('a@x.com'),
-        status: 'Suspended',
-        externalSubject: asExternalSubject('sub|1'),
-    });
+    const suspended = new UserSuspendedError(
+        User.rehydrate({
+            id: asUserId('user-1'),
+            displayName: 'A',
+            email: asEmailAddress('a@x.com'),
+            status: 'Suspended',
+            externalSubject: asExternalSubject('sub|1'),
+        }),
+    );
     const duplicateGrant = new DuplicateRoleGrantError(
         RoleGrant.platformAdministrator(asUserId('user-1')),
     );
