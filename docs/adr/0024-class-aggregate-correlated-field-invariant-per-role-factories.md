@@ -14,6 +14,25 @@ status: accepted
 > [implementation-patterns/typescript.md](../../.github/skills/implementation-patterns/typescript.md)
 > ("Correlated-field invariant" under the Aggregate root section).
 
+> **Amended 2026-09-11 (#184):** two changes.
+>
+> - **Role Grants get a collection root.** A `UserRoleGrants` aggregate root, one per User, identified by `UserId`
+>   and versioned, owns the "no duplicate role + scope" invariant.
+>     - Instance methods `grantShowSecretary(clubId)`, `grantJudge()`, `grantPlatformAdministrator()` and
+>       `revoke(role, scope)` record `RoleGranted`/`RoleRevoked`.
+>     - The repository is `findByUser` / `add` / `update`, with a version check.
+>     - `RoleGrant` becomes a value object inside the root (role + `RoleScope`, **no `userId`**).
+>     - The per-role factories and pairing guard stand **without `userId`**: `RoleGrant.showSecretary(clubId)`,
+>       `RoleGrant.judge()`, `RoleGrant.platformAdministrator()`, `RoleGrant.rehydrate(role, scope)`. These
+>       supersede the `userId`-taking signatures under Decision below. The root carries the owner:
+>       `UserRoleGrants.rehydrate(userId, version, grants)`.
+>     - Retired from the Consequences below: the static collection methods (`grant`/`revoke`/`has`/`assertOwnedBy`),
+>       `saveAll`, `RoleGrantOwnerMismatchError`, and `RoleGrant` instances inside error objects (errors carry
+>       primitives only).
+>     - Motivating defect: two concurrent "replace all grants" writes silently undid a revoke.
+> - **`EventScope` carries owner ids again** and is a variant value object. See
+>   [ADR-0027](0027-roots-record-events-unit-of-work-stamps-envelope.md) and the matching amendment of ADR-0023.
+
 ## Context
 
 ADR-0012 modelled `RoleGrant` as a discriminated union so the role↔scope pairing

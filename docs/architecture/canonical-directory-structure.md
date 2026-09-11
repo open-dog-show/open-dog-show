@@ -26,7 +26,7 @@ Both layouts obey the same normative rules below.
     - The two inner layers import **no** external packages; each outer layer imports only the external packages its edge needs (the web framework in `interfaces`, the database driver in `infrastructure`).
 3. **Ports live inward, adapters outward.** A repository or other port is an _interface_ in `domain/` (or `application/ports/`); its implementation lives in `infrastructure/`.
 4. **Domain objects never cross outward.** Delivery code drives a use case; it never orchestrates aggregates directly. What crosses a layer boundary is a simple data structure — a Command in, a Response DTO out — never an entity, an aggregate, or a database row.
-5. **No cross-context imports.** In a context-first repo, a context imports only itself and `Shared/`. Contexts communicate at the edge — published events or an anticorruption adapter in `infrastructure/external/` — never by reaching into another context's `domain/`.
+5. **No cross-context imports, except published barrels along the context map (ADR-0028).** A context imports only itself, `Shared/`, and, where ADR-0028 allows, another context's `index.ts`: any layer may import Rulesets, and only `infrastructure/` may import Identity & Access. Deep imports into another context are never allowed. Otherwise contexts communicate through published events or an anticorruption adapter in `infrastructure/external/`.
 6. **Tests mirror `src/`** under a root `tests/` folder.
 
 Rules 2 and 5 are mechanically enforced by `eslint-plugin-boundaries` on the

@@ -14,6 +14,8 @@ status: accepted
 > (ADR-0019), the `eslint-plugin-boundaries` enforcement — is unchanged. Only the
 > _package wrapper_ around each context is removed.
 
+> **Amended 2026-09-11 by [ADR-0028](0028-cross-context-imports-via-index-along-context-map.md) (#184):** "contexts never import each other" now has two explicit exceptions, both through a published `index.ts` along the context map: any layer may import Rulesets, and only `infrastructure/` may import Identity & Access.
+
 ## Context
 
 ADR-0006 chose a two-axis structure: bounded contexts as the **vertical axis

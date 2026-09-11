@@ -96,7 +96,7 @@ apps/                    optional runnable entry points (composition root)
 - Dependencies point inward: `interfaces`/`infrastructure` → `application` → `domain`.
   `interfaces` imports `application`+`domain` (never `infrastructure`);
   `infrastructure` imports `application`+`domain` (never `interfaces`).
-- Contexts never import each other; `apps/` (or `src/api/`) composes them.
+- Contexts import each other only through a published `index.ts` along the context map (ADR-0028); `apps/` composes them.
 - Ports live inward (interfaces in `domain/` or `application/ports/`); adapters
   outward in `infrastructure/`. `Clock`/`EventIdGenerator` are domain ports
   (used by domain event creation) — they live in `src/Shared/domain/`.

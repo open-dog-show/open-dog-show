@@ -18,8 +18,12 @@ _Avoid_: Rulebook, Policy (too generic), Regulation
 One discrete, named slice of kennel-club rules (e.g. the FCI base layer, the SRSH national layer) that contributes to a composed Effective Ruleset. Layers are ordered: the last layer wins when two layers define the same Class — the override is wholesale (the entire Class Definition is replaced, no field-by-field merging). A Show that runs under a national member's rules always has at least two layers: the FCI base and the NCO's national override.
 _Avoid_: Ruleset Version, Ruleset Override, Layer (unqualified)
 
+**Ruleset Layer Edition**:
+The complete content of one Ruleset Layer as in force from a stated effective date (e.g. the SRSH layer effective 1 October 2025). A rule change never edits an edition; it publishes a new edition of the same layer.
+_Avoid_: Ruleset Version, Layer Version, Revision
+
 **Effective Ruleset**:
-The resolved, versioned snapshot of composed Ruleset Layers that a Show is judged under, stamped with the calendar date on which the layers were composed and which layers were the source. Pinned onto the Show at setup so results are immune to later Ruleset edits. The domain core operates only on the Effective Ruleset.
+The immutable snapshot a Show is judged under: for each of its Ruleset Layers, the latest Ruleset Layer Edition in force on the Show's date, composed into one set of rules and recording which editions were the source. Pinned onto the Show at setup, and re-pinnable only until entries open, so results are immune to later Ruleset edits. The domain core operates only on the Effective Ruleset.
 _Avoid_: Resolved Ruleset (acceptable synonym), Merged Ruleset
 
 **Show Type**:
@@ -42,13 +46,21 @@ _Avoid_: Category, Division
 The ruleset-owned data record for a single Class — its age window (expressed in whole calendar months; FCI phrasing: 'from X months' / 'less than Y months'), the set of required entry certificates (e.g. champion-certificate for Champion Class, working-certificate for Working Class), whether the Bred-by-Exhibitor handler condition applies (handler must be any breeder or co-breeder of the dog), the Grade Scale used, and the Award Types the class feeds. When a national Ruleset layer overrides a class, the entire Class Definition is replaced as a unit. Age is evaluated on the show day; a dog that reaches a month boundary on show day moves to the higher class (FCI 2026; KMSH ART.23). Note: the FCI Bred-by-Exhibitor class becomes mandatory from 2027; the Belgian SRSH layer adds a similar national "Fokkersklas" (Breeder Class) for breed-specific shows under its own Class Definition.
 _Avoid_: Class configuration, Class parameters
 
-**Dog Eligibility Profile**:
-The dog-side snapshot — date of birth and held certificates — that the Entries & Registration context assembles and passes to the Rulesets context when asking whether a Dog may enter a specific Class. Contains exactly the facts the Rulesets context needs for eligibility evaluation; the full Dog entity stays within Entries & Registration.
-_Avoid_: Dog snapshot, Eligibility data
+**Entry Eligibility Profile**:
+The snapshot of one prospective Entry that the Entries & Registration context assembles and passes to the Rulesets context when asking whether a Dog may enter a specific Class: the Dog's date of birth and held certificates, and whether its Handler is a breeder or co-breeder of the Dog. Contains exactly the facts the Rulesets context needs for eligibility evaluation; the full Dog entity stays within Entries & Registration.
+_Avoid_: Dog Eligibility Profile (too narrow — the handler fact is not a Dog fact), Dog snapshot, Eligibility data
+
+**Class Eligibility Policy**:
+The ruleset-owned rules that answer whether a Dog may enter a given Class at a Show, by evaluating an Entry Eligibility Profile against that Class's Class Definition on the Show's date. Part of the Rulesets' Published Language.
+_Avoid_: Class Rules, Entry Validation
 
 **Award Type**:
-The ruleset-owned definition of a single honour that can be proposed in a judging unit. **Individual award types** (scopes: per-sex, breed, group, show) carry a required minimum grade and optional minimum placement (e.g. Excellent-1st for CACIB). **Collective award types** (scope: collective — Best Brace, Best Breeders' Group, Best Progeny Group) carry no grade or placement requirement; their structural validity is governed by the **Collective Award Policy**. Award Types are published as part of the Effective Ruleset.
+The ruleset-owned definition of a single honour that can be proposed in a judging unit. **Individual award types** (scopes: per-sex, breed, group, show) carry a required minimum grade and optional worst eligible Placement (e.g. Excellent-1st for CACIB). **Collective award types** (scope: collective — Best Brace, Best Breeders' Group, Best Progeny Group) carry no grade or placement requirement; their structural validity is governed by the **Collective Award Policy**. Award Types are published as part of the Effective Ruleset.
 _Avoid_: Award category
+
+**Discretionary Award**:
+An Award Type the Judge may withhold even when a qualifying Dog is present. A non-discretionary Award Type must be proposed whenever a qualifying Dog is present.
+_Avoid_: Optional Award
 
 **Award Scope Level**:
 One of four levels at which individual-dog Awards are decided in FCI competition, in ascending order: **per-sex** (within one sex of a breed, across all its eligible classes), **breed** (BOB / BOS, from per-sex title-winners of both sexes), **group** (BIG, from the BOB winners of all breeds in the group), **show** (BIS, from the BIG winners). Each Award Type belongs to exactly one scope level. The Award Policy gates which types may be proposed at each level. Collective competition awards (Best Brace/Couple, Best Breeders' Group, Best Progeny Group) exist outside this four-level hierarchy — they are governed by the **Collective Award Policy** and use a distinct **collective** scope.
@@ -67,7 +79,7 @@ A feeder-keyed stream of candidate Dogs for a higher-scope Award (ADR-0017), car
 _Avoid_: Candidate Bag, Candidate List
 
 **Collective Award Policy**:
-The ruleset-owned rules that validate whether a Collective Competition is structurally valid — e.g. Brace/Couple has exactly one Dog and one Bitch; Breeders' Group and Progeny Group have 3–5 participants. Evaluates one group in isolation and, when valid, returns the winning group (all participating entry refs — a Collective Competition has no internal ranking). Distinct from Award Policy, which governs individual class/scope judging. Part of the Rulesets' Published Language.
+The ruleset-owned rules that validate whether a Collective Competition is structurally valid — e.g. Brace/Couple has exactly one Dog and one Bitch; Breeders' Group and Progeny Group have 3–5 participants. Evaluates one Team in isolation and, when valid, returns it as the winning Team (all its participating Entries — a Collective Competition has no internal ranking). Distinct from Award Policy, which governs individual class/scope judging. Part of the Rulesets' Published Language.
 _Avoid_: Group Award Policy, Collective Award Rules
 
 **Breed**:
@@ -248,7 +260,7 @@ The operator of the platform instance. Onboards Clubs, curates the Ruleset Catal
 _Avoid_: Superuser, Root, Sysadmin
 
 **Ruleset Catalog**:
-The curated set of Rulesets and versions installed on the platform and made available for Shows to adopt. Maintained by the Platform Administrator; drawn on by Rulesets when resolving a Show's Effective Ruleset.
+The curated set of Rulesets and their Ruleset Layer Editions installed on the platform and made available for Shows to adopt. Maintained by the Platform Administrator; drawn on by Rulesets when resolving a Show's Effective Ruleset.
 _Avoid_: Ruleset Registry, Ruleset Store
 
 ## Membership

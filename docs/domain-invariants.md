@@ -6,7 +6,7 @@ The rules that must always hold, per bounded context. Grounded in the FCI Regula
 
 ## Show Organisation
 
-- A Show has exactly one **Effective Ruleset**, pinned (versioned) at setup.
+- A Show has exactly one **Effective Ruleset**: an immutable snapshot resolved from the **Ruleset Layer Editions** in force on the Show's date, pinned at setup, and re-pinnable **only until entries open**.
 - A Show belongs to exactly one **Club**; its classes and rings are defined before entries open.
 
 ## Entries & Registration
@@ -40,6 +40,6 @@ The rules that must always hold, per bounded context. Grounded in the FCI Regula
 
 ## Cross-cutting
 
-- **Each Show pins a versioned Effective Ruleset**; all grade/award/eligibility evaluation uses it, and results are **immune to later ruleset edits**.
+- **Each Show pins an immutable Effective Ruleset**; all grade/award/eligibility evaluation uses it, and results are **immune to later ruleset edits** (a rule change publishes a new Ruleset Layer Edition; it never alters an existing one).
 - Contexts integrate via **domain events + reference-by-ID** — no shared mutable entities; a context holds only foreign ids.
 - All Class/Grade/Award vocabulary and the set of Title types come from the **Effective Ruleset** (consumers are Conformist).

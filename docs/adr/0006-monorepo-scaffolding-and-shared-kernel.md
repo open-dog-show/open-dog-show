@@ -42,6 +42,19 @@ status: accepted
 > `EventScope` literal `'tenant'` is now `'club'`. The `exhibitor` and `platform`
 > scopes are unchanged. Prior amendment notes are left intact as historical record.
 
+> **Amended 2026-09-11 (#184):** four changes.
+>
+> - **Outbox owner columns.** The outbox's `club_id`/`user_id` columns are populated from the domain event's own
+>   `EventScope`, which again carries owner ids. They are no longer filled from the acting `TransactionScope`. The
+>   unit of work stamps `eventId`/`occurredAt`, and roots record events. See
+>   [ADR-0027](0027-roots-record-events-unit-of-work-stamps-envelope.md).
+> - **Kernel ids.** `ShowId`/`DogId` are removed from the kernel (the ADR-0013 precedent): each owning context
+>   defines its own id.
+> - **Context generator.** The generator is split into `new:context` + `new:aggregate --scope`, and the checked-in
+>   sample is its regenerated output. See [ADR-0025](0025-reference-sample-context-is-generator-output.md).
+> - **Cross-context imports.** They are allowed only through a context's `index.ts`, along the context map's arrows.
+>   See [ADR-0028](0028-cross-context-imports-via-index-along-context-map.md).
+
 ## Context
 
 ADR-0004 fixed the stack (pnpm monorepo, modular monolith, transactional outbox, single Postgres with schema-per-context, Drizzle behind repository ports) but left the concrete scaffolding open: how packages are arranged and how clean architecture lives inside them, what the shared-kernel primitives look like, and how the outbox, migrations, and "add a context with one command" actually work. This ADR records those so a future reader understands the shape before touching code.
