@@ -19,6 +19,14 @@ status: accepted
 > (`.github/skills/placement/STRUCTURE.md`). Read ADR-0021 for the
 > current shape.
 
+> **Amended 2026-09-11 (#184):** the `layers/` catalog data this ADR placed
+> (`@ods/rulesets/layers`, later `domain/model/effective-ruleset/layers/`) moves out
+> of the domain. Authored Ruleset Layer Editions live in an infrastructure adapter
+> behind a `RulesetLayerEditionRepository` port. FCI policies stay in
+> `domain/service/fci/`. See the 2026-09-11 amendment of
+> [ADR-0001](0001-kennel-club-rulesets-as-data-first-policies.md) and
+> [ADR-0029](0029-effective-ruleset-aggregate-resolved-from-layer-editions.md).
+
 The repo's per-context layout adopts a clean-DDD package structure so the tactical
 building blocks (value objects, entities/aggregates, domain services, ports,
 repositories, events, specifications) are discoverable from the directory, not

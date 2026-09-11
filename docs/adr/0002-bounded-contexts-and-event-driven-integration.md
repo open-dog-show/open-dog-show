@@ -6,6 +6,8 @@ status: accepted
 
 > **Amended 2026-07-29:** The **Titles** context was removed — a Title is owner-asserted data on the Dog (Entries & Registration), not a computed/confirmed context. Nine contexts remain.
 
+> **Amended 2026-09-11 by [ADR-0028](0028-cross-context-imports-via-index-along-context-map.md) (#184):** "events + reference-by-ID" gains two explicit in-process import edges that make the relationships below compile. Any layer of any context may import the **Rulesets** barrel (Published Language / Conformist). Only a context's `infrastructure/` may import the **Identity & Access** barrel (its ACL adapters). Every other context pair integrates through events and ids only, and a barrel exports only its published contract.
+
 ## Context
 
 The domain (see [`CONTEXT-MAP.md`](../../CONTEXT-MAP.md)) spans rule interpretation, entries, judging, titling, publishing, payments, and accounts — areas with different lifecycles, consistency boundaries, and rates of change. We need explicit boundaries so the differentiated core stays clean and the generic parts stay swappable, consistent with DDD + clean architecture.

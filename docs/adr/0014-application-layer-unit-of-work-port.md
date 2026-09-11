@@ -22,6 +22,18 @@ status: accepted
 > factory) are superseded by the harness's class-per-event-type domain-event shape — see
 > [implementation-patterns/typescript.md](../../.github/skills/implementation-patterns/typescript.md).
 > The `UnitOfWork` _port_ decision itself is architecture (ADR-led) and stands.
+>
+> **Amended 2026-09-11 (#184):** the port stands, but the examples below are further superseded.
+>
+> - **Aggregate construction.** Aggregates take typed owner ids rather than a `TransactionScope`. Use cases narrow
+>   the scope with kernel helpers that throw `ScopeMismatchError`, and use `XxxHandler`/`XxxCommand`/`XxxResponse`
+>   naming. Repositories are `findById`/`add`/`update`, with no upsert. See
+>   [ADR-0026](0026-aggregates-take-typed-owner-ids-not-transaction-scope.md).
+> - **Events.** Roots record events; the unit of work stamps and writes them. `appendEvents` and the use-case
+>   `Clock`/`EventIdGenerator` dependencies are removed. See
+>   [ADR-0027](0027-roots-record-events-unit-of-work-stamps-envelope.md).
+> - **The plop template.** It is split into two generators whose output is the checked-in sample. See
+>   [ADR-0025](0025-reference-sample-context-is-generator-output.md).
 
 ## Context
 

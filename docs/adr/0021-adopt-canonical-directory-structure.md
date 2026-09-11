@@ -13,6 +13,20 @@ status: accepted
 > use-case file); refines ADR-0004 (composition root → per-context `interfaces/` + `apps/`).
 > The domain model, events, outbox, RLS, and Drizzle-behind-ports decisions are unchanged.
 
+> **Amended 2026-09-11 (#184):** five clarifications.
+>
+> - **Branded id definitions** (`domain-ids.ts`) live in `domain/shared/` in every context.
+> - **Policy input value objects** live beside their policy port in `domain/service/<policy>/`, not in an
+>   aggregate's `value-objects/`.
+> - **Event rehydration registries** live in `infrastructure/messaging/`. `infrastructure/di/` holds only the
+>   `create<Ctx>Context` wiring factory.
+> - **Authored ruleset data** lives in `infrastructure/persistence/bundled/`. See
+>   [ADR-0025](0025-reference-sample-context-is-generator-output.md) and
+>   [ADR-0029](0029-effective-ruleset-aggregate-resolved-from-layer-editions.md).
+> - **"No cross-context imports"** below now has two exceptions, both through a published `index.ts` along the
+>   context map: any layer may import Rulesets, and only `infrastructure/` may import Identity & Access. See
+>   [ADR-0028](0028-cross-context-imports-via-index-along-context-map.md).
+
 ## Decision
 
 Full adoption of the context-first, four-layer layout from the canonical
