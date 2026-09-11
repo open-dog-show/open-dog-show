@@ -12,12 +12,19 @@ import {
     asShowTypeId,
 } from '../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
 import { asAgeMonths } from '../../../../src/rulesets/domain/model/effective-ruleset/value-objects/age-months.js';
-import type { RulesetLayer } from '../../../../src/rulesets/domain/model/effective-ruleset/entities/ruleset-layer.js';
+import {
+    RulesetLayer,
+    type RulesetLayerAttributes,
+} from '../../../../src/rulesets/domain/model/effective-ruleset/entities/ruleset-layer.js';
 import { LocalDate } from '../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
-import type { ClassDefinition } from '../../../../src/rulesets/domain/model/effective-ruleset/entities/class-definition.js';
-import type { GradeScale } from '../../../../src/rulesets/domain/model/effective-ruleset/entities/grade-scale.js';
-import type { AwardType } from '../../../../src/rulesets/domain/model/effective-ruleset/entities/award-type.js';
-import type { ShowType } from '../../../../src/rulesets/domain/model/effective-ruleset/entities/show-type.js';
+import { ClassDefinition } from '../../../../src/rulesets/domain/model/effective-ruleset/entities/class-definition.js';
+import { GradeScale } from '../../../../src/rulesets/domain/model/effective-ruleset/entities/grade-scale.js';
+import {
+    HigherScopeAwardType,
+    AwardFeeder,
+    type AwardType,
+} from '../../../../src/rulesets/domain/model/effective-ruleset/entities/award-type.js';
+import { ShowType } from '../../../../src/rulesets/domain/model/effective-ruleset/entities/show-type.js';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -27,9 +34,9 @@ const TEST_DATE: LocalDate = LocalDate.of(2026, 8, 4);
 
 function makeLayer(
     id: string,
-    overrides: Partial<Omit<RulesetLayer, 'id' | 'parentLayerId'>> = {},
+    overrides: Partial<Omit<RulesetLayerAttributes, 'id' | 'parentLayerId'>> = {},
 ): RulesetLayer {
-    return {
+    return RulesetLayer.of({
         id: asRulesetLayerId(id),
         parentLayerId: undefined,
         classDefinitions: [],
@@ -37,11 +44,11 @@ function makeLayer(
         awardTypes: [],
         showTypes: [],
         ...overrides,
-    };
+    });
 }
 
 function makeClass(id: string, fromAgeMonths?: number): ClassDefinition {
-    return {
+    return ClassDefinition.of({
         id: asClassId(id),
         fromAgeMonths: fromAgeMonths === undefined ? undefined : asAgeMonths(fromAgeMonths),
         lessThanAgeMonths: undefined,
@@ -49,35 +56,34 @@ function makeClass(id: string, fromAgeMonths?: number): ClassDefinition {
         bredByExhibitor: false,
         gradeScaleId: asGradeScaleId('gs-standard'),
         awardTypeIds: [],
-    };
+    });
 }
 
 function makeGradeScale(id: string): GradeScale {
-    return {
+    return GradeScale.of({
         id: asGradeScaleId(id),
         grades: [],
         placeableThresholdId: asGradeId('placeholder'),
         specialOutcomes: [],
-    };
+    });
 }
 
 function makeAwardType(id: string): AwardType {
-    return {
+    return HigherScopeAwardType.breed({
         id: asAwardTypeId(id),
         minimumGradeId: asGradeId('g1'),
         worstEligiblePlacement: undefined,
         isDiscretionary: false,
-        scope: 'breed',
-        fedBy: [],
-    };
+        fedBy: [AwardFeeder.of(asAwardTypeId(`${id}-feeder`))],
+    });
 }
 
 function makeShowType(id: string): ShowType {
-    return {
+    return ShowType.of({
         id: asShowTypeId(id),
         availableAwardTypeIds: [],
         availableCollectiveCompetitions: [],
-    };
+    });
 }
 
 // ---------------------------------------------------------------------------

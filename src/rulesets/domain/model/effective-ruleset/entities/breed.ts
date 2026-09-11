@@ -6,6 +6,13 @@ import type { BreedId, VarietyId, GroupId } from '../value-objects/domain-ids.js
 /** FCI recognition status of a Breed; gates award eligibility. */
 export type RecognitionStatus = 'definitive' | 'provisional' | 'unrecognised';
 
+/** Attributes for {@link Breed.of}. */
+export interface BreedAttributes {
+    readonly id: BreedId;
+    readonly groupId: GroupId;
+    readonly recognitionStatus: RecognitionStatus;
+}
+
 /**
  * An officially recognised breed, classified into one {@link Group}.
  * The breed list and classification are ruleset-owned reference data.
@@ -20,11 +27,30 @@ export type RecognitionStatus = 'definitive' | 'provisional' | 'unrecognised';
  * published contract; data instances land when a consumer (catalogue
  * ordering via `groupId`, breed-recognition gating via `recognitionStatus`)
  * requires them.
+ *
+ * An entity (ADR-0022): private constructor plus the {@link Breed.of}
+ * factory is the only construction path. Identified by `id`, not by value.
  */
-export interface Breed {
+export class Breed {
     readonly id: BreedId;
     readonly groupId: GroupId;
     readonly recognitionStatus: RecognitionStatus;
+
+    private constructor(attributes: BreedAttributes) {
+        this.id = attributes.id;
+        this.groupId = attributes.groupId;
+        this.recognitionStatus = attributes.recognitionStatus;
+    }
+
+    static of(attributes: BreedAttributes): Breed {
+        return new Breed(attributes);
+    }
+}
+
+/** Attributes for {@link Variety.of}. */
+export interface VarietyAttributes {
+    readonly id: VarietyId;
+    readonly breedId: BreedId;
 }
 
 /**
@@ -41,10 +67,29 @@ export interface Breed {
  * brand (reused by `CollectiveCompetitionResults`) and this type definition
  * stay as the published contract; data instances land when a consumer
  * requires them.
+ *
+ * An entity (ADR-0022): private constructor plus the {@link Variety.of}
+ * factory is the only construction path.
  */
-export interface Variety {
+export class Variety {
     readonly id: VarietyId;
     readonly breedId: BreedId;
+
+    private constructor(attributes: VarietyAttributes) {
+        this.id = attributes.id;
+        this.breedId = attributes.breedId;
+    }
+
+    static of(attributes: VarietyAttributes): Variety {
+        return new Variety(attributes);
+    }
+}
+
+/** Attributes for {@link Group.of}. */
+export interface GroupAttributes {
+    readonly id: GroupId;
+    /** Governs catalogue ordering; lower ordinal appears first. */
+    readonly ordinal: number;
 }
 
 /**
@@ -60,9 +105,20 @@ export interface Variety {
  * yet wired into `RulesetLayer` / `EffectiveRuleset`. The `GroupId` brand and
  * this type definition stay as the published contract; data instances (with
  * `ordinal` for catalogue ordering) land when a consumer requires them.
+ *
+ * An entity (ADR-0022): private constructor plus the {@link Group.of}
+ * factory is the only construction path.
  */
-export interface Group {
+export class Group {
     readonly id: GroupId;
-    /** Governs catalogue ordering; lower ordinal appears first. */
     readonly ordinal: number;
+
+    private constructor(attributes: GroupAttributes) {
+        this.id = attributes.id;
+        this.ordinal = attributes.ordinal;
+    }
+
+    static of(attributes: GroupAttributes): Group {
+        return new Group(attributes);
+    }
 }

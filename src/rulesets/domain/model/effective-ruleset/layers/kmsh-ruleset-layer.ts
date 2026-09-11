@@ -1,7 +1,15 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { RulesetLayer } from '../entities/ruleset-layer.js';
+import { RulesetLayer } from '../entities/ruleset-layer.js';
+import { ClassDefinition } from '../entities/class-definition.js';
+import {
+    HigherScopeAwardType,
+    PerSexAwardType,
+    AwardFeeder,
+    ClassFeeder,
+} from '../entities/award-type.js';
+import { ShowType } from '../entities/show-type.js';
 import {
     asRulesetLayerId,
     asClassId,
@@ -86,13 +94,13 @@ export const KMSH_CLASS_FOKKERSKLAS = asClassId('fokkersklas');
  *
  * Compose as `resolveEffectiveRuleset([fciLayer, kmshLayer], date)`.
  */
-export const kmshLayer: RulesetLayer = {
+export const kmshLayer: RulesetLayer = RulesetLayer.of({
     id: KMSH_LAYER_ID,
     parentLayerId: FCI_LAYER_ID,
     classDefinitions: [
         // Override Minor Puppy: KMSH ART.23 specifies minimum 3 months
         // ("minimum 3 tot 6 maanden"), unlike FCI which has no numeric floor.
-        {
+        ClassDefinition.of({
             id: asClassId('minor-puppy'),
             fromAgeMonths: asAgeMonths(3),
             lessThanAgeMonths: asAgeMonths(6),
@@ -100,9 +108,9 @@ export const kmshLayer: RulesetLayer = {
             bredByExhibitor: false,
             gradeScaleId: FCI_PUPPY_GRADE_SCALE_ID,
             awardTypeIds: [],
-        },
+        }),
         // Fokkersklas (ART.24): available at breed-specific shows; feeds CAC + RCAC.
-        {
+        ClassDefinition.of({
             id: KMSH_CLASS_FOKKERSKLAS,
             fromAgeMonths: asAgeMonths(15),
             lessThanAgeMonths: undefined,
@@ -110,26 +118,24 @@ export const kmshLayer: RulesetLayer = {
             bredByExhibitor: true,
             gradeScaleId: FCI_ADULT_GRADE_SCALE_ID,
             awardTypeIds: [KMSH_AWARD_CAC, KMSH_AWARD_RCAC],
-        },
+        }),
     ],
     gradeScales: [], // No grade scale overrides — language is not a rule difference (ADR-0010)
     awardTypes: [
-        {
+        PerSexAwardType.of({
             id: KMSH_AWARD_CAC,
             minimumGradeId: FCI_GRADE_EXCELLENT,
             worstEligiblePlacement: asPlacement(1),
             isDiscretionary: true,
-            scope: 'per-sex',
-        },
-        {
+        }),
+        PerSexAwardType.of({
             // Bijlage 1 §1a: remaining dogs + 2nd-placed dog from the class
             // where CAC was awarded compete for RCAC (eventueel = not mandatory).
             id: KMSH_AWARD_RCAC,
             minimumGradeId: FCI_GRADE_EXCELLENT,
             worstEligiblePlacement: undefined,
             isDiscretionary: true,
-            scope: 'per-sex',
-        },
+        }),
         // -------------------------------------------------------------------
         // ADR-0017: BOB/BOS wholesale override — last-layer-wins replaces the
         // FCI-layer BOB/BOS entirely, adding the national CAC adult feeder
@@ -138,35 +144,33 @@ export const kmshLayer: RulesetLayer = {
         // stream is present, so BOB feeds off the CAC stream + class wins
         // (Bijlage 2 §2-3); at a CACIB show the CACIB stream feeds BOB instead.
         // -------------------------------------------------------------------
-        {
+        HigherScopeAwardType.breed({
             id: FCI_AWARD_BOB,
             minimumGradeId: FCI_GRADE_EXCELLENT,
             worstEligiblePlacement: undefined,
             isDiscretionary: false,
-            scope: 'breed',
             fedBy: [
-                { kind: 'award', awardTypeId: FCI_AWARD_CACIB },
-                { kind: 'award', awardTypeId: KMSH_AWARD_CAC },
-                { kind: 'class', classId: asClassId('junior') },
-                { kind: 'class', classId: asClassId('veteran') },
+                AwardFeeder.of(FCI_AWARD_CACIB),
+                AwardFeeder.of(KMSH_AWARD_CAC),
+                ClassFeeder.of(asClassId('junior')),
+                ClassFeeder.of(asClassId('veteran')),
             ],
-        },
-        {
+        }),
+        HigherScopeAwardType.breed({
             id: FCI_AWARD_BOS,
             minimumGradeId: FCI_GRADE_EXCELLENT,
             worstEligiblePlacement: undefined,
             isDiscretionary: false,
-            scope: 'breed',
             fedBy: [
-                { kind: 'award', awardTypeId: FCI_AWARD_CACIB },
-                { kind: 'award', awardTypeId: KMSH_AWARD_CAC },
-                { kind: 'class', classId: asClassId('junior') },
-                { kind: 'class', classId: asClassId('veteran') },
+                AwardFeeder.of(FCI_AWARD_CACIB),
+                AwardFeeder.of(KMSH_AWARD_CAC),
+                ClassFeeder.of(asClassId('junior')),
+                ClassFeeder.of(asClassId('veteran')),
             ],
-        },
+        }),
     ],
     showTypes: [
-        {
+        ShowType.of({
             id: asShowTypeId('kmsh-national-show'),
             availableAwardTypeIds: [
                 KMSH_AWARD_CAC,
@@ -188,6 +192,6 @@ export const kmshLayer: RulesetLayer = {
                 FCI_AWARD_BEST_PROGENY_GROUP,
             ],
             availableCollectiveCompetitions: ['brace-couple', 'breeders-group', 'progeny-group'],
-        },
+        }),
     ],
-};
+});
