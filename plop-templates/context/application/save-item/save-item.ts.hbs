@@ -3,14 +3,13 @@
 
 import {
     asAggregateId,
-    asEventType,
     EventScope,
-    createDomainEvent,
     type Clock,
     type EventIdGenerator,
     type TransactionScope,
 } from '../../../Shared/index.js';
 import type { Item } from '../../domain/model/item/item.js';
+import { ItemSaved } from '../../domain/model/item/events/item-saved.js';
 import type { ItemUnitOfWork } from '../ports/unit-of-work.js';
 
 /**
@@ -72,9 +71,8 @@ export class SaveItemUseCase {
             const item = toItem(input, scope);
             await ctx.items.save(item);
             ctx.appendEvents(
-                createDomainEvent(
+                ItemSaved.from(
                     {
-                        type: asEventType('{{eventContext name}}.ItemSaved'),
                         scope: EventScope.club(),
                         aggregateId: asAggregateId(item.id),
                         payload: { name: item.name },

@@ -11,10 +11,8 @@ import {
     asClubId,
     asPrincipalId,
     asEventId,
-    asEventType,
     ClubTransactionScope,
     EventScope,
-    createDomainEvent,
     FakeClock,
     FakeEventIdGenerator,
     PgOutboxWriter,
@@ -22,6 +20,8 @@ import {
     type DomainEvent,
 } from '../../../src/Shared/index.js';
 import { PgItemUnitOfWork } from '../../../src/{{name}}/infrastructure/persistence/postgres/pg-unit-of-work.js';
+import { ItemSaved } from '../../../src/{{name}}/domain/model/item/events/item-saved.js';
+import { buildItemEventRehydrationRegistry } from '../../../src/{{name}}/infrastructure/di/item-event-registry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -63,10 +63,9 @@ describe('Transactional outbox — {{name}} context', () => {
         await harness.stop();
     });
 
-    function makeEvent(): DomainEvent<unknown> {
-        return createDomainEvent(
+    function makeEvent(): ItemSaved {
+        return ItemSaved.from(
             {
-                type: asEventType('{{eventContext name}}.ItemSaved'),
                 scope: EventScope.club(),
                 aggregateId: asAggregateId(ITEM_ID),
                 payload: { name: 'test-item' },
@@ -135,6 +134,12 @@ describe('Transactional outbox — {{name}} context', () => {
     const DISPATCHER_EVENT_ID = '00000000-0000-4000-8000-000000000042';
 
     describe('polling dispatcher', () => {
+        // The codec rehydrates only class events: the dispatcher is
+        // constructed with this context's registry so a stored
+        // `{{eventContext name}}.ItemSaved` row is rehydrated into an
+        // `ItemSaved` class instance.
+        const registry = buildItemEventRehydrationRegistry();
+
         beforeEach(async () => {
             await superPool.query(`DELETE FROM {{snakeCase name}}.outbox`);
             await superPool.query(
@@ -153,15 +158,21 @@ describe('Transactional outbox — {{name}} context', () => {
         });
 
         it('delivers the pending outbox row to the handler and marks it dispatched', async () => {
-            const received: string[] = [];
-            const dispatcher = new PgPollingDispatcher(superPool, '{{snakeCase name}}', async (event) => {
-                received.push(event.eventId);
-            });
+            let received: DomainEvent | undefined;
+            const dispatcher = new PgPollingDispatcher(
+                superPool,
+                '{{snakeCase name}}',
+                async (event) => {
+                    received = event;
+                },
+                registry,
+            );
 
             const count = await dispatcher.poll();
 
             expect(count).toBe(1);
-            expect(received).toEqual([DISPATCHER_EVENT_ID]);
+            expect(received).toBeInstanceOf(ItemSaved);
+            expect(received?.eventId).toBe(DISPATCHER_EVENT_ID);
 
             const { rows } = await superPool.query(
                 `SELECT dispatched_at FROM {{snakeCase name}}.outbox WHERE event_id = $1`,

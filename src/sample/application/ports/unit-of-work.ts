@@ -23,7 +23,7 @@ export interface SampleUnitOfWorkContext {
      * Queues domain events for atomic outbox-write at the end of the unit of
      * work. Read-only operations simply do not call this.
      */
-    appendEvents(...events: readonly DomainEvent<unknown>[]): void;
+    appendEvents(...events: readonly DomainEvent[]): void;
 }
 
 /**

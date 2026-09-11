@@ -16,7 +16,6 @@ import {
 import {
     EntrySubmitted,
     ENTRY_SUBMITTED_TYPE,
-    type EntrySubmittedPayload,
 } from '../../../../../../src/sample/domain/model/entry/events/entry-submitted.js';
 
 const FIXED_DATE = new Date('2026-08-01T12:00:00.000Z');
@@ -64,7 +63,7 @@ describe('EntrySubmitted.from', () => {
         expect(event.occurredAt).toBe(explicitDate);
     });
 
-    it('is a DomainEvent<EntrySubmittedPayload>', () => {
+    it('is a DomainEvent', () => {
         expectTypeOf(
             EntrySubmitted.from(
                 {
@@ -74,7 +73,7 @@ describe('EntrySubmitted.from', () => {
                 },
                 { clock, eventIdGenerator },
             ),
-        ).toMatchTypeOf<DomainEvent<EntrySubmittedPayload>>();
+        ).toMatchTypeOf<DomainEvent>();
     });
 });
 

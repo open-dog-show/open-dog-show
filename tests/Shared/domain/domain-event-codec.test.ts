@@ -6,8 +6,10 @@ import {
     decodeDomainEvent,
     encodeDomainEvent,
     InvalidDomainEventEnvelopeError,
+    UnregisteredDomainEventTypeError,
     rehydrateDomainEvent,
     DomainEventRehydrationRegistry,
+    assertPayloadHasStringField,
 } from '../../../src/Shared/domain/domain-event-codec.js';
 import type { DomainEvent } from '../../../src/Shared/domain/domain-event.js';
 import { EventScope } from '../../../src/Shared/domain/event-scope.js';
@@ -23,15 +25,54 @@ interface OrderedPayload {
     classNumber: number;
 }
 
+// Minimal in-test class event exercising the codec against a class rather
+// than a generic envelope literal — the codec rehydrates only class events
+// (ADR-0022, #176).
+class StubEntrySubmitted implements DomainEvent {
+    readonly type = asEventType('sample.EntrySubmitted');
+    readonly eventId: ReturnType<typeof asEventId>;
+    readonly occurredAt: Date;
+    readonly scope: EventScope;
+    readonly aggregateId: ReturnType<typeof asAggregateId>;
+    readonly payload: OrderedPayload;
+
+    constructor(envelope: {
+        eventId: ReturnType<typeof asEventId>;
+        occurredAt: Date;
+        scope: EventScope;
+        aggregateId: ReturnType<typeof asAggregateId>;
+        payload: unknown;
+    }) {
+        this.eventId = envelope.eventId;
+        this.occurredAt = envelope.occurredAt;
+        this.scope = envelope.scope;
+        this.aggregateId = envelope.aggregateId;
+        this.payload = envelope.payload as OrderedPayload;
+    }
+}
+
+function registryFor(
+    rehydrate: (envelope: {
+        eventId: ReturnType<typeof asEventId>;
+        occurredAt: Date;
+        scope: EventScope;
+        aggregateId: ReturnType<typeof asAggregateId>;
+        payload: unknown;
+    }) => StubEntrySubmitted = (envelope) => new StubEntrySubmitted(envelope),
+) {
+    const registry = new DomainEventRehydrationRegistry();
+    registry.register(asEventType('sample.EntrySubmitted'), rehydrate);
+    return registry;
+}
+
 describe('encodeDomainEvent', () => {
-    const event: DomainEvent<OrderedPayload> = {
+    const event = new StubEntrySubmitted({
         eventId: asEventId('00000000-0000-4000-8000-000000000001'),
-        type: asEventType('entries.EntrySubmitted'),
         occurredAt: new Date('2026-08-01T12:00:00.000Z'),
         scope: EventScope.club(),
         aggregateId: asAggregateId('entry-abc'),
         payload: { dogId: 'dog-1', classNumber: 42 },
-    };
+    });
 
     it('serialises occurredAt as ISO-8601 string', () => {
         const json = encodeDomainEvent(event);
@@ -58,7 +99,7 @@ describe('encodeDomainEvent', () => {
 describe('decodeDomainEvent', () => {
     const raw = {
         eventId: '00000000-0000-4000-8000-000000000001',
-        type: 'entries.EntrySubmitted',
+        type: 'sample.EntrySubmitted',
         occurredAt: '2026-08-01T12:00:00.000Z',
         scope: 'club' as const,
         aggregateId: 'entry-abc',
@@ -68,14 +109,17 @@ describe('decodeDomainEvent', () => {
     /** Drives {@link rehydrateDomainEvent} (which accepts `Date | string`) and narrows the thrown envelope error. */
     function catchRehydrate(occurredAt: Date | string): InvalidDomainEventEnvelopeError {
         try {
-            rehydrateDomainEvent({
-                eventId: raw.eventId,
-                type: raw.type,
-                occurredAt,
-                scope: raw.scope,
-                aggregateId: raw.aggregateId,
-                payload: raw.payload,
-            });
+            rehydrateDomainEvent(
+                {
+                    eventId: raw.eventId,
+                    type: raw.type,
+                    occurredAt,
+                    scope: raw.scope,
+                    aggregateId: raw.aggregateId,
+                    payload: raw.payload,
+                },
+                registryFor(),
+            );
             throw new Error('expected rehydrateDomainEvent to throw');
         } catch (err) {
             if (err instanceof InvalidDomainEventEnvelopeError) return err;
@@ -84,14 +128,14 @@ describe('decodeDomainEvent', () => {
     }
 
     it('restores occurredAt as a Date', () => {
-        const event = decodeDomainEvent(raw);
+        const event = decodeDomainEvent(raw, registryFor());
 
         expect(event.occurredAt).toBeInstanceOf(Date);
         expect(event.occurredAt.toISOString()).toBe('2026-08-01T12:00:00.000Z');
     });
 
     it('preserves all envelope fields', () => {
-        const event = decodeDomainEvent(raw);
+        const event = decodeDomainEvent(raw, registryFor());
 
         expect(event.eventId).toBe(raw.eventId);
         expect(event.type).toBe(raw.type);
@@ -100,17 +144,21 @@ describe('decodeDomainEvent', () => {
     });
 
     it('throws TypeError when the JSON type is not a valid <context>.<PascalName>', () => {
-        expect(() => decodeDomainEvent({ ...raw, type: 'bogus' })).toThrow(TypeError);
+        expect(() => decodeDomainEvent({ ...raw, type: 'bogus' }, registryFor())).toThrow(
+            TypeError,
+        );
     });
 
     it('throws TypeError when the JSON scope is not a valid EventScope', () => {
-        expect(() => decodeDomainEvent({ ...raw, scope: 'invalid' })).toThrow(TypeError);
+        expect(() => decodeDomainEvent({ ...raw, scope: 'invalid' }, registryFor())).toThrow(
+            TypeError,
+        );
     });
 
     it('throws InvalidDomainEventEnvelopeError when occurredAt is not a real date string', () => {
-        expect(() => decodeDomainEvent({ ...raw, occurredAt: 'not-a-real-date' })).toThrow(
-            InvalidDomainEventEnvelopeError,
-        );
+        expect(() =>
+            decodeDomainEvent({ ...raw, occurredAt: 'not-a-real-date' }, registryFor()),
+        ).toThrow(InvalidDomainEventEnvelopeError);
     });
 
     it('InvalidDomainEventEnvelopeError carries the offending string value (E5)', () => {
@@ -141,38 +189,38 @@ describe('decodeDomainEvent', () => {
     });
 
     it('restores aggregateId as a branded AggregateId', () => {
-        const event = decodeDomainEvent(raw);
+        const event = decodeDomainEvent(raw, registryFor());
 
         expectTypeOf(event.aggregateId).toEqualTypeOf<AggregateId>();
     });
 
-    it('does not advertise a payload type parameter', () => {
-        const event = decodeDomainEvent(raw);
+    it('rehydrates into the registered class instance, not a generic envelope', () => {
+        const event = decodeDomainEvent(raw, registryFor());
 
-        // Returning `unknown` is the safety guarantee of dropping the phantom
-        // generic — the codec cannot validate a payload shape, so it must not
-        // promise one.
-        expectTypeOf(event.payload).toEqualTypeOf<unknown>();
+        expect(event).toBeInstanceOf(StubEntrySubmitted);
+    });
 
-        // @ts-expect-error decodeDomainEvent takes no type parameter.
-        const typed = decodeDomainEvent<OrderedPayload>(raw);
-        expect(typed.payload).toBeDefined();
+    it('throws UnregisteredDomainEventTypeError when the type has no registered rehydrator', () => {
+        const emptyRegistry = new DomainEventRehydrationRegistry();
+
+        expect(() => decodeDomainEvent(raw, emptyRegistry)).toThrow(
+            UnregisteredDomainEventTypeError,
+        );
     });
 });
 
 describe('encode → JSON.stringify → JSON.parse → decode round-trip', () => {
     it('round-trips an event with Date payload field losslessly', () => {
-        const original: DomainEvent<{ label: string }> = {
+        const original = new StubEntrySubmitted({
             eventId: asEventId('00000000-0000-4000-8000-000000000099'),
-            type: asEventType('shows.ShowScheduled'),
             occurredAt: new Date('2026-12-25T09:00:00.000Z'),
             scope: EventScope.platform(),
             aggregateId: asAggregateId('show-1'),
-            payload: { label: 'Christmas Show 2026' },
-        };
+            payload: { dogId: 'dog-1', classNumber: 7 } satisfies OrderedPayload,
+        });
 
         const json = JSON.parse(JSON.stringify(encodeDomainEvent(original)));
-        const restored = decodeDomainEvent(json);
+        const restored = decodeDomainEvent(json, registryFor());
 
         expect(restored.eventId).toBe(original.eventId);
         expect(restored.type).toBe(original.type);
@@ -184,37 +232,13 @@ describe('encode → JSON.stringify → JSON.parse → decode round-trip', () =>
 });
 
 describe('DomainEventRehydrationRegistry', () => {
-    // Minimal in-test class event exercising the registry wiring.
-    class StubEntrySubmitted implements DomainEvent<{ dogName: string }> {
-        readonly type = asEventType('sample.EntrySubmitted');
-        readonly eventId: ReturnType<typeof asEventId>;
-        readonly occurredAt: Date;
-        readonly scope: EventScope;
-        readonly aggregateId: ReturnType<typeof asAggregateId>;
-        readonly payload: { dogName: string };
-
-        constructor(envelope: {
-            eventId: ReturnType<typeof asEventId>;
-            occurredAt: Date;
-            scope: EventScope;
-            aggregateId: ReturnType<typeof asAggregateId>;
-            payload: unknown;
-        }) {
-            this.eventId = envelope.eventId;
-            this.occurredAt = envelope.occurredAt;
-            this.scope = envelope.scope;
-            this.aggregateId = envelope.aggregateId;
-            this.payload = envelope.payload as { dogName: string };
-        }
-    }
-
     const raw = {
         eventId: '00000000-0000-4000-8000-000000000001',
         type: 'sample.EntrySubmitted',
         occurredAt: '2026-08-01T12:00:00.000Z',
         scope: 'club' as const,
         aggregateId: 'entry-abc',
-        payload: { dogName: 'Fido' },
+        payload: { dogId: 'Fido', classNumber: 1 },
     };
 
     it('rehydratorFor returns undefined for an unregistered type', () => {
@@ -224,32 +248,20 @@ describe('DomainEventRehydrationRegistry', () => {
 
     it('rehydratorFor returns the registered rehydrator', () => {
         const registry = new DomainEventRehydrationRegistry();
-        const rehydrator = () =>
-            new StubEntrySubmitted({
-                eventId: asEventId('x'),
-                occurredAt: new Date(0),
-                scope: EventScope.club(),
-                aggregateId: asAggregateId('x'),
-                payload: { dogName: 'x' },
-            });
+        const rehydrator = (envelope: {
+            eventId: ReturnType<typeof asEventId>;
+            occurredAt: Date;
+            scope: EventScope;
+            aggregateId: ReturnType<typeof asAggregateId>;
+            payload: unknown;
+        }) => new StubEntrySubmitted(envelope);
         registry.register(asEventType('sample.EntrySubmitted'), rehydrator);
 
         expect(registry.rehydratorFor(asEventType('sample.EntrySubmitted'))).toBe(rehydrator);
     });
 
     it('rehydrateDomainEvent delegates to the registered class rehydrator', () => {
-        const registry = new DomainEventRehydrationRegistry();
-        registry.register(
-            asEventType('sample.EntrySubmitted'),
-            (envelope) =>
-                new StubEntrySubmitted({
-                    eventId: envelope.eventId,
-                    occurredAt: envelope.occurredAt,
-                    scope: envelope.scope,
-                    aggregateId: envelope.aggregateId,
-                    payload: envelope.payload,
-                }),
-        );
+        const registry = registryFor();
 
         const event = rehydrateDomainEvent(raw, registry);
 
@@ -257,25 +269,48 @@ describe('DomainEventRehydrationRegistry', () => {
         expect(event.eventId).toBe(raw.eventId);
         expect(event.type).toBe('sample.EntrySubmitted');
         expect(event.occurredAt).toBeInstanceOf(Date);
-        expect(event.payload).toStrictEqual({ dogName: 'Fido' });
+        expect(event.payload).toStrictEqual(raw.payload);
     });
 
-    it('rehydrateDomainEvent falls back to the generic envelope for an unregistered type', () => {
+    it('rehydrateDomainEvent throws UnregisteredDomainEventTypeError for an unregistered type', () => {
         const registry = new DomainEventRehydrationRegistry();
 
-        const event = rehydrateDomainEvent(raw, registry);
-
-        // No class rehydrator registered → the generic envelope object is returned.
-        expect(event).not.toBeInstanceOf(StubEntrySubmitted);
-        expect(event.eventId).toBe(raw.eventId);
-        expect(event.type).toBe('sample.EntrySubmitted');
-        expect(event.payload).toStrictEqual({ dogName: 'Fido' });
+        expect(() => rehydrateDomainEvent(raw, registry)).toThrow(UnregisteredDomainEventTypeError);
     });
 
-    it('rehydrateDomainEvent without a registry still returns the generic envelope', () => {
-        const event = rehydrateDomainEvent(raw);
+    it('UnregisteredDomainEventTypeError carries the offending event type', () => {
+        const registry = new DomainEventRehydrationRegistry();
 
-        expect(event.eventId).toBe(raw.eventId);
-        expect(event.type).toBe('sample.EntrySubmitted');
+        try {
+            rehydrateDomainEvent(raw, registry);
+            throw new Error('expected rehydrateDomainEvent to throw');
+        } catch (err) {
+            if (!(err instanceof UnregisteredDomainEventTypeError)) throw err;
+            expect(err.type).toBe('sample.EntrySubmitted');
+            expect(err.name).toBe('UnregisteredDomainEventTypeError');
+        }
+    });
+});
+
+describe('assertPayloadHasStringField', () => {
+    it('does not throw when the field is a string', () => {
+        expect(() => assertPayloadHasStringField({ dogName: 'Fido' }, 'dogName')).not.toThrow();
+    });
+
+    it('narrows payload so the field is accessible as a string', () => {
+        const payload: unknown = { dogName: 'Fido' };
+        assertPayloadHasStringField(payload, 'dogName');
+        expectTypeOf(payload.dogName).toEqualTypeOf<string>();
+    });
+
+    it.each([
+        ['a non-object payload', 'not-an-object'],
+        ['null', null],
+        ['an object missing the field', {}],
+        ['an object with a non-string field', { dogName: 42 }],
+    ])('throws InvalidDomainEventEnvelopeError for %s', (_label, payload) => {
+        expect(() => assertPayloadHasStringField(payload, 'dogName')).toThrow(
+            InvalidDomainEventEnvelopeError,
+        );
     });
 });

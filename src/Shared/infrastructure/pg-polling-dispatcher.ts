@@ -33,7 +33,7 @@ const DEFAULT_HANDLER_TIMEOUT_MS = 30_000;
  * `handlerTimeoutMs` elapses so the handler can cancel in-flight work; the
  * dispatch transaction holds the row lock until the handler settles.
  */
-export type EventHandler = (event: DomainEvent<unknown>, signal: AbortSignal) => Promise<void>;
+export type EventHandler = (event: DomainEvent, signal: AbortSignal) => Promise<void>;
 
 /**
  * Reads pending outbox rows and delivers them to an {@link EventHandler}.
@@ -62,29 +62,33 @@ export class PgPollingDispatcher {
     private readonly quotedSchema: string;
     private readonly maxAttempts: number;
     private readonly handlerTimeoutMs: number;
-    private readonly registry: DomainEventRehydrationRegistry | undefined;
 
+    /**
+     * @param registry - This context's event-type → class rehydration
+     *   registry (built by its composition root). Every row's `type` must be
+     *   registered — an unregistered type throws
+     *   {@link UnregisteredDomainEventTypeError} rather than delivering a
+     *   generic envelope. `instanceof` is then a reliable discriminator for
+     *   handlers provided every registered rehydrator actually constructs the
+     *   real class (e.g. a context's `XxxSubmitted.rehydrate`) — the registry
+     *   itself cannot verify that.
+     */
     constructor(
         private readonly pool: pg.Pool,
         schema: string,
         private readonly handler: EventHandler,
+        private readonly registry: DomainEventRehydrationRegistry,
         options?: {
             readonly maxAttempts?: number;
             readonly handlerTimeoutMs?: number;
-            /**
-             * Event-type → class rehydration registry. When supplied, a row
-             * whose `type` is registered is rehydrated into its concrete class
-             * event (e.g. `EntrySubmitted`) instead of the generic
-             * `DomainEvent<unknown>` envelope, so handlers can discriminate by
-             * `instanceof`. Unregistered types fall through to the envelope.
-             */
-            readonly registry?: DomainEventRehydrationRegistry;
         },
     ) {
+        if (registry === undefined) {
+            throw new TypeError('PgPollingDispatcher requires a DomainEventRehydrationRegistry');
+        }
         this.quotedSchema = quoteSchemaIdent(schema);
         this.maxAttempts = options?.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
         this.handlerTimeoutMs = options?.handlerTimeoutMs ?? DEFAULT_HANDLER_TIMEOUT_MS;
-        this.registry = options?.registry;
     }
 
     /**
@@ -209,12 +213,11 @@ export class PgPollingDispatcher {
      * Maps a raw outbox row to a {@link DomainEvent} by delegating the boundary
      * casts (and the `occurredAt` `Date` pass-through) to the shared
      * {@link rehydrateDomainEvent} helper, so the row mapper and the JSON codec
-     * share one rehydration path. When a registry was supplied to the constructor
-     * and the row's `type` is registered, the row is rehydrated into its concrete
-     * class event; otherwise the generic `DomainEvent<unknown>` envelope is
-     * returned.
+     * share one rehydration path. The row is always rehydrated into its
+     * concrete class event via the constructor's registry; a row whose `type`
+     * is not registered throws (see {@link rehydrateDomainEvent}).
      */
-    private rowToEvent(row: OutboxRowRaw): DomainEvent<unknown> {
+    private rowToEvent(row: OutboxRowRaw): DomainEvent {
         return rehydrateDomainEvent(
             {
                 eventId: row.event_id,

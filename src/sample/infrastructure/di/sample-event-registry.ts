@@ -3,7 +3,7 @@
 
 import {
     DomainEventRehydrationRegistry,
-    InvalidDomainEventEnvelopeError,
+    assertPayloadHasStringField,
 } from '../../../Shared/index.js';
 import {
     ENTRY_SUBMITTED_TYPE,
@@ -18,14 +18,8 @@ import {
  * `undefined`.
  */
 function asEntrySubmittedPayload(payload: unknown): EntrySubmittedPayload {
-    if (
-        typeof payload !== 'object' ||
-        payload === null ||
-        typeof (payload as { dogName?: unknown }).dogName !== 'string'
-    ) {
-        throw new InvalidDomainEventEnvelopeError('payload', payload);
-    }
-    return payload as EntrySubmittedPayload;
+    assertPayloadHasStringField(payload, 'dogName');
+    return payload;
 }
 
 /**
@@ -37,8 +31,9 @@ function asEntrySubmittedPayload(payload: unknown): EntrySubmittedPayload {
  * `payload` from `unknown` to the event's typed shape at this boundary (the
  * codec cannot validate a payload shape it knows nothing about). The returned
  * registry is passed to the polling dispatcher so a stored outbox row is
- * rehydrated back into its class instance instead of the generic
- * `DomainEvent<unknown>` envelope.
+ * rehydrated back into its class instance — an unregistered type throws
+ * instead of falling back to a generic envelope (ADR-0022, #176), so this
+ * registry must cover every type the sample context emits.
  *
  * Lives in the sample context's `infrastructure/di/` because the kernel cannot
  * import a context's event classes — the composition root owns the wiring

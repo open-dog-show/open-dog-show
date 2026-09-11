@@ -1,0 +1,50 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import {
+    DomainEventRehydrationRegistry,
+    assertPayloadHasStringField,
+} from '../../../Shared/index.js';
+import { ITEM_SAVED_TYPE, ItemSaved, type ItemSavedPayload } from '../../domain/model/item/events/item-saved.js';
+
+/**
+ * Narrows `payload` from `unknown` to {@link ItemSavedPayload}, rejecting a
+ * malformed outbox row (e.g. `{}`) instead of letting a bare type assertion
+ * produce an `ItemSaved` whose advertised `name: string` is actually
+ * `undefined`.
+ */
+function asItemSavedPayload(payload: unknown): ItemSavedPayload {
+    assertPayloadHasStringField(payload, 'name');
+    return payload;
+}
+
+/**
+ * Builds this context's event-type → class rehydration registry (ADR-0022
+ * class events).
+ *
+ * Each registered rehydrator constructs the concrete class event from the
+ * already-validated envelope fields the kernel codec hands it, narrowing the
+ * `payload` from `unknown` to the event's typed shape at this boundary (the
+ * codec cannot validate a payload shape it knows nothing about). The returned
+ * registry is passed to the polling dispatcher so a stored outbox row is
+ * rehydrated back into its class instance — an unregistered type throws
+ * instead of falling back to a generic envelope, so this registry must cover
+ * every type the context emits.
+ *
+ * Lives in `infrastructure/di/` because the kernel cannot import a context's
+ * event classes — the composition root owns the wiring (ADR-0004 dependencies
+ * point inward; contexts never import each other).
+ */
+export function buildItemEventRehydrationRegistry(): DomainEventRehydrationRegistry {
+    const registry = new DomainEventRehydrationRegistry();
+    registry.register(ITEM_SAVED_TYPE, (envelope) =>
+        ItemSaved.rehydrate({
+            eventId: envelope.eventId,
+            occurredAt: envelope.occurredAt,
+            scope: envelope.scope,
+            aggregateId: envelope.aggregateId,
+            payload: asItemSavedPayload(envelope.payload),
+        }),
+    );
+    return registry;
+}

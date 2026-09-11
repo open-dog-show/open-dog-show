@@ -18,7 +18,7 @@ import type { TransactionScope } from '../domain/transaction-scope.js';
 export interface OutboxWriter {
     write(
         client: pg.PoolClient,
-        events: readonly DomainEvent<unknown>[],
+        events: readonly DomainEvent[],
         scope: TransactionScope,
     ): Promise<void>;
 }

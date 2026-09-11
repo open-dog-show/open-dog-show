@@ -16,6 +16,8 @@ import {
     FakeEventIdGenerator,
     PgOutboxWriter,
     PgPollingDispatcher,
+    UnregisteredDomainEventTypeError,
+    DomainEventRehydrationRegistry,
     type DomainEvent,
 } from '../../../../../src/Shared/index.js';
 import { PgSampleUnitOfWork } from '../../../../../src/sample/infrastructure/persistence/postgres/pg-unit-of-work.js';
@@ -170,6 +172,12 @@ describe('Transactional outbox — sample context', () => {
     const LATER_EVENT_ID = '00000000-0000-4000-8000-000000000052';
 
     describe('polling dispatcher', () => {
+        // The codec rehydrates only class events (ADR-0022, #176): every
+        // dispatcher in this block is constructed with the sample context's
+        // registry so a stored `sample.EntrySubmitted` row is always
+        // rehydrated into an `EntrySubmitted` class instance.
+        const registry = buildSampleEventRehydrationRegistry();
+
         beforeEach(async () => {
             // Start each dispatcher test from a clean, known-pending row.
             await superPool.query(`DELETE FROM sample.outbox`);
@@ -190,9 +198,14 @@ describe('Transactional outbox — sample context', () => {
 
         it('delivers the pending outbox row to the handler and marks it dispatched', async () => {
             const received: string[] = [];
-            const dispatcher = new PgPollingDispatcher(superPool, 'sample', async (event) => {
-                received.push(event.eventId);
-            });
+            const dispatcher = new PgPollingDispatcher(
+                superPool,
+                'sample',
+                async (event) => {
+                    received.push(event.eventId);
+                },
+                registry,
+            );
 
             const count = await dispatcher.poll();
 
@@ -210,17 +223,18 @@ describe('Transactional outbox — sample context', () => {
             // The dispatcher is constructed with the sample context's
             // event-type → class rehydration registry, so a stored
             // `sample.EntrySubmitted` row is rehydrated into an `EntrySubmitted`
-            // class instance (not the generic DomainEvent envelope) and the
-            // handler can discriminate by `instanceof` (issue #172).
-            const registry = buildSampleEventRehydrationRegistry();
-            let received: DomainEvent<unknown> | undefined;
+            // class instance and the handler can discriminate by `instanceof`
+            // (issue #172). The codec rehydrates only class events (#176) — an
+            // unregistered type would throw rather than fall back to a
+            // generic envelope.
+            let received: DomainEvent | undefined;
             const dispatcher = new PgPollingDispatcher(
                 superPool,
                 'sample',
                 async (event) => {
                     received = event;
                 },
-                { registry },
+                registry,
             );
 
             const count = await dispatcher.poll();
@@ -234,8 +248,13 @@ describe('Transactional outbox — sample context', () => {
 
         it('returns 0 when there are no pending rows', async () => {
             // Dispatch the row seeded by beforeEach, then poll again.
-            await new PgPollingDispatcher(superPool, 'sample', async () => {}).poll();
-            const dispatcher = new PgPollingDispatcher(superPool, 'sample', async () => {});
+            await new PgPollingDispatcher(superPool, 'sample', async () => {}, registry).poll();
+            const dispatcher = new PgPollingDispatcher(
+                superPool,
+                'sample',
+                async () => {},
+                registry,
+            );
             const count = await dispatcher.poll();
             expect(count).toBe(0);
         });
@@ -248,13 +267,18 @@ describe('Transactional outbox — sample context', () => {
             const seen = new Set<string>();
             let effectCount = 0;
 
-            const idempotentHandler = async (event: DomainEvent<unknown>) => {
+            const idempotentHandler = async (event: DomainEvent) => {
                 if (seen.has(event.eventId)) return;
                 seen.add(event.eventId);
                 effectCount++;
             };
 
-            const dispatcher = new PgPollingDispatcher(superPool, 'sample', idempotentHandler);
+            const dispatcher = new PgPollingDispatcher(
+                superPool,
+                'sample',
+                idempotentHandler,
+                registry,
+            );
 
             // First delivery — row is pending from beforeEach.
             await dispatcher.poll();
@@ -290,11 +314,16 @@ describe('Transactional outbox — sample context', () => {
                 ],
             );
 
-            const dispatcher = new PgPollingDispatcher(superPool, 'sample', async (event) => {
-                if (event.eventId === asEventId(FAILING_EVENT_ID)) {
-                    throw new Error('handler failure');
-                }
-            });
+            const dispatcher = new PgPollingDispatcher(
+                superPool,
+                'sample',
+                async (event) => {
+                    if (event.eventId === asEventId(FAILING_EVENT_ID)) {
+                        throw new Error('handler failure');
+                    }
+                },
+                registry,
+            );
 
             await expect(dispatcher.poll(10)).rejects.toThrow('handler failure');
 
@@ -311,6 +340,33 @@ describe('Transactional outbox — sample context', () => {
         // Seam 4: poison-pill retry cap & handler timeout
         // -----------------------------------------------------------------------
 
+        it('quarantines a row whose type has no registered rehydrator like any other handler failure', async () => {
+            // The codec rehydrates only class events (ADR-0022, #176): a row
+            // whose `type` has no registered rehydrator throws
+            // UnregisteredDomainEventTypeError from rowToEvent, before the
+            // handler ever runs. That throw must flow through the same
+            // per-row transaction / poison-pill machinery as an ordinary
+            // handler failure — not crash the dispatcher or widen the
+            // transaction.
+            const emptyRegistry = new DomainEventRehydrationRegistry();
+            const dispatcher = new PgPollingDispatcher(
+                superPool,
+                'sample',
+                async () => {},
+                emptyRegistry,
+                { maxAttempts: 3 },
+            );
+
+            await expect(dispatcher.poll()).rejects.toThrow(UnregisteredDomainEventTypeError);
+
+            const { rows } = await superPool.query<{ attempts: number; last_error: string | null }>(
+                `SELECT attempts, last_error FROM sample.outbox WHERE event_id = $1`,
+                [DISPATCHER_EVENT_ID],
+            );
+            expect(rows[0]?.attempts).toBe(1);
+            expect(rows[0]?.last_error).toContain('UnregisteredDomainEventTypeError');
+        });
+
         it('records attempts and last_error on a handler failure', async () => {
             const dispatcher = new PgPollingDispatcher(
                 superPool,
@@ -318,6 +374,7 @@ describe('Transactional outbox — sample context', () => {
                 async () => {
                     throw new Error('handler failure');
                 },
+                registry,
                 { maxAttempts: 3 },
             );
 
@@ -357,6 +414,7 @@ describe('Transactional outbox — sample context', () => {
                 async () => {
                     throw new Error('poison');
                 },
+                registry,
                 { maxAttempts: 2 },
             );
             // Drive the poison row to the attempt cap: each poll fails fast on the
@@ -367,9 +425,13 @@ describe('Transactional outbox — sample context', () => {
 
             // A healthy dispatcher now polls: the quarantined poison is skipped
             // (attempts >= maxAttempts) and the later row is dispatched instead.
-            const okDispatcher = new PgPollingDispatcher(superPool, 'sample', async () => {}, {
-                maxAttempts: 2,
-            });
+            const okDispatcher = new PgPollingDispatcher(
+                superPool,
+                'sample',
+                async () => {},
+                registry,
+                { maxAttempts: 2 },
+            );
             const count = await okDispatcher.poll(10);
             expect(count).toBe(1);
 
@@ -397,6 +459,7 @@ describe('Transactional outbox — sample context', () => {
                         );
                     });
                 },
+                registry,
                 { handlerTimeoutMs: 50 },
             );
 

@@ -33,6 +33,16 @@ export default function (plop) {
             },
             {
                 type: 'add',
+                path: 'src/{{name}}/domain/model/item/events/item-saved.ts',
+                templateFile: 'plop-templates/context/domain/model/item/events/item-saved.ts.hbs',
+            },
+            {
+                type: 'add',
+                path: 'src/{{name}}/infrastructure/di/item-event-registry.ts',
+                templateFile: 'plop-templates/context/infrastructure/di/item-event-registry.ts.hbs',
+            },
+            {
+                type: 'add',
                 path: 'src/{{name}}/application/ports/unit-of-work.ts',
                 templateFile: 'plop-templates/context/application/ports/unit-of-work.ts.hbs',
             },

@@ -2,13 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, expectTypeOf, it } from 'vitest';
-import {
-    createDomainEvent,
-    type CreateDomainEventParams,
-    type DomainEvent,
-} from '../../../src/Shared/domain/domain-event.js';
-import { EventScope } from '../../../src/Shared/domain/event-scope.js';
-import type { Clock, EventIdGenerator } from '../../../src/Shared/domain/domain-ports.js';
+import type { DomainEvent } from '../../../src/Shared/domain/domain-event.js';
+import type { EventIdGenerator } from '../../../src/Shared/domain/domain-ports.js';
 import {
     asAggregateId,
     asEventId,
@@ -17,98 +12,19 @@ import {
     type EventId,
 } from '../../../src/Shared/domain/domain-ids.js';
 
-describe('createDomainEvent', () => {
-    const FIXED_DATE = new Date('2026-08-01T12:00:00.000Z');
-    const FIXED_ID = '00000000-0000-4000-8000-000000000001';
-
-    const clock: Clock = { now: () => FIXED_DATE };
-    const eventIdGenerator: EventIdGenerator = { generate: () => asEventId(FIXED_ID) };
-
-    it('creates an event envelope with injected clock and id-generator', () => {
-        const event = createDomainEvent(
-            {
-                type: asEventType('entries.EntrySubmitted'),
-                scope: EventScope.club(),
-                aggregateId: asAggregateId('entry-1'),
-                payload: { dogId: 'dog-1' },
-            },
-            { clock, eventIdGenerator },
-        );
-
-        expect(event).toStrictEqual({
-            eventId: FIXED_ID,
-            type: 'entries.EntrySubmitted',
-            occurredAt: FIXED_DATE,
-            scope: EventScope.club(),
-            aggregateId: 'entry-1',
-            payload: { dogId: 'dog-1' },
-        });
-    });
-
-    it('uses an explicit eventId and occurredAt when provided', () => {
-        const explicitId = '00000000-0000-4000-8000-000000000002';
-        const explicitDate = new Date('2025-01-01T00:00:00.000Z');
-
-        const event = createDomainEvent(
-            {
-                type: asEventType('rulesets.RulesetPublished'),
-                scope: EventScope.platform(),
-                aggregateId: asAggregateId('ruleset-1'),
-                payload: null,
-                eventId: asEventId(explicitId),
-                occurredAt: explicitDate,
-            },
-            { clock, eventIdGenerator },
-        );
-
-        expect(event.eventId).toBe(explicitId);
-        expect(event.occurredAt).toBe(explicitDate);
-    });
-
-    it('uses platform scope for operator-owned events', () => {
-        const event = createDomainEvent(
-            {
-                type: asEventType('admin.ClubOnboarded'),
-                scope: EventScope.platform(),
-                aggregateId: asAggregateId('club-1'),
-                payload: {},
-            },
-            { clock, eventIdGenerator },
-        );
-
-        expect(event.scope.kind).toBe('platform');
-    });
-
-    it('uses exhibitor scope for cross-Club events', () => {
-        const event = createDomainEvent(
-            {
-                type: asEventType('entries.DogRegistered'),
-                scope: EventScope.exhibitor(),
-                aggregateId: asAggregateId('dog-1'),
-                payload: {},
-            },
-            { clock, eventIdGenerator },
-        );
-
-        expect(event.scope.kind).toBe('exhibitor');
-    });
-});
-
 describe('EventIdGenerator port', () => {
     it('generate() returns a branded EventId', () => {
         expectTypeOf<ReturnType<EventIdGenerator['generate']>>().toEqualTypeOf<EventId>();
     });
 });
 
-describe('DomainEvent envelope brands', () => {
+describe('DomainEvent marker interface', () => {
     it('types aggregateId as AggregateId on the event', () => {
-        expectTypeOf<DomainEvent<unknown>['aggregateId']>().toEqualTypeOf<AggregateId>();
+        expectTypeOf<DomainEvent['aggregateId']>().toEqualTypeOf<AggregateId>();
     });
 
-    it('types aggregateId as AggregateId on the create params', () => {
-        expectTypeOf<
-            CreateDomainEventParams<unknown>['aggregateId']
-        >().toEqualTypeOf<AggregateId>();
+    it('types payload as unknown on the marker interface', () => {
+        expectTypeOf<DomainEvent['payload']>().toEqualTypeOf<unknown>();
     });
 });
 

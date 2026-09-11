@@ -1,8 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-export type { DomainEvent, CreateDomainEventParams } from './domain/domain-event.js';
-export { createDomainEvent } from './domain/domain-event.js';
+export type { DomainEvent } from './domain/domain-event.js';
 export { EventScope, asEventScope } from './domain/event-scope.js';
 export type { Clock, EventIdGenerator } from './domain/domain-ports.js';
 export type {
@@ -28,7 +27,9 @@ export {
     encodeDomainEvent,
     decodeDomainEvent,
     InvalidDomainEventEnvelopeError,
+    UnregisteredDomainEventTypeError,
     DomainEventRehydrationRegistry,
+    assertPayloadHasStringField,
 } from './domain/domain-event-codec.js';
 export type {
     DomainEventRehydrator,
