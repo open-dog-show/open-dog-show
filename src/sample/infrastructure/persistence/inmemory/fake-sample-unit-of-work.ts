@@ -22,7 +22,7 @@ import type {
  */
 export class FakeSampleUnitOfWork implements SampleUnitOfWork {
     readonly savedEntries: Entry[] = [];
-    readonly appendedEvents: DomainEvent<unknown>[] = [];
+    readonly appendedEvents: DomainEvent[] = [];
 
     readonly entries: EntryRepository = {
         findAll: async () => [...this.savedEntries],
@@ -42,7 +42,7 @@ export class FakeSampleUnitOfWork implements SampleUnitOfWork {
         return body({
             entries: this.entries,
             shows: this.shows,
-            appendEvents: (...events: readonly DomainEvent<unknown>[]) => {
+            appendEvents: (...events: readonly DomainEvent[]) => {
                 this.appendedEvents.push(...events);
             },
         });

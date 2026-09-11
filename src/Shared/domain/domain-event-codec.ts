@@ -42,8 +42,7 @@ export interface RehydratedDomainEventEnvelope {
      * Event-type-specific structured data, still `unknown`: the codec cannot
      * validate a payload shape it knows nothing about. A class-event
      * rehydrator narrows the payload to its own typed shape at its own
-     * boundary — mirroring how {@link decodeDomainEvent} returns
-     * `DomainEvent<unknown>`.
+     * boundary.
      */
     readonly payload: unknown;
 }
@@ -53,12 +52,12 @@ export interface RehydratedDomainEventEnvelope {
  * — i.e. constructs the concrete class event (e.g. `EntrySubmitted`) from
  * already-validated envelope fields. Registered in a
  * {@link DomainEventRehydrationRegistry} keyed by event-type string so the
- * outbox codec / polling dispatcher consume class events rather than the
- * generic `DomainEvent<unknown>` envelope.
+ * outbox codec / polling dispatcher receive whatever this rehydrator
+ * constructs — by convention, and in every rehydrator in this repo, a
+ * concrete class instance; the registry itself has no way to verify that a
+ * given implementation actually does so.
  */
-export type DomainEventRehydrator = (
-    envelope: RehydratedDomainEventEnvelope,
-) => DomainEvent<unknown>;
+export type DomainEventRehydrator = (envelope: RehydratedDomainEventEnvelope) => DomainEvent;
 
 /**
  * Event-type → class rehydration registry (ADR-0022 class events).
@@ -68,10 +67,9 @@ export type DomainEventRehydrator = (
  * the rehydrated envelope. The registry is populated by a context's composition
  * root (the kernel cannot import a context's event classes), then passed to the
  * outbox codec / polling dispatcher so a stored row is rehydrated back into its
- * class instance instead of the generic `DomainEvent<unknown>` envelope. An
- * unregistered type falls through to the generic envelope, so the registry is
- * opt-in per event type — retiring the envelope model for one emitter does not
- * require converting every emitter at once.
+ * class instance. An unregistered type is rejected by {@link rehydrateDomainEvent}
+ * — the envelope-event model is retired (ADR-0022/#176), so every event type a
+ * context actually emits must be registered.
  */
 export class DomainEventRehydrationRegistry {
     private readonly rehydrators = new Map<string, DomainEventRehydrator>();
@@ -116,6 +114,55 @@ export class InvalidDomainEventEnvelopeError extends Error {
 }
 
 /**
+ * Thrown by {@link rehydrateDomainEvent} / {@link decodeDomainEvent} when a
+ * stored row's `type` has no registered {@link DomainEventRehydrator}.
+ *
+ * The envelope-event model is retired (ADR-0022, issue #176): the codec no
+ * longer falls back to a generic `DomainEvent` literal for an unrecognised
+ * type, so every event type a context actually emits must be registered in
+ * the {@link DomainEventRehydrationRegistry} passed to the codec / dispatcher.
+ * An unregistered type is a wiring bug (a new event class shipped without
+ * updating the context's registry), not recoverable outbox-row corruption —
+ * hence a dedicated error rather than {@link InvalidDomainEventEnvelopeError}.
+ */
+export class UnregisteredDomainEventTypeError extends Error {
+    readonly type: EventType;
+
+    constructor(type: EventType) {
+        super(
+            `No DomainEventRehydrator registered for event type '${type}' — register one in this context's DomainEventRehydrationRegistry.`,
+        );
+        this.name = 'UnregisteredDomainEventTypeError';
+        this.type = type;
+    }
+}
+
+/**
+ * Narrows `payload` from `unknown` to an object whose `field` is a string,
+ * throwing {@link InvalidDomainEventEnvelopeError} otherwise.
+ *
+ * Every context's `DomainEventRehydrator` must narrow the codec's untyped
+ * `payload` to its own event's typed shape (the kernel cannot validate a
+ * payload shape it knows nothing about) — this covers the common
+ * single-required-string-field case so a context's narrowing guard only
+ * names the field, rather than re-implementing the `typeof`/`null` check.
+ * A payload with more than one required field, or a non-string field, still
+ * needs its own guard.
+ */
+export function assertPayloadHasStringField<TField extends string>(
+    payload: unknown,
+    field: TField,
+): asserts payload is Record<TField, string> {
+    if (
+        typeof payload !== 'object' ||
+        payload === null ||
+        typeof (payload as Record<string, unknown>)[field] !== 'string'
+    ) {
+        throw new InvalidDomainEventEnvelopeError('payload', payload);
+    }
+}
+
+/**
  * Encode a {@link DomainEvent} to a JSON-safe object.
  *
  * The `occurredAt` Date is converted to an ISO-8601 string; the `EventScope`
@@ -123,7 +170,7 @@ export class InvalidDomainEventEnvelopeError extends Error {
  * {@link decodeDomainEvent} via {@link asEventScope}); everything else is left
  * as-is (branded string ids are plain strings at runtime).
  */
-export function encodeDomainEvent<TPayload>(event: DomainEvent<TPayload>): DomainEventJson {
+export function encodeDomainEvent(event: DomainEvent): DomainEventJson {
     return {
         eventId: event.eventId,
         type: event.type,
@@ -144,14 +191,16 @@ export function encodeDomainEvent<TPayload>(event: DomainEvent<TPayload>): Domai
  * format so a malformed outbox row is rejected at the boundary rather than
  * propagated as a typed event.
  *
- * The `payload` is returned as `unknown`: the codec cannot validate a payload
- * shape it knows nothing about, so it deliberately does **not** advertise a
- * `<TPayload>` type parameter.  Callers narrow the payload at their own
- * boundary — mirroring how the {@link PgPollingDispatcher} already consumes a
- * `DomainEvent<unknown>` from the outbox.
+ * `registry` must have a {@link DomainEventRehydrator} registered for the
+ * JSON's `type` — no fallback to a generic envelope literal is left
+ * (ADR-0022, #176); an unregistered type throws
+ * {@link UnregisteredDomainEventTypeError} instead.
  */
-export function decodeDomainEvent(json: DomainEventJson): DomainEvent<unknown> {
-    return rehydrateDomainEvent(json);
+export function decodeDomainEvent(
+    json: DomainEventJson,
+    registry: DomainEventRehydrationRegistry,
+): DomainEvent {
+    return rehydrateDomainEvent(json, registry);
 }
 
 /**
@@ -191,12 +240,16 @@ function parseStrictIso(value: string): Date {
  * ({@link decodeDomainEvent}) do not re-implement the `asEventId` /
  * `asEventType` / `asEventScope` / `asAggregateId` casts.
  *
- * When a `registry` is supplied and it has a rehydrator for the row's
- * `type`, that rehydrator constructs the concrete class event (e.g.
- * `EntrySubmitted`) from the already-validated envelope — so the polling
- * dispatcher consumes class events. Otherwise the generic
- * `DomainEvent<unknown>` envelope is returned, keeping the codec usable for
- * event types that have not yet been migrated to class events.
+ * `registry` must have a rehydrator registered for the row's `type` — by
+ * convention that rehydrator constructs the concrete class event (e.g.
+ * `EntrySubmitted`) from the already-validated envelope, so the polling
+ * dispatcher and the JSON codec receive a class instance rather than a bare
+ * envelope literal (ADR-0022, #176) — though this function has no way to
+ * verify that a registered rehydrator actually does so. An unregistered
+ * `type` throws {@link UnregisteredDomainEventTypeError} rather than falling
+ * back to a generic envelope literal — that fallback was the last
+ * envelope-event remnant and is retired now that every real emitter is
+ * class-per-type.
  */
 export function rehydrateDomainEvent(
     envelope: {
@@ -207,8 +260,8 @@ export function rehydrateDomainEvent(
         readonly aggregateId: string;
         readonly payload: unknown;
     },
-    registry?: DomainEventRehydrationRegistry,
-): DomainEvent<unknown> {
+    registry: DomainEventRehydrationRegistry,
+): DomainEvent {
     // Restore the timestamp first so a corrupt value is rejected at the
     // boundary. For the string path a strict ISO parse (see parseStrictIso above)
     // rejects both non-ISO garbage (→ Invalid Date) and rollover dates that
@@ -221,18 +274,18 @@ export function rehydrateDomainEvent(
     const eventId = asEventId(envelope.eventId);
     const aggregateId = asAggregateId(envelope.aggregateId);
 
-    const rehydrator = registry?.rehydratorFor(type);
-    if (rehydrator !== undefined) {
-        return rehydrator({
-            eventId,
-            type,
-            occurredAt,
-            scope,
-            aggregateId,
-            payload: envelope.payload,
-        });
+    const rehydrator = registry.rehydratorFor(type);
+    if (rehydrator === undefined) {
+        throw new UnregisteredDomainEventTypeError(type);
     }
-    return { eventId, type, occurredAt, scope, aggregateId, payload: envelope.payload };
+    return rehydrator({
+        eventId,
+        type,
+        occurredAt,
+        scope,
+        aggregateId,
+        payload: envelope.payload,
+    });
 }
 
 /**

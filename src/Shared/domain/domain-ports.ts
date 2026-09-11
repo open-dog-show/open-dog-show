@@ -23,8 +23,9 @@ export interface Clock {
  * testable with an in-memory test double.
  *
  * The generated id is branded as an {@link EventId} so it cannot be silently
- * swapped for any other string — `createDomainEvent` flows that brand straight
- * through to `DomainEvent.eventId`.
+ * swapped for any other string — a class event's construction path (e.g.
+ * `EntrySubmitted.from`) flows that brand straight through to
+ * `DomainEvent.eventId`.
  */
 export interface EventIdGenerator {
     /** Generates and returns a new branded {@link EventId}. */

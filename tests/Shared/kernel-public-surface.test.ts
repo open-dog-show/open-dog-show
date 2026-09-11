@@ -53,3 +53,25 @@ describe('kernel public surface — identity ownership (ADR-0013)', () => {
         expect(kernel).not.toHaveProperty('asExhibitorId');
     });
 });
+
+/**
+ * Contract test for the envelope-event retirement (ADR-0022, issue #176).
+ *
+ * `createDomainEvent` and its generic `DomainEvent<TPayload>` envelope were
+ * retired once every real emitter became class-per-type. This test pins that
+ * invariant so a future change cannot silently reintroduce the factory.
+ */
+describe('kernel public surface — envelope-event retirement (issue #176)', () => {
+    it('does not export the retired createDomainEvent factory', () => {
+        // @ts-expect-error — createDomainEvent was retired (ADR-0022, #176)
+        const _createDomainEvent = kernel.createDomainEvent;
+        expect(_createDomainEvent).toBeUndefined();
+        expect(kernel).not.toHaveProperty('createDomainEvent');
+    });
+
+    it('does not accept a generic type parameter on DomainEvent', () => {
+        // @ts-expect-error — DomainEvent is no longer generic (ADR-0022, #176)
+        const _pin: kernel.DomainEvent<unknown> = null as never;
+        expect(_pin).toBeNull();
+    });
+});

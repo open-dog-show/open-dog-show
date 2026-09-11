@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 export type { Item, ItemRepository } from './domain/model/item/item.js';
+export { ITEM_SAVED_TYPE, ItemSaved, type ItemSavedPayload } from './domain/model/item/events/item-saved.js';
 export type { ItemUnitOfWork, ItemUnitOfWorkContext } from './application/ports/unit-of-work.js';
 export type { SaveItemInput } from './application/save-item/save-item.js';
 export { SaveItemUseCase } from './application/save-item/save-item.js';
 export { DrizzleItemRepository } from './infrastructure/persistence/postgres/drizzle-item-repository.js';
 export { PgItemUnitOfWork } from './infrastructure/persistence/postgres/pg-unit-of-work.js';
+export { buildItemEventRehydrationRegistry } from './infrastructure/di/item-event-registry.js';

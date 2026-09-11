@@ -28,9 +28,9 @@ const EVENT_TYPE_PATTERN = /^[a-z][a-z0-9]*\.[A-Z][a-zA-Z0-9]*(?![\s\S])/;
  * `EventType` is the one branded id whose constructor is a validating factory
  * rather than a plain cast: an invalid event-type name must never reach the
  * outbox, so malformed values are rejected at the boundary instead of being
- * silently branded. Use this wherever an event type enters the domain — in
- * `createDomainEvent` callers, and in `decodeDomainEvent` when restoring an
- * event from its JSON / database form.
+ * silently branded. Use this wherever an event type enters the domain — in a
+ * class event's construction path (e.g. `EntrySubmitted.from`), and in
+ * `decodeDomainEvent` when restoring an event from its JSON / database form.
  *
  * @throws {TypeError} when `value` does not match `<word>.<PascalWord>`.
  */

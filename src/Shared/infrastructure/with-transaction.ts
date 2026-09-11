@@ -116,7 +116,7 @@ export async function withOutboxTransaction<T>(
     writer: OutboxWriter,
     fn: (client: pg.PoolClient, outbox: OutboxAppender) => Promise<T>,
 ): Promise<T> {
-    const pending: DomainEvent<unknown>[] = [];
+    const pending: DomainEvent[] = [];
     const appender: OutboxAppender = {
         append(...events) {
             pending.push(...events);

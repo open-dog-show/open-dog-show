@@ -16,7 +16,7 @@ import {
 } from '../../../src/Shared/index.js';
 import type { DomainEvent } from '../../../src/Shared/domain/domain-event.js';
 
-const EVENT: DomainEvent<unknown> = {
+const EVENT: DomainEvent = {
     eventId: asEventId('00000000-0000-4000-8000-000000000001'),
     type: asEventType('entries.EntrySubmitted'),
     occurredAt: new Date('2026-01-01T00:00:00.000Z'),

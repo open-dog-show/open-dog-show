@@ -34,7 +34,7 @@ export class PgOutboxWriter implements OutboxWriter {
 
     async write(
         client: pg.PoolClient,
-        events: readonly DomainEvent<unknown>[],
+        events: readonly DomainEvent[],
         scope: TransactionScope,
     ): Promise<void> {
         // `scopeToRlsKeys` yields `null` for the non-applicable keys and the

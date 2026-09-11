@@ -30,17 +30,17 @@ export interface EntrySubmittedPayload {
  * The fact that an {@link Entry} was submitted to a Show.
  *
  * Modelled as a **class event** implementing {@link DomainEvent} (ADR-0022
- * class events, issue #172): replaces the generic `DomainEvent<TPayload>`
- * envelope + `createDomainEvent` factory for this one real emitter. The
- * `type` field is fixed to {@link ENTRY_SUBMITTED_TYPE}; the payload is the
- * typed {@link EntrySubmittedPayload}.
+ * class events, issue #172): the generic `DomainEvent<TPayload>` envelope +
+ * `createDomainEvent` factory are retired (issue #176) now that every real
+ * emitter, this one included, is class-per-type. The `type` field is fixed to
+ * {@link ENTRY_SUBMITTED_TYPE}; the payload is the typed
+ * {@link EntrySubmittedPayload}.
  *
  * `Clock` / `EventIdGenerator` are injected into the construction path
  * ({@link EntrySubmitted.from}) so `eventId` and `occurredAt` are deterministic
- * under test and free of hidden I/O at the call site — the same guarantee the
- * kernel's `createDomainEvent` factory gives the envelope model. Explicit
- * `eventId` / `occurredAt` overrides keep the deterministic event-id/timestamp
- * tests working. A private `#brand` field makes the class **nominal** so a bare
+ * under test and free of hidden I/O at the call site. Explicit `eventId` /
+ * `occurredAt` overrides keep the deterministic event-id/timestamp tests
+ * working. A private `#brand` field makes the class **nominal** so a bare
  * envelope literal is not assignable to `EntrySubmitted`, and `instanceof` is
  * the reliable runtime discriminator for outbox consumers.
  *
@@ -48,7 +48,7 @@ export interface EntrySubmittedPayload {
  * the stored `eventId` / `occurredAt` are reused), which the sample context's
  * rehydration registry wires into the outbox codec / polling dispatcher.
  */
-export class EntrySubmitted implements DomainEvent<EntrySubmittedPayload> {
+export class EntrySubmitted implements DomainEvent {
     // Nominal brand: a bare envelope literal lacks this private field, so it is
     // not assignable to `EntrySubmitted` — closes the structural-literal leak
     // and makes `instanceof` the reliable discriminator.
