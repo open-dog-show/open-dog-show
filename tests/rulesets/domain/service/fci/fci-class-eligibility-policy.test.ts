@@ -9,8 +9,14 @@ import {
 } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
 import { asAgeMonths } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/age-months.js';
 import { CertificateKind } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/certificate-kind.js';
-import type { ClassDefinition } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/class-definition.js';
-import type { DogEligibilityProfile } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/dog-eligibility-profile.js';
+import {
+    ClassDefinition,
+    type ClassDefinitionAttributes,
+} from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/class-definition.js';
+import {
+    DogEligibilityProfile,
+    type DogEligibilityProfileAttributes,
+} from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/dog-eligibility-profile.js';
 import { LocalDate } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
 
 // ---------------------------------------------------------------------------
@@ -29,14 +35,16 @@ const BORN_UNDER_3M: LocalDate = LocalDate.of(2026, 5, 5);
 /** Born one day earlier → 3 completed months on show day. */
 const BORN_OVER_3M: LocalDate = LocalDate.of(2026, 5, 3);
 
-type ClassDefOverrides = Partial<Omit<ClassDefinition, 'fromAgeMonths' | 'lessThanAgeMonths'>> & {
+type ClassDefOverrides = Partial<
+    Omit<ClassDefinitionAttributes, 'fromAgeMonths' | 'lessThanAgeMonths'>
+> & {
     fromAgeMonths?: number | undefined;
     lessThanAgeMonths?: number | undefined;
 };
 
 function makeClass(overrides: ClassDefOverrides = {}): ClassDefinition {
     const { fromAgeMonths, lessThanAgeMonths, ...rest } = overrides;
-    return {
+    return ClassDefinition.of({
         id: asClassId('test-class'),
         fromAgeMonths: fromAgeMonths === undefined ? undefined : asAgeMonths(fromAgeMonths),
         lessThanAgeMonths:
@@ -46,16 +54,18 @@ function makeClass(overrides: ClassDefOverrides = {}): ClassDefinition {
         gradeScaleId: asGradeScaleId('standard'),
         awardTypeIds: [],
         ...rest,
-    };
+    });
 }
 
-function makeProfile(overrides: Partial<DogEligibilityProfile> = {}): DogEligibilityProfile {
-    return {
+function makeProfile(
+    overrides: Partial<DogEligibilityProfileAttributes> = {},
+): DogEligibilityProfile {
+    return DogEligibilityProfile.of({
         dateOfBirth: BORN_EXACTLY_3M,
         heldCertificates: [],
         handlerIsBreeder: false,
         ...overrides,
-    };
+    });
 }
 
 const policy = new FciClassEligibilityPolicy();

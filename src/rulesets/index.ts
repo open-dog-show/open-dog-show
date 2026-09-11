@@ -41,57 +41,92 @@ export {
     InvalidLocalDateError,
 } from './domain/model/effective-ruleset/value-objects/local-date.js';
 export { CertificateKind } from './domain/model/effective-ruleset/value-objects/certificate-kind.js';
-export type { DogEligibilityProfile } from './domain/model/effective-ruleset/value-objects/dog-eligibility-profile.js';
+export {
+    DogEligibilityProfile,
+    type DogEligibilityProfileAttributes,
+} from './domain/model/effective-ruleset/value-objects/dog-eligibility-profile.js';
 export type { ClassEligibilityPolicy } from './domain/service/class-eligibility-policy.js';
-export type {
+export {
     Grade,
     SpecialOutcome,
     GradeScale,
+    type GradeScaleAttributes,
 } from './domain/model/effective-ruleset/entities/grade-scale.js';
-export type { ClassDefinition } from './domain/model/effective-ruleset/entities/class-definition.js';
-export type {
-    AwardScope,
-    AwardType,
-    IndividualAwardType,
-    PerSexAwardType,
-    HigherScopeAwardType,
-    CollectiveAwardType,
-    Feeder,
-} from './domain/model/effective-ruleset/entities/award-type.js';
-export type {
-    RecognitionStatus,
-    Breed,
-    Variety,
-    Group,
-} from './domain/model/effective-ruleset/entities/breed.js';
-export type { ShowType } from './domain/model/effective-ruleset/entities/show-type.js';
-export type { EffectiveRuleset } from './domain/model/effective-ruleset/effective-ruleset.js';
 export {
+    ClassDefinition,
+    type ClassDefinitionAttributes,
+} from './domain/model/effective-ruleset/entities/class-definition.js';
+export {
+    AwardFeeder,
+    ClassFeeder,
+    PerSexAwardType,
+    type PerSexAwardTypeAttributes,
+    HigherScopeAwardType,
+    type HigherScopeAwardTypeAttributes,
+    EmptyFeederListError,
+    CollectiveAwardType,
+    type CollectiveAwardTypeAttributes,
+    type AwardScope,
+    type AwardType,
+    type IndividualAwardType,
+    type Feeder,
+} from './domain/model/effective-ruleset/entities/award-type.js';
+export {
+    Breed,
+    type BreedAttributes,
+    Variety,
+    type VarietyAttributes,
+    Group,
+    type GroupAttributes,
+    type RecognitionStatus,
+} from './domain/model/effective-ruleset/entities/breed.js';
+export {
+    ShowType,
+    type ShowTypeAttributes,
+} from './domain/model/effective-ruleset/entities/show-type.js';
+export {
+    EffectiveRuleset,
     findAwardType,
     findClassDefinition,
     findGrade,
     higherScopeAwardTypesForScope,
 } from './domain/model/effective-ruleset/effective-ruleset.js';
-export type { RulesetLayer } from './domain/model/effective-ruleset/entities/ruleset-layer.js';
+export {
+    RulesetLayer,
+    type RulesetLayerAttributes,
+} from './domain/model/effective-ruleset/entities/ruleset-layer.js';
 export { resolveEffectiveRuleset } from './domain/service/resolve-effective-ruleset.js';
-export type {
+export {
     ClassPlacement,
+    type ClassPlacementAttributes,
     StreamCandidate,
-    CandidateStream,
     AwardFeederStream,
+    type AwardFeederStreamAttributes,
     ClassFeederStream,
-    JudgingScopeResults,
+    type ClassFeederStreamAttributes,
+    type CandidateStream,
+    PerSexJudgingScopeResults,
+    type PerSexJudgingScopeResultsAttributes,
+    HigherScopeJudgingScopeResults,
+    type HigherScopeJudgingScopeKind,
+    type JudgingScopeResults,
 } from './domain/model/effective-ruleset/value-objects/judging-scope-results.js';
 export type {
     ProposedAwardAssignment,
     AwardValidationResult,
     AwardPolicy,
 } from './domain/service/award-policy.js';
-export type {
+export {
     CollectiveEntry,
     BreedVarietyRef,
-    CollectiveCompetitionResults,
-    CollectiveCompetitionKind,
+    BraceCoupleCompetitionResults,
+    type BraceCoupleCompetitionResultsAttributes,
+    BreedersGroupCompetitionResults,
+    type BreedersGroupCompetitionResultsAttributes,
+    ProgenyGroupCompetitionResults,
+    type ProgenyGroupCompetitionResultsAttributes,
+    type CollectiveCompetitionResults,
+    type CollectiveCompetitionKind,
 } from './domain/model/effective-ruleset/value-objects/collective-competition-results.js';
 export type {
     CollectiveAwardResult,

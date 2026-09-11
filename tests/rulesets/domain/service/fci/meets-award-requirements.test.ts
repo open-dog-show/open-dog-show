@@ -15,11 +15,20 @@ import { asAgeMonths } from '../../../../../src/rulesets/domain/model/effective-
 import { asEntryRef } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/entry-ref.js';
 import { asPlacement } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/placement.js';
 import type { IndividualAwardType } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/award-type.js';
-import type { ClassDefinition } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/class-definition.js';
-import type { GradeScale } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/grade-scale.js';
-import type { EffectiveRuleset } from '../../../../../src/rulesets/domain/model/effective-ruleset/effective-ruleset.js';
+import {
+    PerSexAwardType,
+    HigherScopeAwardType,
+    AwardFeeder,
+} from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/award-type.js';
+import { ClassDefinition } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/class-definition.js';
+import {
+    GradeScale,
+    Grade,
+} from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/grade-scale.js';
+import { RulesetLayer } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/ruleset-layer.js';
+import { EffectiveRuleset } from '../../../../../src/rulesets/domain/model/effective-ruleset/effective-ruleset.js';
 import { LocalDate } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
-import type { ClassPlacement } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/judging-scope-results.js';
+import { ClassPlacement } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/judging-scope-results.js';
 
 // ---------------------------------------------------------------------------
 // Shared fixture
@@ -32,17 +41,14 @@ const OPEN_CLASS_ID = asClassId('open');
 const CACIB_ID = asAwardTypeId('cacib');
 const UNKNOWN_GRADE_ID = asGradeId('does-not-exist');
 
-const gradeScale: GradeScale = {
+const gradeScale: GradeScale = GradeScale.of({
     id: GRADE_SCALE_ID,
-    grades: [
-        { id: EXCELLENT, ordinal: 0 },
-        { id: VERY_GOOD, ordinal: 1 },
-    ],
+    grades: [Grade.of(EXCELLENT, 0), Grade.of(VERY_GOOD, 1)],
     placeableThresholdId: VERY_GOOD,
     specialOutcomes: [],
-};
+});
 
-const classDefinition: ClassDefinition = {
+const classDefinition: ClassDefinition = ClassDefinition.of({
     id: OPEN_CLASS_ID,
     fromAgeMonths: asAgeMonths(15),
     lessThanAgeMonths: undefined,
@@ -50,35 +56,40 @@ const classDefinition: ClassDefinition = {
     bredByExhibitor: false,
     gradeScaleId: GRADE_SCALE_ID,
     awardTypeIds: [CACIB_ID],
-};
+});
 
-const cacib: IndividualAwardType = {
+const cacib: IndividualAwardType = PerSexAwardType.of({
     id: CACIB_ID,
     minimumGradeId: EXCELLENT,
     worstEligiblePlacement: asPlacement(1),
     isDiscretionary: true,
-    scope: 'per-sex',
-};
+});
 
-const RULESET: EffectiveRuleset = {
-    resolvedAt: LocalDate.of(2026, 1, 1),
-    sourceLayerIds: [asRulesetLayerId('fci')],
-    classDefinitions: [classDefinition],
-    gradeScales: [gradeScale],
-    awardTypes: [cacib],
-    showTypes: [],
-};
+const RULESET: EffectiveRuleset = EffectiveRuleset.resolve(
+    [
+        RulesetLayer.of({
+            id: asRulesetLayerId('fci'),
+            parentLayerId: undefined,
+            classDefinitions: [classDefinition],
+            gradeScales: [gradeScale],
+            awardTypes: [cacib],
+            showTypes: [],
+        }),
+    ],
+    LocalDate.of(2026, 1, 1),
+);
 
 const placement = (
     gradeId: GradeId,
     ordinalPlacement: number | undefined,
     classId = OPEN_CLASS_ID,
-): ClassPlacement => ({
-    classId,
-    entryRef: asEntryRef('dog-1'),
-    gradeId,
-    placement: ordinalPlacement === undefined ? undefined : asPlacement(ordinalPlacement),
-});
+): ClassPlacement =>
+    ClassPlacement.of({
+        classId,
+        entryRef: asEntryRef('dog-1'),
+        gradeId,
+        placement: ordinalPlacement === undefined ? undefined : asPlacement(ordinalPlacement),
+    });
 
 // ---------------------------------------------------------------------------
 // meetsAwardRequirements
@@ -139,14 +150,13 @@ describe('meetsAwardRequirements', () => {
     });
 
     it('meets when no minimum placement is required', () => {
-        const awardWithoutPlacement: IndividualAwardType = {
+        const awardWithoutPlacement: IndividualAwardType = HigherScopeAwardType.breed({
             id: CACIB_ID,
             minimumGradeId: EXCELLENT,
             worstEligiblePlacement: undefined,
             isDiscretionary: false,
-            scope: 'breed',
-            fedBy: [],
-        };
+            fedBy: [AwardFeeder.of(CACIB_ID)],
+        });
 
         const result = meetsAwardRequirements(
             placement(EXCELLENT, undefined),
@@ -173,13 +183,12 @@ describe('meetsAwardRequirements', () => {
     });
 
     it('does not meet when the award minimum grade is unknown in the class grade scale', () => {
-        const awardWithUnknownMinGrade: IndividualAwardType = {
+        const awardWithUnknownMinGrade: IndividualAwardType = PerSexAwardType.of({
             id: CACIB_ID,
             minimumGradeId: UNKNOWN_GRADE_ID,
             worstEligiblePlacement: asPlacement(1),
             isDiscretionary: true,
-            scope: 'per-sex',
-        };
+        });
 
         const result = meetsAwardRequirements(
             placement(EXCELLENT, 1),

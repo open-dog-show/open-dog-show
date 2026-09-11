@@ -13,11 +13,12 @@ import {
     asRulesetLayerId,
 } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
 import { LocalDate } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
-import type {
+import {
     Grade,
     GradeScale,
 } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/grade-scale.js';
-import type { EffectiveRuleset } from '../../../../../src/rulesets/domain/model/effective-ruleset/effective-ruleset.js';
+import { RulesetLayer } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/ruleset-layer.js';
+import { EffectiveRuleset } from '../../../../../src/rulesets/domain/model/effective-ruleset/effective-ruleset.js';
 
 const EXCELLENT = asGradeId('excellent');
 const VERY_GOOD = asGradeId('very-good');
@@ -26,27 +27,28 @@ const ADULT_SCALE_ID = asGradeScaleId('adult');
 const PUPPY_SCALE_ID = asGradeScaleId('puppy');
 
 function grade(id: string, ordinal: number): Grade {
-    return { id: asGradeId(id), ordinal };
+    return Grade.of(asGradeId(id), ordinal);
 }
 
 function scale(id: string, ...grades: Grade[]): GradeScale {
-    return {
+    return GradeScale.of({
         id: asGradeScaleId(id),
         grades,
         placeableThresholdId: grades[0]?.id ?? asGradeId('placeholder'),
         specialOutcomes: [],
-    };
+    });
 }
 
 function ruleset(...scales: GradeScale[]): EffectiveRuleset {
-    return {
-        resolvedAt: LocalDate.of(2026, 1, 1),
-        sourceLayerIds: [asRulesetLayerId('test')],
+    const layer = RulesetLayer.of({
+        id: asRulesetLayerId('test'),
+        parentLayerId: undefined,
         classDefinitions: [],
         gradeScales: scales,
         awardTypes: [],
         showTypes: [],
-    };
+    });
+    return EffectiveRuleset.resolve([layer], LocalDate.of(2026, 1, 1));
 }
 
 describe('gradeAtLeast', () => {
