@@ -13,6 +13,8 @@ import {
     type TransactionScope,
 } from '../../../../src/Shared/index.js';
 import { FakeSampleUnitOfWork } from '../../../../src/sample/infrastructure/persistence/inmemory/fake-sample-unit-of-work.js';
+import { Entry } from '../../../../src/sample/domain/model/entry/entry.js';
+import { EntrySubmitted } from '../../../../src/sample/domain/model/entry/events/entry-submitted.js';
 import {
     SaveEntryUseCase,
     InvalidTransactionScopeError,
@@ -49,7 +51,13 @@ describe('SaveEntryUseCase', () => {
         await useCase.execute(input, clubScope);
 
         expect(unitOfWork.savedEntries).toHaveLength(1);
-        expect(unitOfWork.savedEntries[0]).toStrictEqual({
+        const saved = unitOfWork.savedEntries[0]!;
+        expect(saved).toBeInstanceOf(Entry);
+        // `toEqual` (not `toStrictEqual`) because `Entry` is a nominal class —
+        // its prototype differs from a plain literal's. The `#brand` private
+        // field is not an own enumerable property, so the five domain fields
+        // still compare equal.
+        expect(saved).toEqual({
             id: ENTRY_ID,
             clubId: asClubId(CLUB_ID),
             principalId: asPrincipalId(USER_ID),
@@ -70,6 +78,7 @@ describe('SaveEntryUseCase', () => {
 
         expect(unitOfWork.appendedEvents).toHaveLength(1);
         const event = unitOfWork.appendedEvents[0]!;
+        expect(event).toBeInstanceOf(EntrySubmitted);
         expect(event.type).toBe('sample.EntrySubmitted');
         expect(event.scope.kind).toBe('club');
         expect(event.aggregateId).toBe(asAggregateId(ENTRY_ID));

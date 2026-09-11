@@ -10,10 +10,8 @@ import {
     asClubId,
     asPrincipalId,
     asEventId,
-    asEventType,
     EventScope,
     ClubTransactionScope,
-    createDomainEvent,
     FakeClock,
     FakeEventIdGenerator,
     PgOutboxWriter,
@@ -22,6 +20,9 @@ import {
 } from '../../../../../src/Shared/index.js';
 import { PgSampleUnitOfWork } from '../../../../../src/sample/infrastructure/persistence/postgres/pg-unit-of-work.js';
 import { asEntryId, asShowId } from '../../../../../src/sample/domain/shared/domain-ids.js';
+import { Entry } from '../../../../../src/sample/domain/model/entry/entry.js';
+import { EntrySubmitted } from '../../../../../src/sample/domain/model/entry/events/entry-submitted.js';
+import { buildSampleEventRehydrationRegistry } from '../../../../../src/sample/infrastructure/di/sample-event-registry.js';
 
 // Fixed deterministic IDs.
 const CLUB_ID = '00000000-0000-4000-8000-000000000001';
@@ -31,13 +32,11 @@ const ENTRY_ID = '00000000-0000-4000-8000-000000000031';
 const EVENT_ID = '00000000-0000-4000-8000-000000000041';
 
 const scope = ClubTransactionScope.of(asClubId(CLUB_ID), asPrincipalId(PRINCIPAL_ID));
-const entry = {
+const entry = Entry.submit(scope, {
     id: asEntryId(ENTRY_ID),
-    clubId: asClubId(CLUB_ID),
-    principalId: asPrincipalId(PRINCIPAL_ID),
     showId: asShowId(SHOW_ID),
     dogName: 'Fido',
-};
+});
 
 describe('Transactional outbox — sample context', () => {
     const harness = new PostgresHarness();
@@ -66,10 +65,9 @@ describe('Transactional outbox — sample context', () => {
         await harness.stop();
     });
 
-    function makeEvent(): DomainEvent<unknown> {
-        return createDomainEvent(
+    function makeEvent(): EntrySubmitted {
+        return EntrySubmitted.from(
             {
-                type: asEventType('sample.EntrySubmitted'),
                 scope: EventScope.club(),
                 aggregateId: asAggregateId(ENTRY_ID),
                 payload: { dogName: 'Fido' },
@@ -206,6 +204,32 @@ describe('Transactional outbox — sample context', () => {
                 [DISPATCHER_EVENT_ID],
             );
             expect(rows[0]?.dispatched_at).not.toBeNull();
+        });
+
+        it('rehydrates a sample.EntrySubmitted row into an EntrySubmitted class instance via the registry', async () => {
+            // The dispatcher is constructed with the sample context's
+            // event-type → class rehydration registry, so a stored
+            // `sample.EntrySubmitted` row is rehydrated into an `EntrySubmitted`
+            // class instance (not the generic DomainEvent envelope) and the
+            // handler can discriminate by `instanceof` (issue #172).
+            const registry = buildSampleEventRehydrationRegistry();
+            let received: DomainEvent<unknown> | undefined;
+            const dispatcher = new PgPollingDispatcher(
+                superPool,
+                'sample',
+                async (event) => {
+                    received = event;
+                },
+                { registry },
+            );
+
+            const count = await dispatcher.poll();
+
+            expect(count).toBe(1);
+            expect(received).toBeInstanceOf(EntrySubmitted);
+            expect(received?.type).toBe('sample.EntrySubmitted');
+            expect(received?.aggregateId).toBe(asAggregateId(ENTRY_ID));
+            expect(received?.payload).toStrictEqual({ dogName: 'Fido' });
         });
 
         it('returns 0 when there are no pending rows', async () => {

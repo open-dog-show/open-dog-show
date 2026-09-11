@@ -3,17 +3,16 @@
 
 import {
     asAggregateId,
-    asEventType,
     EventScope,
-    createDomainEvent,
     type Clock,
     type EventIdGenerator,
     type TransactionScope,
 } from '../../../Shared/index.js';
 import { asEntryId, asShowId } from '../../domain/shared/domain-ids.js';
-import { createEntry } from '../../domain/model/entry/entry.js';
+import { Entry } from '../../domain/model/entry/entry.js';
+import { EntrySubmitted } from '../../domain/model/entry/events/entry-submitted.js';
 // Re-exported so existing callers (`from './save-entry.js'`) still see the
-// error; the canonical definition lives with the `createEntry` factory in the
+// error; the canonical definition lives with the `Entry.submit` factory in the
 // Entry aggregate.
 export { InvalidTransactionScopeError } from '../../domain/model/entry/entry.js';
 import type { SampleUnitOfWork } from '../ports/unit-of-work.js';
@@ -59,16 +58,15 @@ export class SaveEntryUseCase {
      */
     async execute(input: SaveEntryInput, scope: TransactionScope): Promise<void> {
         await this.unitOfWork.run(scope, async (ctx) => {
-            const entry = createEntry(scope, {
+            const entry = Entry.submit(scope, {
                 id: asEntryId(input.id),
                 showId: asShowId(input.showId),
                 dogName: input.dogName,
             });
             await ctx.entries.save(entry);
             ctx.appendEvents(
-                createDomainEvent(
+                EntrySubmitted.from(
                     {
-                        type: asEventType('sample.EntrySubmitted'),
                         scope: EventScope.club(),
                         aggregateId: asAggregateId(entry.id),
                         payload: { dogName: entry.dogName },

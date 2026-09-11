@@ -28,6 +28,11 @@ export {
     encodeDomainEvent,
     decodeDomainEvent,
     InvalidDomainEventEnvelopeError,
+    DomainEventRehydrationRegistry,
+} from './domain/domain-event-codec.js';
+export type {
+    DomainEventRehydrator,
+    RehydratedDomainEventEnvelope,
 } from './domain/domain-event-codec.js';
 export { DomainError } from './domain/domain-error.js';
 export type { Result } from './application/result.js';

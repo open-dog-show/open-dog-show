@@ -7,6 +7,7 @@ import {
     encodeDomainEvent,
     InvalidDomainEventEnvelopeError,
     rehydrateDomainEvent,
+    DomainEventRehydrationRegistry,
 } from '../../../src/Shared/domain/domain-event-codec.js';
 import type { DomainEvent } from '../../../src/Shared/domain/domain-event.js';
 import { EventScope } from '../../../src/Shared/domain/event-scope.js';
@@ -179,5 +180,102 @@ describe('encode → JSON.stringify → JSON.parse → decode round-trip', () =>
         expect(restored.scope).toStrictEqual(original.scope);
         expect(restored.aggregateId).toBe(original.aggregateId);
         expect(restored.payload).toStrictEqual(original.payload);
+    });
+});
+
+describe('DomainEventRehydrationRegistry', () => {
+    // Minimal in-test class event exercising the registry wiring.
+    class StubEntrySubmitted implements DomainEvent<{ dogName: string }> {
+        readonly type = asEventType('sample.EntrySubmitted');
+        readonly eventId: ReturnType<typeof asEventId>;
+        readonly occurredAt: Date;
+        readonly scope: EventScope;
+        readonly aggregateId: ReturnType<typeof asAggregateId>;
+        readonly payload: { dogName: string };
+
+        constructor(envelope: {
+            eventId: ReturnType<typeof asEventId>;
+            occurredAt: Date;
+            scope: EventScope;
+            aggregateId: ReturnType<typeof asAggregateId>;
+            payload: unknown;
+        }) {
+            this.eventId = envelope.eventId;
+            this.occurredAt = envelope.occurredAt;
+            this.scope = envelope.scope;
+            this.aggregateId = envelope.aggregateId;
+            this.payload = envelope.payload as { dogName: string };
+        }
+    }
+
+    const raw = {
+        eventId: '00000000-0000-4000-8000-000000000001',
+        type: 'sample.EntrySubmitted',
+        occurredAt: '2026-08-01T12:00:00.000Z',
+        scope: 'club' as const,
+        aggregateId: 'entry-abc',
+        payload: { dogName: 'Fido' },
+    };
+
+    it('rehydratorFor returns undefined for an unregistered type', () => {
+        const registry = new DomainEventRehydrationRegistry();
+        expect(registry.rehydratorFor(asEventType('sample.EntrySubmitted'))).toBeUndefined();
+    });
+
+    it('rehydratorFor returns the registered rehydrator', () => {
+        const registry = new DomainEventRehydrationRegistry();
+        const rehydrator = () =>
+            new StubEntrySubmitted({
+                eventId: asEventId('x'),
+                occurredAt: new Date(0),
+                scope: EventScope.club(),
+                aggregateId: asAggregateId('x'),
+                payload: { dogName: 'x' },
+            });
+        registry.register(asEventType('sample.EntrySubmitted'), rehydrator);
+
+        expect(registry.rehydratorFor(asEventType('sample.EntrySubmitted'))).toBe(rehydrator);
+    });
+
+    it('rehydrateDomainEvent delegates to the registered class rehydrator', () => {
+        const registry = new DomainEventRehydrationRegistry();
+        registry.register(
+            asEventType('sample.EntrySubmitted'),
+            (envelope) =>
+                new StubEntrySubmitted({
+                    eventId: envelope.eventId,
+                    occurredAt: envelope.occurredAt,
+                    scope: envelope.scope,
+                    aggregateId: envelope.aggregateId,
+                    payload: envelope.payload,
+                }),
+        );
+
+        const event = rehydrateDomainEvent(raw, registry);
+
+        expect(event).toBeInstanceOf(StubEntrySubmitted);
+        expect(event.eventId).toBe(raw.eventId);
+        expect(event.type).toBe('sample.EntrySubmitted');
+        expect(event.occurredAt).toBeInstanceOf(Date);
+        expect(event.payload).toStrictEqual({ dogName: 'Fido' });
+    });
+
+    it('rehydrateDomainEvent falls back to the generic envelope for an unregistered type', () => {
+        const registry = new DomainEventRehydrationRegistry();
+
+        const event = rehydrateDomainEvent(raw, registry);
+
+        // No class rehydrator registered → the generic envelope object is returned.
+        expect(event).not.toBeInstanceOf(StubEntrySubmitted);
+        expect(event.eventId).toBe(raw.eventId);
+        expect(event.type).toBe('sample.EntrySubmitted');
+        expect(event.payload).toStrictEqual({ dogName: 'Fido' });
+    });
+
+    it('rehydrateDomainEvent without a registry still returns the generic envelope', () => {
+        const event = rehydrateDomainEvent(raw);
+
+        expect(event.eventId).toBe(raw.eventId);
+        expect(event.type).toBe('sample.EntrySubmitted');
     });
 });
