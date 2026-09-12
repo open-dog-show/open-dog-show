@@ -9,30 +9,35 @@ import {
     type PgOutboxWriter,
     type TransactionScope,
 } from '../../../../Shared/index.js';
-import { DrizzleItemRepository } from './drizzle-item-repository.js';
-import type { ItemUnitOfWork, ItemUnitOfWorkContext } from '../../../application/ports/unit-of-work.js';
+// plop:imports
+import type {
+    {{pascalCase name}}UnitOfWork,
+    {{pascalCase name}}UnitOfWorkContext,
+} from '../../../application/ports/unit-of-work.js';
 
 /**
- * PostgreSQL implementation of the {{name}}-context {@link ItemUnitOfWork} port
- * (ADR-0014).
+ * PostgreSQL implementation of the {{dashCase name}}-context
+ * {@link {{pascalCase name}}UnitOfWork} port (ADR-0014).
  *
- * Wraps the kernel's `withOutboxTransaction`: it opens the transaction, sets the
- * RLS session variables from `scope`, constructs the Drizzle repository inside
- * the transaction, runs `body` against an {@link ItemUnitOfWorkContext}, then
- * atomically writes any recorded domain facts to the outbox before commit (or
- * rolls back on error). The application layer never sees `pg`,
- * `pg.PoolClient`, or `withOutboxTransaction`.
+ * Wraps the kernel's `withOutboxTransaction`: it opens the transaction, sets
+ * the RLS session variables from `scope`, constructs the Drizzle repositories
+ * inside the transaction, runs `body` against a
+ * {@link {{pascalCase name}}UnitOfWorkContext}, then atomically writes any
+ * recorded domain facts to the outbox before commit (or rolls back on error).
+ * Saving an aggregate through its repository's `add`/`update` pulls and
+ * stamps its recorded events (ADR-0027) — the application layer never touches
+ * events, `pg`, `pg.PoolClient`, or `withOutboxTransaction`.
  *
  * Constructed once at the composition root with a `pg.Pool`, a
  * `PgOutboxWriter`, and the `Clock` / `EventIdGenerator` ports used to stamp
  * event envelopes; injected into use-case classes.
  */
-export class PgItemUnitOfWork implements ItemUnitOfWork {
+export class Pg{{pascalCase name}}UnitOfWork implements {{pascalCase name}}UnitOfWork {
     /**
      * @param pool - The PostgreSQL connection pool (app role, RLS-enforced).
      * @param writer - The schema-scoped outbox writer for this context.
-     * @param clock - Stamps `occurredAt` on recorded facts.
-     * @param eventIdGenerator - Stamps `eventId` on recorded facts.
+     * @param clock - Stamps `occurredAt` on events pulled from a saved aggregate.
+     * @param eventIdGenerator - Stamps `eventId` on events pulled from a saved aggregate.
      */
     constructor(
         private readonly pool: pg.Pool,
@@ -41,7 +46,10 @@ export class PgItemUnitOfWork implements ItemUnitOfWork {
         private readonly eventIdGenerator: EventIdGenerator,
     ) {}
 
-    async run<T>(scope: TransactionScope, body: (ctx: ItemUnitOfWorkContext) => Promise<T>): Promise<T> {
+    async run<T>(
+        scope: TransactionScope,
+        body: (ctx: {{pascalCase name}}UnitOfWorkContext) => Promise<T>,
+    ): Promise<T> {
         return withOutboxTransaction(
             this.pool,
             scope,
@@ -49,9 +57,9 @@ export class PgItemUnitOfWork implements ItemUnitOfWork {
             this.clock,
             this.eventIdGenerator,
             async (client, record) => {
-                const ctx: ItemUnitOfWorkContext = {
-                    items: new DrizzleItemRepository(client),
-                    record,
+                // plop:repository-instances
+                const ctx: {{pascalCase name}}UnitOfWorkContext = {
+                    // plop:repositories
                 };
                 return body(ctx);
             },

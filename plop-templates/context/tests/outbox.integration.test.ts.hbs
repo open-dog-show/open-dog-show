@@ -1,0 +1,45 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { PostgresHarness } from '../../../../test-kit/index.js';
+import { bootstrap{{pascalCase name}}Schema } from '../../../fixtures.js';
+import { PgOutboxWriter, PlatformTransactionScope } from '../../../../../src/Shared/index.js';
+import { SystemClock } from '../../../../../src/Shared/infrastructure/system-clock.js';
+import { RandomEventIdGenerator } from '../../../../../src/Shared/infrastructure/random-event-id-generator.js';
+import { Pg{{pascalCase name}}UnitOfWork } from '../../../../../src/{{dashCase name}}/infrastructure/persistence/postgres/pg-unit-of-work.js';
+
+/**
+ * Proves the bare context skeleton — no aggregate yet — wires migrations,
+ * RLS session variables, and the outbox transaction plumbing correctly: a
+ * unit of work that records nothing still commits cleanly.
+ */
+describe('{{dashCase name}} context skeleton — outbox plumbing', () => {
+    const harness = new PostgresHarness();
+    let unitOfWork: Pg{{pascalCase name}}UnitOfWork;
+
+    beforeAll(async () => {
+        await bootstrap{{pascalCase name}}Schema(harness);
+        unitOfWork = new Pg{{pascalCase name}}UnitOfWork(
+            harness.appUserPool,
+            new PgOutboxWriter('{{snakeCase name}}'),
+            new SystemClock(),
+            new RandomEventIdGenerator(),
+        );
+    }, 120_000);
+
+    afterAll(async () => {
+        await harness.stop();
+    });
+
+    it('commits an empty unit of work with no rows written to the outbox', async () => {
+        await expect(
+            unitOfWork.run(PlatformTransactionScope.of(), async (ctx) => ctx),
+        ).resolves.toBeDefined();
+
+        const { rows } = await harness.superPool.query<{ count: string }>(
+            `SELECT count(*)::text AS count FROM {{snakeCase name}}.outbox`,
+        );
+        expect(rows[0]?.count).toBe('0');
+    });
+});

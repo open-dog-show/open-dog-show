@@ -1,0 +1,68 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { PostgresHarness } from '../../../../test-kit/index.js';
+import { bootstrap{{pascalCase context}}Schema } from '../../../fixtures.js';
+import {
+    asClubId,
+    asPrincipalId,
+    ClubTransactionScope,
+    PgOutboxWriter,
+} from '../../../../../src/Shared/index.js';
+import { SystemClock } from '../../../../../src/Shared/infrastructure/system-clock.js';
+import { RandomEventIdGenerator } from '../../../../../src/Shared/infrastructure/random-event-id-generator.js';
+import { Pg{{pascalCase context}}UnitOfWork } from '../../../../../src/{{dashCase context}}/infrastructure/persistence/postgres/pg-unit-of-work.js';
+import { {{pascalCase name}} } from '../../../../../src/{{dashCase context}}/domain/model/{{dashCase name}}/{{dashCase name}}.js';
+import { as{{pascalCase name}}Id } from '../../../../../src/{{dashCase context}}/domain/shared/domain-ids.js';
+
+const CLUB_A_ID = asClubId('00000000-0000-4000-8000-000000000001');
+const CLUB_B_ID = asClubId('00000000-0000-4000-8000-000000000002');
+const PRINCIPAL_A_ID = asPrincipalId('00000000-0000-4000-8000-000000000011');
+const PRINCIPAL_B_ID = asPrincipalId('00000000-0000-4000-8000-000000000012');
+const {{constantCase name}}_ID = as{{pascalCase name}}Id('00000000-0000-4000-8000-000000000021');
+
+/** Proves the ADR-0005 `club` RLS policy: visible only to the owning Club. */
+describe('{{pascalCase name}} RLS isolation (club scope)', () => {
+    const harness = new PostgresHarness();
+    let unitOfWork: Pg{{pascalCase context}}UnitOfWork;
+
+    beforeAll(async () => {
+        await bootstrap{{pascalCase context}}Schema(harness);
+        unitOfWork = new Pg{{pascalCase context}}UnitOfWork(
+            harness.appUserPool,
+            new PgOutboxWriter('{{snakeCase context}}'),
+            new SystemClock(),
+            new RandomEventIdGenerator(),
+        );
+
+        await unitOfWork.run(ClubTransactionScope.of(CLUB_A_ID, PRINCIPAL_A_ID), async (ctx) => {
+            await ctx.{{plural (camelCase name)}}.add(
+                {{pascalCase name}}.create({
+                    id: {{constantCase name}}_ID,
+                    clubId: CLUB_A_ID,
+                    createdBy: PRINCIPAL_A_ID,
+                    name: 'Club {{A (pascalCase name)}} {{pascalCase name}}',
+                }),
+            );
+        });
+    }, 120_000);
+
+    afterAll(async () => {
+        await harness.stop();
+    });
+
+    it('club A can find its own {{pascalCase name}}', async () => {
+        await unitOfWork.run(ClubTransactionScope.of(CLUB_A_ID, PRINCIPAL_A_ID), async (ctx) => {
+            const found = await ctx.{{plural (camelCase name)}}.findById({{constantCase name}}_ID);
+            expect(found?.name).toBe('Club {{A (pascalCase name)}} {{pascalCase name}}');
+        });
+    });
+
+    it("club B cannot find club A's {{pascalCase name}}", async () => {
+        await unitOfWork.run(ClubTransactionScope.of(CLUB_B_ID, PRINCIPAL_B_ID), async (ctx) => {
+            const found = await ctx.{{plural (camelCase name)}}.findById({{constantCase name}}_ID);
+            expect(found).toBeUndefined();
+        });
+    });
+});

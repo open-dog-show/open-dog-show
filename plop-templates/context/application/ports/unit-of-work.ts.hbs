@@ -1,45 +1,32 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { DomainEventFact, TransactionScope } from '../../../Shared/index.js';
-import type { ItemRepository } from '../../domain/model/item/item.js';
+import type { TransactionScope } from '../../../Shared/index.js';
+// plop:imports
 
 /**
- * The repository and fact recorder available inside one {{name}} unit of work
- * (ADR-0014).
+ * The repositories available inside one {{dashCase name}} unit of work (ADR-0014).
  *
- * The application layer names only these members — never `pg`, `pg.PoolClient`,
- * `PgOutboxWriter`, or `withOutboxTransaction`. The {@link ItemUnitOfWork}
- * implementation owns the transaction boundary and constructs the Drizzle
- * repository inside it.
+ * Lists repositories only (ADR-0027) — a use case never appends events
+ * itself; an aggregate root records its own facts (`this.record(...)`,
+ * `AggregateRoot.pullEvents()`) and the unit-of-work implementation pulls and
+ * stamps them when a repository's `add`/`update` is called.
  */
-export interface ItemUnitOfWorkContext {
-    /** The Item repository, transaction-bound by the surrounding unit of work. */
-    readonly items: ItemRepository;
-    /**
-     * Records domain facts for atomic outbox-write at the end of the unit of
-     * work — stamped with `eventId` / `occurredAt` by the unit of work.
-     * Read-only operations simply do not call this.
-     *
-     * ADR-0027's target shape is a root recording its own facts
-     * (`this.record(...)`, pulled via `AggregateRoot.pullEvents()`), so a use
-     * case never touches events — see the sample context's `Entry`/
-     * `SaveEntryUseCase` for that shape. `Item` here is still a plain object,
-     * not an `AggregateRoot`, so `SaveItemUseCase` builds the fact and calls
-     * this member itself; bringing the template in line with `Entry`'s shape
-     * is the aggregate-class generator's job (issue #188), not this port.
-     */
-    record(...facts: readonly DomainEventFact[]): void;
+export interface {{pascalCase name}}UnitOfWorkContext {
+    // plop:repositories
 }
 
 /**
  * Per-context unit-of-work port (ADR-0014).
  *
  * Opens a transaction scoped to `scope` (setting the RLS session variables),
- * constructs the context's repository inside it, runs `body`, then commits —
- * atomically writing any recorded domain facts to the outbox before commit
+ * constructs the context's repositories inside it, runs `body`, then commits
+ * — atomically writing any recorded domain facts to the outbox before commit
  * (or rolling back on error).
  */
-export interface ItemUnitOfWork {
-    run<T>(scope: TransactionScope, body: (ctx: ItemUnitOfWorkContext) => Promise<T>): Promise<T>;
+export interface {{pascalCase name}}UnitOfWork {
+    run<T>(
+        scope: TransactionScope,
+        body: (ctx: {{pascalCase name}}UnitOfWorkContext) => Promise<T>,
+    ): Promise<T>;
 }

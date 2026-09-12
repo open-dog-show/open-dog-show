@@ -1,0 +1,8 @@
+/** Branded string that uniquely identifies {{a (pascalCase name)}} {{pascalCase name}} within the {{dashCase context}} context. */
+export type {{pascalCase name}}Id = Brand<string, '{{pascalCase name}}Id'>;
+/**
+ * Casts a raw string to a {@link {{pascalCase name}}Id}. Plain cast — no
+ * validation. Call it at the outermost layer (repository, use-case boundary)
+ * so the rest of the domain works exclusively with typed IDs.
+ */
+export const as{{pascalCase name}}Id = (id: string): {{pascalCase name}}Id => id as {{pascalCase name}}Id;

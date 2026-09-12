@@ -1,0 +1,69 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import {
+    requireActor,
+    requireClubScope,
+    type Result,
+    type TransactionScope,
+} from '../../../Shared/index.js';
+import { as{{pascalCase name}}Id } from '../../domain/shared/domain-ids.js';
+import { {{pascalCase name}}, Invalid{{pascalCase name}}NameError } from '../../domain/model/{{dashCase name}}/{{dashCase name}}.js';
+import type { {{pascalCase context}}UnitOfWork } from '../ports/unit-of-work.js';
+
+/** Inputs to {@link Create{{pascalCase name}}Handler.execute} that are not derivable from the transaction scope. */
+export interface Create{{pascalCase name}}Command {
+    /** Aggregate id of the {{pascalCase name}} to create. */
+    readonly id: string;
+    readonly name: string;
+}
+
+/** Primitive view of the created {{pascalCase name}} (B4). */
+export interface Create{{pascalCase name}}Response {
+    readonly id: string;
+    readonly name: string;
+}
+
+/**
+ * Use case: create {{a (pascalCase name)}} {{pascalCase name}} — a club-scoped aggregate — and
+ * record the `{{eventContext context}}.{{pascalCase name}}Created` fact in
+ * the same transaction (ADR-0014).
+ *
+ * `scope` must itself be a `club` scope (ADR-0026) — {@link requireClubScope}
+ * throws `ScopeMismatchError` for any other scope kind; that is a technical
+ * fault (E4/E6), not part of the `Result` channel, so it is rethrown rather
+ * than caught below.
+ */
+export class Create{{pascalCase name}}Handler {
+    constructor(private readonly unitOfWork: {{pascalCase context}}UnitOfWork) {}
+
+    /**
+     * @throws {ScopeMismatchError} when `scope` is not a `club` scope.
+     */
+    async execute(
+        command: Create{{pascalCase name}}Command,
+        scope: TransactionScope,
+    ): Promise<Result<Create{{pascalCase name}}Response, Invalid{{pascalCase name}}NameError>> {
+        const clubId = requireClubScope(scope);
+        const createdBy = requireActor(scope);
+        try {
+            return await this.unitOfWork.run<
+                Result<Create{{pascalCase name}}Response, Invalid{{pascalCase name}}NameError>
+            >(scope, async (ctx) => {
+                const {{camelCase name}} = {{pascalCase name}}.create({
+                    id: as{{pascalCase name}}Id(command.id),
+                    clubId,
+                    createdBy,
+                    name: command.name,
+                });
+                await ctx.{{plural (camelCase name)}}.add({{camelCase name}});
+                return { ok: true, value: { id: {{camelCase name}}.id, name: {{camelCase name}}.name } };
+            });
+        } catch (error) {
+            if (error instanceof Invalid{{pascalCase name}}NameError) {
+                return { ok: false, error };
+            }
+            throw error;
+        }
+    }
+}

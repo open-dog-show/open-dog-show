@@ -9,22 +9,30 @@ import {
     type PgOutboxWriter,
     type TransactionScope,
 } from '../../../../Shared/index.js';
-import { DrizzleEntryRepository } from './drizzle-entry-repository.js';
-import { DrizzleShowRepository } from './drizzle-show-repository.js';
+// plop:imports
+import { DrizzleAnnouncementRepository } from './drizzle-announcement-repository.js';
+
+import { DrizzleTicketRepository } from './drizzle-ticket-repository.js';
+
+import { DrizzleNoteRepository } from './drizzle-note-repository.js';
+
+import { DrizzleItemRepository } from './drizzle-item-repository.js';
+
 import type {
     SampleUnitOfWork,
     SampleUnitOfWorkContext,
 } from '../../../application/ports/unit-of-work.js';
 
 /**
- * PostgreSQL implementation of the sample-context {@link SampleUnitOfWork} port
- * (ADR-0014).
+ * PostgreSQL implementation of the sample-context
+ * {@link SampleUnitOfWork} port (ADR-0014).
  *
- * Wraps the kernel's `withOutboxTransaction`: it opens the transaction, sets the
- * RLS session variables from `scope`, constructs the Drizzle repositories inside
- * the transaction, runs `body` against a {@link SampleUnitOfWorkContext}, then
- * atomically writes any recorded domain events to the outbox before commit (or
- * rolls back on error). Saving an `Entry` through `ctx.entries.save` pulls and
+ * Wraps the kernel's `withOutboxTransaction`: it opens the transaction, sets
+ * the RLS session variables from `scope`, constructs the Drizzle repositories
+ * inside the transaction, runs `body` against a
+ * {@link SampleUnitOfWorkContext}, then atomically writes any
+ * recorded domain facts to the outbox before commit (or rolls back on error).
+ * Saving an aggregate through its repository's `add`/`update` pulls and
  * stamps its recorded events (ADR-0027) — the application layer never touches
  * events, `pg`, `pg.PoolClient`, or `withOutboxTransaction`.
  *
@@ -57,16 +65,64 @@ export class PgSampleUnitOfWork implements SampleUnitOfWork {
             this.clock,
             this.eventIdGenerator,
             async (client, record) => {
-                const entryRepository = new DrizzleEntryRepository(client);
+                // plop:repository-instances
+                const announcementRepository = new DrizzleAnnouncementRepository(client);
+
+                const ticketRepository = new DrizzleTicketRepository(client);
+
+                const noteRepository = new DrizzleNoteRepository(client);
+
+                const itemRepository = new DrizzleItemRepository(client);
+
                 const ctx: SampleUnitOfWorkContext = {
-                    entries: {
-                        findAll: () => entryRepository.findAll(),
-                        save: async (entry) => {
-                            await entryRepository.save(entry);
-                            record(...entry.pullEvents());
+                    // plop:repositories
+                    announcements: {
+                        findById: (id) => announcementRepository.findById(id),
+                        add: async (announcement) => {
+                            await announcementRepository.add(announcement);
+                            record(...announcement.pullEvents());
+                        },
+                        update: async (announcement) => {
+                            await announcementRepository.update(announcement);
+                            record(...announcement.pullEvents());
                         },
                     },
-                    shows: new DrizzleShowRepository(client),
+
+                    tickets: {
+                        findById: (id) => ticketRepository.findById(id),
+                        add: async (ticket) => {
+                            await ticketRepository.add(ticket);
+                            record(...ticket.pullEvents());
+                        },
+                        update: async (ticket) => {
+                            await ticketRepository.update(ticket);
+                            record(...ticket.pullEvents());
+                        },
+                    },
+
+                    notes: {
+                        findById: (id) => noteRepository.findById(id),
+                        add: async (note) => {
+                            await noteRepository.add(note);
+                            record(...note.pullEvents());
+                        },
+                        update: async (note) => {
+                            await noteRepository.update(note);
+                            record(...note.pullEvents());
+                        },
+                    },
+
+                    items: {
+                        findById: (id) => itemRepository.findById(id),
+                        add: async (item) => {
+                            await itemRepository.add(item);
+                            record(...item.pullEvents());
+                        },
+                        update: async (item) => {
+                            await itemRepository.update(item);
+                            record(...item.pullEvents());
+                        },
+                    },
                 };
                 return body(ctx);
             },
