@@ -4,8 +4,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PostgresHarness } from '../postgres-harness.js';
-import { runMigrations } from '../migration-runner.js';
+import { PostgresHarness } from './postgres-harness.js';
+import { runMigrations } from './migration-runner.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
