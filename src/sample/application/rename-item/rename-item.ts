@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { TransactionScope } from '../../../Shared/index.js';
+import type { Result, TransactionScope } from '../../../Shared/index.js';
 import { asItemId } from '../../domain/shared/domain-ids.js';
-import { ItemNotFoundError } from '../../domain/model/item/item.js';
+import { ItemNotFoundError, InvalidItemNameError } from '../../domain/model/item/item.js';
 import type { SampleUnitOfWork } from '../ports/unit-of-work.js';
 
 /** Inputs to {@link RenameItemHandler.execute}. */
@@ -32,22 +32,28 @@ export interface RenameItemResponse {
 export class RenameItemHandler {
     constructor(private readonly unitOfWork: SampleUnitOfWork) {}
 
-    /**
-     * @throws ItemNotFoundError when `command.id` names no Item.
-     */
     async execute(
         command: RenameItemCommand,
         scope: TransactionScope,
-    ): Promise<RenameItemResponse> {
-        return this.unitOfWork.run(scope, async (ctx) => {
-            const id = asItemId(command.id);
-            const item = await ctx.items.findById(id);
-            if (item === undefined) {
-                throw new ItemNotFoundError(id);
+    ): Promise<Result<RenameItemResponse, ItemNotFoundError | InvalidItemNameError>> {
+        try {
+            return await this.unitOfWork.run<
+                Result<RenameItemResponse, ItemNotFoundError | InvalidItemNameError>
+            >(scope, async (ctx) => {
+                const id = asItemId(command.id);
+                const item = await ctx.items.findById(id);
+                if (item === undefined) {
+                    throw new ItemNotFoundError(id);
+                }
+                item.rename(command.name);
+                await ctx.items.update(item);
+                return { ok: true, value: { id: item.id, name: item.name } };
+            });
+        } catch (error) {
+            if (error instanceof ItemNotFoundError || error instanceof InvalidItemNameError) {
+                return { ok: false, error };
             }
-            item.rename(command.name);
-            await ctx.items.update(item);
-            return { id: item.id, name: item.name };
-        });
+            throw error;
+        }
     }
 }

@@ -6,7 +6,10 @@ import { asClubId, asPrincipalId, ClubTransactionScope } from '../../../../src/S
 import { Fake{{pascalCase context}}UnitOfWork } from '../../../../src/{{dashCase context}}/infrastructure/persistence/inmemory/fake-{{dashCase context}}-unit-of-work.js';
 import { Create{{pascalCase name}}Handler } from '../../../../src/{{dashCase context}}/application/create-{{dashCase name}}/create-{{dashCase name}}.js';
 import { Rename{{pascalCase name}}Handler } from '../../../../src/{{dashCase context}}/application/rename-{{dashCase name}}/rename-{{dashCase name}}.js';
-import { {{pascalCase name}}NotFoundError } from '../../../../src/{{dashCase context}}/domain/model/{{dashCase name}}/{{dashCase name}}.js';
+import {
+    {{pascalCase name}}NotFoundError,
+    Invalid{{pascalCase name}}NameError,
+} from '../../../../src/{{dashCase context}}/domain/model/{{dashCase name}}/{{dashCase name}}.js';
 
 const CLUB_ID = asClubId('00000000-0000-4000-8000-000000000001');
 const PRINCIPAL_ID = asPrincipalId('00000000-0000-4000-8000-000000000011');
@@ -20,23 +23,41 @@ describe('Rename{{pascalCase name}}Handler', () => {
             SCOPE,
         );
 
-        const response = await new Rename{{pascalCase name}}Handler(unitOfWork).execute(
+        const result = await new Rename{{pascalCase name}}Handler(unitOfWork).execute(
             { id: '00000000-0000-4000-8000-000000000021', name: 'New name' },
             SCOPE,
         );
 
-        expect(response).toEqual({ id: '00000000-0000-4000-8000-000000000021', name: 'New name' });
+        expect(result).toEqual({
+            ok: true,
+            value: { id: '00000000-0000-4000-8000-000000000021', name: 'New name' },
+        });
         expect(unitOfWork.recordedEvents.at(-1)?.type).toBe('{{eventContext context}}.{{pascalCase name}}Renamed');
     });
 
-    it('throws {{pascalCase name}}NotFoundError for an unknown id', async () => {
+    it('returns {{pascalCase name}}NotFoundError for an unknown id', async () => {
         const unitOfWork = new Fake{{pascalCase context}}UnitOfWork();
 
-        await expect(
-            new Rename{{pascalCase name}}Handler(unitOfWork).execute(
-                { id: '00000000-0000-4000-8000-000000000099', name: 'New name' },
-                SCOPE,
-            ),
-        ).rejects.toThrow({{pascalCase name}}NotFoundError);
+        const result = await new Rename{{pascalCase name}}Handler(unitOfWork).execute(
+            { id: '00000000-0000-4000-8000-000000000099', name: 'New name' },
+            SCOPE,
+        );
+
+        expect(result).toEqual({ ok: false, error: expect.any({{pascalCase name}}NotFoundError) });
+    });
+
+    it('returns Invalid{{pascalCase name}}NameError for a blank name', async () => {
+        const unitOfWork = new Fake{{pascalCase context}}UnitOfWork();
+        await new Create{{pascalCase name}}Handler(unitOfWork).execute(
+            { id: '00000000-0000-4000-8000-000000000021', name: 'Old name' },
+            SCOPE,
+        );
+
+        const result = await new Rename{{pascalCase name}}Handler(unitOfWork).execute(
+            { id: '00000000-0000-4000-8000-000000000021', name: '   ' },
+            SCOPE,
+        );
+
+        expect(result).toEqual({ ok: false, error: expect.any(Invalid{{pascalCase name}}NameError) });
     });
 });

@@ -1,9 +1,12 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { TransactionScope } from '../../../Shared/index.js';
+import type { Result, TransactionScope } from '../../../Shared/index.js';
 import { as{{pascalCase name}}Id } from '../../domain/shared/domain-ids.js';
-import { {{pascalCase name}}NotFoundError } from '../../domain/model/{{dashCase name}}/{{dashCase name}}.js';
+import {
+    {{pascalCase name}}NotFoundError,
+    Invalid{{pascalCase name}}NameError,
+} from '../../domain/model/{{dashCase name}}/{{dashCase name}}.js';
 import type { {{pascalCase context}}UnitOfWork } from '../ports/unit-of-work.js';
 
 /** Inputs to {@link Rename{{pascalCase name}}Handler.execute}. */
@@ -32,22 +35,30 @@ export interface Rename{{pascalCase name}}Response {
 export class Rename{{pascalCase name}}Handler {
     constructor(private readonly unitOfWork: {{pascalCase context}}UnitOfWork) {}
 
-    /**
-     * @throws {{pascalCase name}}NotFoundError when `command.id` names no {{pascalCase name}}.
-     */
     async execute(
         command: Rename{{pascalCase name}}Command,
         scope: TransactionScope,
-    ): Promise<Rename{{pascalCase name}}Response> {
-        return this.unitOfWork.run(scope, async (ctx) => {
-            const id = as{{pascalCase name}}Id(command.id);
-            const {{camelCase name}} = await ctx.{{plural (camelCase name)}}.findById(id);
-            if ({{camelCase name}} === undefined) {
-                throw new {{pascalCase name}}NotFoundError(id);
+    ): Promise<
+        Result<Rename{{pascalCase name}}Response, {{pascalCase name}}NotFoundError | Invalid{{pascalCase name}}NameError>
+    > {
+        try {
+            return await this.unitOfWork.run<
+                Result<Rename{{pascalCase name}}Response, {{pascalCase name}}NotFoundError | Invalid{{pascalCase name}}NameError>
+            >(scope, async (ctx) => {
+                const id = as{{pascalCase name}}Id(command.id);
+                const {{camelCase name}} = await ctx.{{plural (camelCase name)}}.findById(id);
+                if ({{camelCase name}} === undefined) {
+                    throw new {{pascalCase name}}NotFoundError(id);
+                }
+                {{camelCase name}}.rename(command.name);
+                await ctx.{{plural (camelCase name)}}.update({{camelCase name}});
+                return { ok: true, value: { id: {{camelCase name}}.id, name: {{camelCase name}}.name } };
+            });
+        } catch (error) {
+            if (error instanceof {{pascalCase name}}NotFoundError || error instanceof Invalid{{pascalCase name}}NameError) {
+                return { ok: false, error };
             }
-            {{camelCase name}}.rename(command.name);
-            await ctx.{{plural (camelCase name)}}.update({{camelCase name}});
-            return { id: {{camelCase name}}.id, name: {{camelCase name}}.name };
-        });
+            throw error;
+        }
     }
 }

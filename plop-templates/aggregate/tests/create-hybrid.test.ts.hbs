@@ -13,46 +13,72 @@ import { Fake{{pascalCase context}}UnitOfWork } from '../../../../src/{{dashCase
 import { Create{{pascalCase parent}}Handler } from '../../../../src/{{dashCase context}}/application/create-{{dashCase parent}}/create-{{dashCase parent}}.js';
 import { Create{{pascalCase name}}Handler } from '../../../../src/{{dashCase context}}/application/create-{{dashCase name}}/create-{{dashCase name}}.js';
 import { {{pascalCase parent}}NotFoundError } from '../../../../src/{{dashCase context}}/domain/model/{{dashCase parent}}/{{dashCase parent}}.js';
+import { Invalid{{pascalCase name}}NameError } from '../../../../src/{{dashCase context}}/domain/model/{{dashCase name}}/{{dashCase name}}.js';
 
 const CLUB_ID = asClubId('00000000-0000-4000-8000-000000000001');
 const CLUB_PRINCIPAL_ID = asPrincipalId('00000000-0000-4000-8000-000000000011');
 const EXHIBITOR_ID = asPrincipalId('00000000-0000-4000-8000-000000000012');
+const EXHIBITOR_SCOPE = ExhibitorTransactionScope.of(EXHIBITOR_ID);
+
+async function seed{{pascalCase parent}}(unitOfWork: Fake{{pascalCase context}}UnitOfWork): Promise<void> {
+    await new Create{{pascalCase parent}}Handler(unitOfWork).execute(
+        { id: '00000000-0000-4000-8000-000000000031', name: 'The {{pascalCase parent}}' },
+        ClubTransactionScope.of(CLUB_ID, CLUB_PRINCIPAL_ID),
+    );
+}
 
 describe('Create{{pascalCase name}}Handler', () => {
     it("creates {{a (pascalCase name)}} {{pascalCase name}} owned by the referenced {{pascalCase parent}}'s Club, even when the actor has no Club of their own", async () => {
         const unitOfWork = new Fake{{pascalCase context}}UnitOfWork();
-        await new Create{{pascalCase parent}}Handler(unitOfWork).execute(
-            { id: '00000000-0000-4000-8000-000000000031', name: 'The {{pascalCase parent}}' },
-            ClubTransactionScope.of(CLUB_ID, CLUB_PRINCIPAL_ID),
-        );
+        await seed{{pascalCase parent}}(unitOfWork);
 
-        const response = await new Create{{pascalCase name}}Handler(unitOfWork).execute(
+        const result = await new Create{{pascalCase name}}Handler(unitOfWork).execute(
             {
                 id: '00000000-0000-4000-8000-000000000021',
                 {{camelCase parent}}Id: '00000000-0000-4000-8000-000000000031',
                 name: 'A name',
             },
-            ExhibitorTransactionScope.of(EXHIBITOR_ID),
+            EXHIBITOR_SCOPE,
         );
 
-        expect(response).toEqual({ id: '00000000-0000-4000-8000-000000000021', name: 'A name' });
+        expect(result).toEqual({
+            ok: true,
+            value: { id: '00000000-0000-4000-8000-000000000021', name: 'A name' },
+        });
         const createdEvent = unitOfWork.recordedEvents.at(-1);
         expect(createdEvent?.type).toBe('{{eventContext context}}.{{pascalCase name}}Created');
         expect(createdEvent?.scope).toEqual(ClubEventScope.of(CLUB_ID));
     });
 
-    it('throws {{pascalCase parent}}NotFoundError when the referenced {{pascalCase parent}} does not exist', async () => {
+    it('returns {{pascalCase parent}}NotFoundError when the referenced {{pascalCase parent}} does not exist', async () => {
         const unitOfWork = new Fake{{pascalCase context}}UnitOfWork();
 
-        await expect(
-            new Create{{pascalCase name}}Handler(unitOfWork).execute(
-                {
-                    id: '00000000-0000-4000-8000-000000000021',
-                    {{camelCase parent}}Id: '00000000-0000-4000-8000-000000000099',
-                    name: 'A name',
-                },
-                ExhibitorTransactionScope.of(EXHIBITOR_ID),
-            ),
-        ).rejects.toThrow({{pascalCase parent}}NotFoundError);
+        const result = await new Create{{pascalCase name}}Handler(unitOfWork).execute(
+            {
+                id: '00000000-0000-4000-8000-000000000021',
+                {{camelCase parent}}Id: '00000000-0000-4000-8000-000000000099',
+                name: 'A name',
+            },
+            EXHIBITOR_SCOPE,
+        );
+
+        expect(result).toEqual({ ok: false, error: expect.any({{pascalCase parent}}NotFoundError) });
+        expect(unitOfWork.recordedEvents).toHaveLength(0);
+    });
+
+    it('returns Invalid{{pascalCase name}}NameError for a blank name', async () => {
+        const unitOfWork = new Fake{{pascalCase context}}UnitOfWork();
+        await seed{{pascalCase parent}}(unitOfWork);
+
+        const result = await new Create{{pascalCase name}}Handler(unitOfWork).execute(
+            {
+                id: '00000000-0000-4000-8000-000000000021',
+                {{camelCase parent}}Id: '00000000-0000-4000-8000-000000000031',
+                name: '   ',
+            },
+            EXHIBITOR_SCOPE,
+        );
+
+        expect(result).toEqual({ ok: false, error: expect.any(Invalid{{pascalCase name}}NameError) });
     });
 });

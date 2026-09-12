@@ -1,9 +1,12 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { TransactionScope } from '../../../Shared/index.js';
+import type { Result, TransactionScope } from '../../../Shared/index.js';
 import { asAnnouncementId } from '../../domain/shared/domain-ids.js';
-import { AnnouncementNotFoundError } from '../../domain/model/announcement/announcement.js';
+import {
+    AnnouncementNotFoundError,
+    InvalidAnnouncementNameError,
+} from '../../domain/model/announcement/announcement.js';
 import type { SampleUnitOfWork } from '../ports/unit-of-work.js';
 
 /** Inputs to {@link RenameAnnouncementHandler.execute}. */
@@ -32,22 +35,36 @@ export interface RenameAnnouncementResponse {
 export class RenameAnnouncementHandler {
     constructor(private readonly unitOfWork: SampleUnitOfWork) {}
 
-    /**
-     * @throws AnnouncementNotFoundError when `command.id` names no Announcement.
-     */
     async execute(
         command: RenameAnnouncementCommand,
         scope: TransactionScope,
-    ): Promise<RenameAnnouncementResponse> {
-        return this.unitOfWork.run(scope, async (ctx) => {
-            const id = asAnnouncementId(command.id);
-            const announcement = await ctx.announcements.findById(id);
-            if (announcement === undefined) {
-                throw new AnnouncementNotFoundError(id);
+    ): Promise<
+        Result<RenameAnnouncementResponse, AnnouncementNotFoundError | InvalidAnnouncementNameError>
+    > {
+        try {
+            return await this.unitOfWork.run<
+                Result<
+                    RenameAnnouncementResponse,
+                    AnnouncementNotFoundError | InvalidAnnouncementNameError
+                >
+            >(scope, async (ctx) => {
+                const id = asAnnouncementId(command.id);
+                const announcement = await ctx.announcements.findById(id);
+                if (announcement === undefined) {
+                    throw new AnnouncementNotFoundError(id);
+                }
+                announcement.rename(command.name);
+                await ctx.announcements.update(announcement);
+                return { ok: true, value: { id: announcement.id, name: announcement.name } };
+            });
+        } catch (error) {
+            if (
+                error instanceof AnnouncementNotFoundError ||
+                error instanceof InvalidAnnouncementNameError
+            ) {
+                return { ok: false, error };
             }
-            announcement.rename(command.name);
-            await ctx.announcements.update(announcement);
-            return { id: announcement.id, name: announcement.name };
-        });
+            throw error;
+        }
     }
 }

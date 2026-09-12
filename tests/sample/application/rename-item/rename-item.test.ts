@@ -6,7 +6,10 @@ import { asClubId, asPrincipalId, ClubTransactionScope } from '../../../../src/S
 import { FakeSampleUnitOfWork } from '../../../../src/sample/infrastructure/persistence/inmemory/fake-sample-unit-of-work.js';
 import { CreateItemHandler } from '../../../../src/sample/application/create-item/create-item.js';
 import { RenameItemHandler } from '../../../../src/sample/application/rename-item/rename-item.js';
-import { ItemNotFoundError } from '../../../../src/sample/domain/model/item/item.js';
+import {
+    ItemNotFoundError,
+    InvalidItemNameError,
+} from '../../../../src/sample/domain/model/item/item.js';
 
 const CLUB_ID = asClubId('00000000-0000-4000-8000-000000000001');
 const PRINCIPAL_ID = asPrincipalId('00000000-0000-4000-8000-000000000011');
@@ -20,23 +23,41 @@ describe('RenameItemHandler', () => {
             SCOPE,
         );
 
-        const response = await new RenameItemHandler(unitOfWork).execute(
+        const result = await new RenameItemHandler(unitOfWork).execute(
             { id: '00000000-0000-4000-8000-000000000021', name: 'New name' },
             SCOPE,
         );
 
-        expect(response).toEqual({ id: '00000000-0000-4000-8000-000000000021', name: 'New name' });
+        expect(result).toEqual({
+            ok: true,
+            value: { id: '00000000-0000-4000-8000-000000000021', name: 'New name' },
+        });
         expect(unitOfWork.recordedEvents.at(-1)?.type).toBe('sample.ItemRenamed');
     });
 
-    it('throws ItemNotFoundError for an unknown id', async () => {
+    it('returns ItemNotFoundError for an unknown id', async () => {
         const unitOfWork = new FakeSampleUnitOfWork();
 
-        await expect(
-            new RenameItemHandler(unitOfWork).execute(
-                { id: '00000000-0000-4000-8000-000000000099', name: 'New name' },
-                SCOPE,
-            ),
-        ).rejects.toThrow(ItemNotFoundError);
+        const result = await new RenameItemHandler(unitOfWork).execute(
+            { id: '00000000-0000-4000-8000-000000000099', name: 'New name' },
+            SCOPE,
+        );
+
+        expect(result).toEqual({ ok: false, error: expect.any(ItemNotFoundError) });
+    });
+
+    it('returns InvalidItemNameError for a blank name', async () => {
+        const unitOfWork = new FakeSampleUnitOfWork();
+        await new CreateItemHandler(unitOfWork).execute(
+            { id: '00000000-0000-4000-8000-000000000021', name: 'Old name' },
+            SCOPE,
+        );
+
+        const result = await new RenameItemHandler(unitOfWork).execute(
+            { id: '00000000-0000-4000-8000-000000000021', name: '   ' },
+            SCOPE,
+        );
+
+        expect(result).toEqual({ ok: false, error: expect.any(InvalidItemNameError) });
     });
 });

@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { requireActor, type TransactionScope } from '../../../Shared/index.js';
+import { requireActor, type Result, type TransactionScope } from '../../../Shared/index.js';
 import { asTicketId, asItemId } from '../../domain/shared/domain-ids.js';
-import { Ticket } from '../../domain/model/ticket/ticket.js';
+import { Ticket, InvalidTicketNameError } from '../../domain/model/ticket/ticket.js';
 import { ItemNotFoundError } from '../../domain/model/item/item.js';
 import type { SampleUnitOfWork } from '../ports/unit-of-work.js';
 
@@ -51,30 +51,40 @@ export class CreateTicketHandler {
 
     /**
      * @throws {ScopeMismatchError} when `scope` has no acting principal (a
-     *   `platform` scope) — see {@link requireActor}.
-     * @throws ItemNotFoundError when `command.itemId` names no Item.
+     *   `platform` scope) — see {@link requireActor}. A technical fault
+     *   (E4/E6), not part of the `Result` channel, so it is rethrown rather
+     *   than caught below.
      */
     async execute(
         command: CreateTicketCommand,
         scope: TransactionScope,
-    ): Promise<CreateTicketResponse> {
+    ): Promise<Result<CreateTicketResponse, InvalidTicketNameError | ItemNotFoundError>> {
         const createdBy = requireActor(scope);
-        return this.unitOfWork.run(scope, async (ctx) => {
-            const itemId = asItemId(command.itemId);
-            const item = await ctx.items.findById(itemId);
-            if (item === undefined) {
-                throw new ItemNotFoundError(itemId);
-            }
+        try {
+            return await this.unitOfWork.run<
+                Result<CreateTicketResponse, InvalidTicketNameError | ItemNotFoundError>
+            >(scope, async (ctx) => {
+                const itemId = asItemId(command.itemId);
+                const item = await ctx.items.findById(itemId);
+                if (item === undefined) {
+                    throw new ItemNotFoundError(itemId);
+                }
 
-            const ticket = Ticket.create({
-                id: asTicketId(command.id),
-                clubId: item.clubId,
-                createdBy,
-                itemId,
-                name: command.name,
+                const ticket = Ticket.create({
+                    id: asTicketId(command.id),
+                    clubId: item.clubId,
+                    createdBy,
+                    itemId,
+                    name: command.name,
+                });
+                await ctx.tickets.add(ticket);
+                return { ok: true, value: { id: ticket.id, name: ticket.name } };
             });
-            await ctx.tickets.add(ticket);
-            return { id: ticket.id, name: ticket.name };
-        });
+        } catch (error) {
+            if (error instanceof InvalidTicketNameError || error instanceof ItemNotFoundError) {
+                return { ok: false, error };
+            }
+            throw error;
+        }
     }
 }

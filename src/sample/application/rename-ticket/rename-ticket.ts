@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { TransactionScope } from '../../../Shared/index.js';
+import type { Result, TransactionScope } from '../../../Shared/index.js';
 import { asTicketId } from '../../domain/shared/domain-ids.js';
-import { TicketNotFoundError } from '../../domain/model/ticket/ticket.js';
+import { TicketNotFoundError, InvalidTicketNameError } from '../../domain/model/ticket/ticket.js';
 import type { SampleUnitOfWork } from '../ports/unit-of-work.js';
 
 /** Inputs to {@link RenameTicketHandler.execute}. */
@@ -32,22 +32,28 @@ export interface RenameTicketResponse {
 export class RenameTicketHandler {
     constructor(private readonly unitOfWork: SampleUnitOfWork) {}
 
-    /**
-     * @throws TicketNotFoundError when `command.id` names no Ticket.
-     */
     async execute(
         command: RenameTicketCommand,
         scope: TransactionScope,
-    ): Promise<RenameTicketResponse> {
-        return this.unitOfWork.run(scope, async (ctx) => {
-            const id = asTicketId(command.id);
-            const ticket = await ctx.tickets.findById(id);
-            if (ticket === undefined) {
-                throw new TicketNotFoundError(id);
+    ): Promise<Result<RenameTicketResponse, TicketNotFoundError | InvalidTicketNameError>> {
+        try {
+            return await this.unitOfWork.run<
+                Result<RenameTicketResponse, TicketNotFoundError | InvalidTicketNameError>
+            >(scope, async (ctx) => {
+                const id = asTicketId(command.id);
+                const ticket = await ctx.tickets.findById(id);
+                if (ticket === undefined) {
+                    throw new TicketNotFoundError(id);
+                }
+                ticket.rename(command.name);
+                await ctx.tickets.update(ticket);
+                return { ok: true, value: { id: ticket.id, name: ticket.name } };
+            });
+        } catch (error) {
+            if (error instanceof TicketNotFoundError || error instanceof InvalidTicketNameError) {
+                return { ok: false, error };
             }
-            ticket.rename(command.name);
-            await ctx.tickets.update(ticket);
-            return { id: ticket.id, name: ticket.name };
-        });
+            throw error;
+        }
     }
 }

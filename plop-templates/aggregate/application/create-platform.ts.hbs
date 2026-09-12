@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { TransactionScope } from '../../../Shared/index.js';
+import type { Result, TransactionScope } from '../../../Shared/index.js';
 import { as{{pascalCase name}}Id } from '../../domain/shared/domain-ids.js';
-import { {{pascalCase name}} } from '../../domain/model/{{dashCase name}}/{{dashCase name}}.js';
+import { {{pascalCase name}}, Invalid{{pascalCase name}}NameError } from '../../domain/model/{{dashCase name}}/{{dashCase name}}.js';
 import type { {{pascalCase context}}UnitOfWork } from '../ports/unit-of-work.js';
 
 /** Inputs to {@link Create{{pascalCase name}}Handler.execute}. */
@@ -33,14 +33,23 @@ export class Create{{pascalCase name}}Handler {
     async execute(
         command: Create{{pascalCase name}}Command,
         scope: TransactionScope,
-    ): Promise<Create{{pascalCase name}}Response> {
-        return this.unitOfWork.run(scope, async (ctx) => {
-            const {{camelCase name}} = {{pascalCase name}}.create({
-                id: as{{pascalCase name}}Id(command.id),
-                name: command.name,
+    ): Promise<Result<Create{{pascalCase name}}Response, Invalid{{pascalCase name}}NameError>> {
+        try {
+            return await this.unitOfWork.run<
+                Result<Create{{pascalCase name}}Response, Invalid{{pascalCase name}}NameError>
+            >(scope, async (ctx) => {
+                const {{camelCase name}} = {{pascalCase name}}.create({
+                    id: as{{pascalCase name}}Id(command.id),
+                    name: command.name,
+                });
+                await ctx.{{plural (camelCase name)}}.add({{camelCase name}});
+                return { ok: true, value: { id: {{camelCase name}}.id, name: {{camelCase name}}.name } };
             });
-            await ctx.{{plural (camelCase name)}}.add({{camelCase name}});
-            return { id: {{camelCase name}}.id, name: {{camelCase name}}.name };
-        });
+        } catch (error) {
+            if (error instanceof Invalid{{pascalCase name}}NameError) {
+                return { ok: false, error };
+            }
+            throw error;
+        }
     }
 }

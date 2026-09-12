@@ -12,7 +12,10 @@ import { FakeSampleUnitOfWork } from '../../../../src/sample/infrastructure/pers
 import { CreateItemHandler } from '../../../../src/sample/application/create-item/create-item.js';
 import { CreateTicketHandler } from '../../../../src/sample/application/create-ticket/create-ticket.js';
 import { RenameTicketHandler } from '../../../../src/sample/application/rename-ticket/rename-ticket.js';
-import { TicketNotFoundError } from '../../../../src/sample/domain/model/ticket/ticket.js';
+import {
+    TicketNotFoundError,
+    InvalidTicketNameError,
+} from '../../../../src/sample/domain/model/ticket/ticket.js';
 
 const CLUB_ID = asClubId('00000000-0000-4000-8000-000000000001');
 const CLUB_PRINCIPAL_ID = asPrincipalId('00000000-0000-4000-8000-000000000011');
@@ -39,23 +42,38 @@ describe('RenameTicketHandler', () => {
         const unitOfWork = new FakeSampleUnitOfWork();
         await seedTicket(unitOfWork);
 
-        const response = await new RenameTicketHandler(unitOfWork).execute(
+        const result = await new RenameTicketHandler(unitOfWork).execute(
             { id: '00000000-0000-4000-8000-000000000021', name: 'New name' },
             EXHIBITOR_SCOPE,
         );
 
-        expect(response).toEqual({ id: '00000000-0000-4000-8000-000000000021', name: 'New name' });
+        expect(result).toEqual({
+            ok: true,
+            value: { id: '00000000-0000-4000-8000-000000000021', name: 'New name' },
+        });
         expect(unitOfWork.recordedEvents.at(-1)?.type).toBe('sample.TicketRenamed');
     });
 
-    it('throws TicketNotFoundError for an unknown id', async () => {
+    it('returns TicketNotFoundError for an unknown id', async () => {
         const unitOfWork = new FakeSampleUnitOfWork();
 
-        await expect(
-            new RenameTicketHandler(unitOfWork).execute(
-                { id: '00000000-0000-4000-8000-000000000099', name: 'New name' },
-                EXHIBITOR_SCOPE,
-            ),
-        ).rejects.toThrow(TicketNotFoundError);
+        const result = await new RenameTicketHandler(unitOfWork).execute(
+            { id: '00000000-0000-4000-8000-000000000099', name: 'New name' },
+            EXHIBITOR_SCOPE,
+        );
+
+        expect(result).toEqual({ ok: false, error: expect.any(TicketNotFoundError) });
+    });
+
+    it('returns InvalidTicketNameError for a blank name', async () => {
+        const unitOfWork = new FakeSampleUnitOfWork();
+        await seedTicket(unitOfWork);
+
+        const result = await new RenameTicketHandler(unitOfWork).execute(
+            { id: '00000000-0000-4000-8000-000000000021', name: '   ' },
+            EXHIBITOR_SCOPE,
+        );
+
+        expect(result).toEqual({ ok: false, error: expect.any(InvalidTicketNameError) });
     });
 });

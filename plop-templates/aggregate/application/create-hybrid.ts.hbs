@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { requireActor, type TransactionScope } from '../../../Shared/index.js';
+import { requireActor, type Result, type TransactionScope } from '../../../Shared/index.js';
 import { as{{pascalCase name}}Id, as{{pascalCase parent}}Id } from '../../domain/shared/domain-ids.js';
-import { {{pascalCase name}} } from '../../domain/model/{{dashCase name}}/{{dashCase name}}.js';
+import { {{pascalCase name}}, Invalid{{pascalCase name}}NameError } from '../../domain/model/{{dashCase name}}/{{dashCase name}}.js';
 import { {{pascalCase parent}}NotFoundError } from '../../domain/model/{{dashCase parent}}/{{dashCase parent}}.js';
 import type { {{pascalCase context}}UnitOfWork } from '../ports/unit-of-work.js';
 
@@ -51,30 +51,42 @@ export class Create{{pascalCase name}}Handler {
 
     /**
      * @throws {ScopeMismatchError} when `scope` has no acting principal (a
-     *   `platform` scope) — see {@link requireActor}.
-     * @throws {{pascalCase parent}}NotFoundError when `command.{{camelCase parent}}Id` names no {{pascalCase parent}}.
+     *   `platform` scope) — see {@link requireActor}. A technical fault
+     *   (E4/E6), not part of the `Result` channel, so it is rethrown rather
+     *   than caught below.
      */
     async execute(
         command: Create{{pascalCase name}}Command,
         scope: TransactionScope,
-    ): Promise<Create{{pascalCase name}}Response> {
+    ): Promise<
+        Result<Create{{pascalCase name}}Response, Invalid{{pascalCase name}}NameError | {{pascalCase parent}}NotFoundError>
+    > {
         const createdBy = requireActor(scope);
-        return this.unitOfWork.run(scope, async (ctx) => {
-            const {{camelCase parent}}Id = as{{pascalCase parent}}Id(command.{{camelCase parent}}Id);
-            const {{camelCase parent}} = await ctx.{{plural (camelCase parent)}}.findById({{camelCase parent}}Id);
-            if ({{camelCase parent}} === undefined) {
-                throw new {{pascalCase parent}}NotFoundError({{camelCase parent}}Id);
-            }
+        try {
+            return await this.unitOfWork.run<
+                Result<Create{{pascalCase name}}Response, Invalid{{pascalCase name}}NameError | {{pascalCase parent}}NotFoundError>
+            >(scope, async (ctx) => {
+                const {{camelCase parent}}Id = as{{pascalCase parent}}Id(command.{{camelCase parent}}Id);
+                const {{camelCase parent}} = await ctx.{{plural (camelCase parent)}}.findById({{camelCase parent}}Id);
+                if ({{camelCase parent}} === undefined) {
+                    throw new {{pascalCase parent}}NotFoundError({{camelCase parent}}Id);
+                }
 
-            const {{camelCase name}} = {{pascalCase name}}.create({
-                id: as{{pascalCase name}}Id(command.id),
-                clubId: {{camelCase parent}}.clubId,
-                createdBy,
-                {{camelCase parent}}Id,
-                name: command.name,
+                const {{camelCase name}} = {{pascalCase name}}.create({
+                    id: as{{pascalCase name}}Id(command.id),
+                    clubId: {{camelCase parent}}.clubId,
+                    createdBy,
+                    {{camelCase parent}}Id,
+                    name: command.name,
+                });
+                await ctx.{{plural (camelCase name)}}.add({{camelCase name}});
+                return { ok: true, value: { id: {{camelCase name}}.id, name: {{camelCase name}}.name } };
             });
-            await ctx.{{plural (camelCase name)}}.add({{camelCase name}});
-            return { id: {{camelCase name}}.id, name: {{camelCase name}}.name };
-        });
+        } catch (error) {
+            if (error instanceof Invalid{{pascalCase name}}NameError || error instanceof {{pascalCase parent}}NotFoundError) {
+                return { ok: false, error };
+            }
+            throw error;
+        }
     }
 }

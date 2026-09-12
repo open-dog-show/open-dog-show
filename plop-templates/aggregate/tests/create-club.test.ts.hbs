@@ -5,22 +5,40 @@ import { describe, it, expect } from 'vitest';
 import { asClubId, asPrincipalId, ClubTransactionScope } from '../../../../src/Shared/index.js';
 import { Fake{{pascalCase context}}UnitOfWork } from '../../../../src/{{dashCase context}}/infrastructure/persistence/inmemory/fake-{{dashCase context}}-unit-of-work.js';
 import { Create{{pascalCase name}}Handler } from '../../../../src/{{dashCase context}}/application/create-{{dashCase name}}/create-{{dashCase name}}.js';
+import { Invalid{{pascalCase name}}NameError } from '../../../../src/{{dashCase context}}/domain/model/{{dashCase name}}/{{dashCase name}}.js';
 
 const CLUB_ID = asClubId('00000000-0000-4000-8000-000000000001');
 const PRINCIPAL_ID = asPrincipalId('00000000-0000-4000-8000-000000000011');
+const SCOPE = ClubTransactionScope.of(CLUB_ID, PRINCIPAL_ID);
 
 describe('Create{{pascalCase name}}Handler', () => {
     it('creates {{a (pascalCase name)}} {{pascalCase name}} owned by the acting Club', async () => {
         const unitOfWork = new Fake{{pascalCase context}}UnitOfWork();
         const handler = new Create{{pascalCase name}}Handler(unitOfWork);
 
-        const response = await handler.execute(
+        const result = await handler.execute(
             { id: '00000000-0000-4000-8000-000000000021', name: 'A name' },
-            ClubTransactionScope.of(CLUB_ID, PRINCIPAL_ID),
+            SCOPE,
         );
 
-        expect(response).toEqual({ id: '00000000-0000-4000-8000-000000000021', name: 'A name' });
+        expect(result).toEqual({
+            ok: true,
+            value: { id: '00000000-0000-4000-8000-000000000021', name: 'A name' },
+        });
         expect(unitOfWork.recordedEvents).toHaveLength(1);
         expect(unitOfWork.recordedEvents[0]?.type).toBe('{{eventContext context}}.{{pascalCase name}}Created');
+    });
+
+    it('returns Invalid{{pascalCase name}}NameError for a blank name', async () => {
+        const unitOfWork = new Fake{{pascalCase context}}UnitOfWork();
+        const handler = new Create{{pascalCase name}}Handler(unitOfWork);
+
+        const result = await handler.execute(
+            { id: '00000000-0000-4000-8000-000000000021', name: '   ' },
+            SCOPE,
+        );
+
+        expect(result).toEqual({ ok: false, error: expect.any(Invalid{{pascalCase name}}NameError) });
+        expect(unitOfWork.recordedEvents).toHaveLength(0);
     });
 });
