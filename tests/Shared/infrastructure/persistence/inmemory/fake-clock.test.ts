@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from 'vitest';
-import { FakeClock } from '../../../src/Shared/infrastructure/fake-clock.js';
+import { FakeClock } from '../../../../../src/Shared/infrastructure/persistence/inmemory/fake-clock.js';
 
 describe('FakeClock', () => {
     it('returns the fixed date on every call', () => {

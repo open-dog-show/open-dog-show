@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { Clock } from '../domain/domain-ports.js';
+import type { Clock } from '../../../domain/domain-ports.js';
 
 /**
  * In-memory {@link Clock} implementation for use in unit tests.

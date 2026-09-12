@@ -42,7 +42,10 @@ GRANT USAGE ON SCHEMA sample TO app_user;
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
--- Shows table — Club-scoped (template: club)
+-- Shows table — read-open, write-scoped (not one of the three ADR-0005
+-- templates above): a Show must be discoverable by any exhibitor deciding
+-- whether to enter it, so SELECT has no ownership predicate; only the hosting
+-- Club may create/modify/remove its own Shows.
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS sample.shows (
@@ -54,8 +57,25 @@ CREATE TABLE IF NOT EXISTS sample.shows (
 ALTER TABLE sample.shows ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sample.shows FORCE ROW LEVEL SECURITY;
 
-CREATE POLICY shows_club ON sample.shows
-  AS PERMISSIVE FOR ALL TO app_user
+CREATE POLICY shows_read ON sample.shows
+  AS PERMISSIVE FOR SELECT TO app_user
+  USING (true);
+
+-- CREATE POLICY's FOR clause takes exactly one command, and INSERT supports
+-- only WITH CHECK (there is no pre-existing row for USING to filter) — so the
+-- club-write predicate needs one policy per mutating command, not one shared
+-- ALL-style policy the way the `club`/`hybrid` templates above use.
+CREATE POLICY shows_insert ON sample.shows
+  AS PERMISSIVE FOR INSERT TO app_user
+  WITH CHECK (club_id = nullif(current_setting('app.club_id', true), '')::uuid);
+
+CREATE POLICY shows_update ON sample.shows
+  AS PERMISSIVE FOR UPDATE TO app_user
+  USING (club_id = nullif(current_setting('app.club_id', true), '')::uuid)
+  WITH CHECK (club_id = nullif(current_setting('app.club_id', true), '')::uuid);
+
+CREATE POLICY shows_delete ON sample.shows
+  AS PERMISSIVE FOR DELETE TO app_user
   USING (club_id = nullif(current_setting('app.club_id', true), '')::uuid);
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON sample.shows TO app_user;

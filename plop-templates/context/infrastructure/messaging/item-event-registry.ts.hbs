@@ -31,19 +31,19 @@ function asItemSavedPayload(payload: unknown): ItemSavedPayload {
  * instead of falling back to a generic envelope, so this registry must cover
  * every type the context emits.
  *
- * Lives in `infrastructure/di/` because the kernel cannot import a context's
- * event classes — the composition root owns the wiring (ADR-0004 dependencies
- * point inward; contexts never import each other).
+ * Lives in `infrastructure/messaging/` (ADR-0021's 2026-09-11 amendment: event
+ * rehydration registries live here, not `infrastructure/di/`) because the
+ * kernel cannot import a context's event classes — the composition root owns
+ * the wiring (ADR-0004 dependencies point inward; contexts never import each
+ * other).
  */
 export function buildItemEventRehydrationRegistry(): DomainEventRehydrationRegistry {
     const registry = new DomainEventRehydrationRegistry();
-    registry.register(ITEM_SAVED_TYPE, (envelope) =>
+    registry.register(ITEM_SAVED_TYPE, ({ scope, aggregateId, payload }) =>
         ItemSaved.rehydrate({
-            eventId: envelope.eventId,
-            occurredAt: envelope.occurredAt,
-            scope: envelope.scope,
-            aggregateId: envelope.aggregateId,
-            payload: asItemSavedPayload(envelope.payload),
+            scope,
+            aggregateId,
+            payload: asItemSavedPayload(payload),
         }),
     );
     return registry;

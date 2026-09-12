@@ -38,8 +38,9 @@ export default function (plop) {
             },
             {
                 type: 'add',
-                path: 'src/{{name}}/infrastructure/di/item-event-registry.ts',
-                templateFile: 'plop-templates/context/infrastructure/di/item-event-registry.ts.hbs',
+                path: 'src/{{name}}/infrastructure/messaging/item-event-registry.ts',
+                templateFile:
+                    'plop-templates/context/infrastructure/messaging/item-event-registry.ts.hbs',
             },
             {
                 type: 'add',

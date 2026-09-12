@@ -10,55 +10,48 @@ import {
     rehydrateDomainEvent,
     DomainEventRehydrationRegistry,
     assertPayloadHasStringField,
-} from '../../../src/Shared/domain/domain-event-codec.js';
-import type { DomainEvent } from '../../../src/Shared/domain/domain-event.js';
-import { EventScope } from '../../../src/Shared/domain/event-scope.js';
+} from '../../../../src/Shared/infrastructure/messaging/domain-event-codec.js';
+import type { DomainEvent, DomainEventFact } from '../../../../src/Shared/domain/domain-event.js';
+import { ClubEventScope, PlatformEventScope } from '../../../../src/Shared/domain/event-scope.js';
 import {
     asAggregateId,
     asEventId,
     asEventType,
+    asClubId,
     type AggregateId,
-} from '../../../src/Shared/domain/domain-ids.js';
+} from '../../../../src/Shared/domain/domain-ids.js';
 
 interface OrderedPayload {
     dogId: string;
     classNumber: number;
 }
 
+const CLUB_ID = asClubId('00000000-0000-4000-8000-0000000000aa');
+
 // Minimal in-test class event exercising the codec against a class rather
 // than a generic envelope literal — the codec rehydrates only class events
-// (ADR-0022, #176).
-class StubEntrySubmitted implements DomainEvent {
+// (ADR-0022, #176). Implements only the fact shape (ADR-0027): no eventId /
+// occurredAt — those are envelope-only fields the codec attaches afterwards.
+class StubEntrySubmitted implements DomainEventFact {
     readonly type = asEventType('sample.EntrySubmitted');
-    readonly eventId: ReturnType<typeof asEventId>;
-    readonly occurredAt: Date;
-    readonly scope: EventScope;
-    readonly aggregateId: ReturnType<typeof asAggregateId>;
+    readonly scope: DomainEventFact['scope'];
+    readonly aggregateId: AggregateId;
     readonly payload: OrderedPayload;
 
-    constructor(envelope: {
-        eventId: ReturnType<typeof asEventId>;
-        occurredAt: Date;
-        scope: EventScope;
-        aggregateId: ReturnType<typeof asAggregateId>;
+    constructor(fact: {
+        scope: DomainEventFact['scope'];
+        aggregateId: AggregateId;
         payload: unknown;
     }) {
-        this.eventId = envelope.eventId;
-        this.occurredAt = envelope.occurredAt;
-        this.scope = envelope.scope;
-        this.aggregateId = envelope.aggregateId;
-        this.payload = envelope.payload as OrderedPayload;
+        this.scope = fact.scope;
+        this.aggregateId = fact.aggregateId;
+        this.payload = fact.payload as OrderedPayload;
     }
 }
 
 function registryFor(
-    rehydrate: (envelope: {
-        eventId: ReturnType<typeof asEventId>;
-        occurredAt: Date;
-        scope: EventScope;
-        aggregateId: ReturnType<typeof asAggregateId>;
-        payload: unknown;
-    }) => StubEntrySubmitted = (envelope) => new StubEntrySubmitted(envelope),
+    rehydrate: (fact: DomainEventFact) => StubEntrySubmitted = (fact) =>
+        new StubEntrySubmitted(fact),
 ) {
     const registry = new DomainEventRehydrationRegistry();
     registry.register(asEventType('sample.EntrySubmitted'), rehydrate);
@@ -66,13 +59,15 @@ function registryFor(
 }
 
 describe('encodeDomainEvent', () => {
-    const event = new StubEntrySubmitted({
+    const event: DomainEvent = {
+        ...new StubEntrySubmitted({
+            scope: ClubEventScope.of(CLUB_ID),
+            aggregateId: asAggregateId('entry-abc'),
+            payload: { dogId: 'dog-1', classNumber: 42 },
+        }),
         eventId: asEventId('00000000-0000-4000-8000-000000000001'),
         occurredAt: new Date('2026-08-01T12:00:00.000Z'),
-        scope: EventScope.club(),
-        aggregateId: asAggregateId('entry-abc'),
-        payload: { dogId: 'dog-1', classNumber: 42 },
-    });
+    };
 
     it('serialises occurredAt as ISO-8601 string', () => {
         const json = encodeDomainEvent(event);
@@ -80,12 +75,14 @@ describe('encodeDomainEvent', () => {
         expect(json.occurredAt).toBe('2026-08-01T12:00:00.000Z');
     });
 
-    it('preserves all envelope fields', () => {
+    it('preserves all envelope fields, flattening the owning clubId', () => {
         const json = encodeDomainEvent(event);
 
         expect(json.eventId).toBe(event.eventId);
         expect(json.type).toBe(event.type);
         expect(json.scope).toBe(event.scope.kind);
+        expect(json.clubId).toBe(CLUB_ID);
+        expect(json.principalId).toBeNull();
         expect(json.aggregateId).toBe(event.aggregateId);
     });
 
@@ -102,6 +99,8 @@ describe('decodeDomainEvent', () => {
         type: 'sample.EntrySubmitted',
         occurredAt: '2026-08-01T12:00:00.000Z',
         scope: 'club' as const,
+        clubId: CLUB_ID as string | null,
+        principalId: null as string | null,
         aggregateId: 'entry-abc',
         payload: { dogId: 'dog-1', classNumber: 42 },
     };
@@ -115,6 +114,8 @@ describe('decodeDomainEvent', () => {
                     type: raw.type,
                     occurredAt,
                     scope: raw.scope,
+                    clubId: raw.clubId,
+                    principalId: raw.principalId,
                     aggregateId: raw.aggregateId,
                     payload: raw.payload,
                 },
@@ -153,6 +154,12 @@ describe('decodeDomainEvent', () => {
         expect(() => decodeDomainEvent({ ...raw, scope: 'invalid' }, registryFor())).toThrow(
             TypeError,
         );
+    });
+
+    it('throws TypeError when the scope/id combination is invalid', () => {
+        expect(() =>
+            decodeDomainEvent({ ...raw, scope: 'club', clubId: null }, registryFor()),
+        ).toThrow(TypeError);
     });
 
     it('throws InvalidDomainEventEnvelopeError when occurredAt is not a real date string', () => {
@@ -211,13 +218,15 @@ describe('decodeDomainEvent', () => {
 
 describe('encode → JSON.stringify → JSON.parse → decode round-trip', () => {
     it('round-trips an event with Date payload field losslessly', () => {
-        const original = new StubEntrySubmitted({
+        const original: DomainEvent = {
+            ...new StubEntrySubmitted({
+                scope: PlatformEventScope.of(),
+                aggregateId: asAggregateId('show-1'),
+                payload: { dogId: 'dog-1', classNumber: 7 } satisfies OrderedPayload,
+            }),
             eventId: asEventId('00000000-0000-4000-8000-000000000099'),
             occurredAt: new Date('2026-12-25T09:00:00.000Z'),
-            scope: EventScope.platform(),
-            aggregateId: asAggregateId('show-1'),
-            payload: { dogId: 'dog-1', classNumber: 7 } satisfies OrderedPayload,
-        });
+        };
 
         const json = JSON.parse(JSON.stringify(encodeDomainEvent(original)));
         const restored = decodeDomainEvent(json, registryFor());
@@ -237,6 +246,8 @@ describe('DomainEventRehydrationRegistry', () => {
         type: 'sample.EntrySubmitted',
         occurredAt: '2026-08-01T12:00:00.000Z',
         scope: 'club' as const,
+        clubId: CLUB_ID as string | null,
+        principalId: null as string | null,
         aggregateId: 'entry-abc',
         payload: { dogId: 'Fido', classNumber: 1 },
     };
@@ -248,13 +259,7 @@ describe('DomainEventRehydrationRegistry', () => {
 
     it('rehydratorFor returns the registered rehydrator', () => {
         const registry = new DomainEventRehydrationRegistry();
-        const rehydrator = (envelope: {
-            eventId: ReturnType<typeof asEventId>;
-            occurredAt: Date;
-            scope: EventScope;
-            aggregateId: ReturnType<typeof asAggregateId>;
-            payload: unknown;
-        }) => new StubEntrySubmitted(envelope);
+        const rehydrator = (fact: DomainEventFact) => new StubEntrySubmitted(fact);
         registry.register(asEventType('sample.EntrySubmitted'), rehydrator);
 
         expect(registry.rehydratorFor(asEventType('sample.EntrySubmitted'))).toBe(rehydrator);

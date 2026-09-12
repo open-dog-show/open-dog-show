@@ -10,18 +10,17 @@ import {
     asAggregateId,
     asClubId,
     asPrincipalId,
-    asEventId,
+    ClubEventScope,
     ClubTransactionScope,
-    EventScope,
-    FakeClock,
-    FakeEventIdGenerator,
     PgOutboxWriter,
     PgPollingDispatcher,
     type DomainEvent,
 } from '../../../src/Shared/index.js';
+import { FakeClock } from '../../../src/Shared/infrastructure/persistence/inmemory/fake-clock.js';
+import { FakeEventIdGenerator } from '../../../src/Shared/infrastructure/persistence/inmemory/fake-event-id-generator.js';
 import { PgItemUnitOfWork } from '../../../src/{{name}}/infrastructure/persistence/postgres/pg-unit-of-work.js';
 import { ItemSaved } from '../../../src/{{name}}/domain/model/item/events/item-saved.js';
-import { buildItemEventRehydrationRegistry } from '../../../src/{{name}}/infrastructure/di/item-event-registry.js';
+import { buildItemEventRehydrationRegistry } from '../../../src/{{name}}/infrastructure/messaging/item-event-registry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -29,7 +28,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLUB_ID = '00000000-0000-4000-8000-000000000001';
 const USER_ID = '00000000-0000-4000-8000-000000000011';
 const ITEM_ID = '00000000-0000-4000-8000-000000000031';
-const EVENT_ID = '00000000-0000-4000-8000-000000000041';
 
 const scope = ClubTransactionScope.of(asClubId(CLUB_ID), asPrincipalId(USER_ID));
 const item = {
@@ -56,27 +54,17 @@ describe('Transactional outbox — {{name}} context', () => {
 
         superPool = harness.superPool;
         appPool = harness.appUserPool;
-        unitOfWork = new PgItemUnitOfWork(appPool, new PgOutboxWriter('{{snakeCase name}}'));
+        unitOfWork = new PgItemUnitOfWork(
+            appPool,
+            new PgOutboxWriter('{{snakeCase name}}'),
+            new FakeClock(new Date('2026-08-01T12:00:00.000Z')),
+            new FakeEventIdGenerator(),
+        );
     }, 120_000);
 
     afterAll(async () => {
         await harness.stop();
     });
-
-    function makeEvent(): ItemSaved {
-        return ItemSaved.from(
-            {
-                scope: EventScope.club(),
-                aggregateId: asAggregateId(ITEM_ID),
-                payload: { name: 'test-item' },
-                eventId: asEventId(EVENT_ID),
-            },
-            {
-                clock: new FakeClock(new Date('2026-08-01T12:00:00.000Z')),
-                eventIdGenerator: new FakeEventIdGenerator(),
-            },
-        );
-    }
 
     // -------------------------------------------------------------------------
     // Seam 1: transactional write — outbox + domain record in one transaction
@@ -87,7 +75,13 @@ describe('Transactional outbox — {{name}} context', () => {
             await expect(
                 unitOfWork.run(scope, async (ctx) => {
                     await ctx.items.save(item);
-                    ctx.appendEvents(makeEvent());
+                    ctx.record(
+                        ItemSaved.create(
+                            asAggregateId(item.id),
+                            ClubEventScope.of(item.clubId),
+                            { name: item.name },
+                        ),
+                    );
                     throw new Error('simulated failure');
                 }),
             ).rejects.toThrow('simulated failure');
@@ -99,8 +93,8 @@ describe('Transactional outbox — {{name}} context', () => {
             expect(itemRows).toHaveLength(0);
 
             const { rows: outboxRows } = await superPool.query(
-                `SELECT event_id FROM {{snakeCase name}}.outbox WHERE event_id = $1`,
-                [EVENT_ID],
+                `SELECT event_id FROM {{snakeCase name}}.outbox WHERE aggregate_id = $1`,
+                [ITEM_ID],
             );
             expect(outboxRows).toHaveLength(0);
         });
@@ -108,7 +102,13 @@ describe('Transactional outbox — {{name}} context', () => {
         it('writes both the item and the outbox row when the transaction succeeds', async () => {
             await unitOfWork.run(scope, async (ctx) => {
                 await ctx.items.save(item);
-                ctx.appendEvents(makeEvent());
+                ctx.record(
+                    ItemSaved.create(
+                        asAggregateId(item.id),
+                        ClubEventScope.of(item.clubId),
+                        { name: item.name },
+                    ),
+                );
             });
 
             const { rows: itemRows } = await superPool.query(
@@ -118,8 +118,8 @@ describe('Transactional outbox — {{name}} context', () => {
             expect(itemRows).toHaveLength(1);
 
             const { rows: outboxRows } = await superPool.query(
-                `SELECT event_id, club_id, dispatched_at FROM {{snakeCase name}}.outbox WHERE event_id = $1`,
-                [EVENT_ID],
+                `SELECT club_id, dispatched_at FROM {{snakeCase name}}.outbox WHERE aggregate_id = $1`,
+                [ITEM_ID],
             );
             expect(outboxRows).toHaveLength(1);
             expect(outboxRows[0]?.club_id).toBe(CLUB_ID);
@@ -144,13 +144,14 @@ describe('Transactional outbox — {{name}} context', () => {
             await superPool.query(`DELETE FROM {{snakeCase name}}.outbox`);
             await superPool.query(
                 `INSERT INTO {{snakeCase name}}.outbox
-                   (event_id, type, occurred_at, scope, aggregate_id, payload)
-                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                   (event_id, type, occurred_at, scope, club_id, aggregate_id, payload)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
                 [
                     DISPATCHER_EVENT_ID,
                     '{{eventContext name}}.ItemSaved',
                     '2026-08-01T12:00:00.000Z',
                     'club',
+                    CLUB_ID,
                     ITEM_ID,
                     JSON.stringify({ name: 'test-item' }),
                 ],
