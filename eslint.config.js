@@ -27,14 +27,44 @@ const allowRulesetsIndex = allowContextIndex('rulesets');
 const allowIamIndex = allowContextIndex('iam');
 
 export default tseslint.config(
-    { ignores: ['**/node_modules/**', '**/dist/**'] },
+    { ignores: ['**/node_modules/**', '**/dist/**', 'coverage/**'] },
     eslint.configs.recommended,
-    ...tseslint.configs.recommended,
+    ...tseslint.configs.strictTypeChecked,
+    ...tseslint.configs.stylisticTypeChecked,
     {
+        // Type-checked linting uses the project service, which resolves the
+        // nearest tsconfig for each linted file.
+        languageOptions: {
+            parserOptions: {
+                projectService: true,
+            },
+        },
         plugins: { unicorn },
+        // Deterministic Clean Code structural limits — the size/shape
+        // heuristics a tool can judge. Naming honesty and one-thing-ness stay
+        // with the instruction and review layers.
         rules: {
             'unicorn/filename-case': ['error', { case: 'kebabCase', checkDirectories: false }],
+            'max-params': ['error', 3],
+            complexity: ['error', 10],
+            'max-depth': ['error', 3],
+            'max-lines-per-function': [
+                'error',
+                { max: 30, skipBlankLines: true, skipComments: true },
+            ],
+            '@typescript-eslint/naming-convention': [
+                'error',
+                { selector: 'variableLike', format: ['camelCase', 'UPPER_CASE'] },
+                { selector: 'typeLike', format: ['PascalCase'] },
+            ],
         },
+    },
+    // Tooling files outside tsconfig's `include` (root config files and plain
+    // JS) have no project for the project service; lint them without
+    // type information.
+    {
+        files: ['**/*.{js,mjs,cjs}', 'vitest.config.ts', 'vitest.integration.config.ts'],
+        ...tseslint.configs.disableTypeChecked,
     },
     // ── ADR-0006 / ADR-0020 / ADR-0021 boundary rules ────────────────────────
     // Layer taxonomy (inward-only) and context-zone taxonomy (no cross-context
