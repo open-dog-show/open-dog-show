@@ -97,6 +97,127 @@ describe('cross-context boundary enforcement', () => {
     });
 });
 
+// ── ADR-0028: rulesets Published Language and IAM ACL ──────────────────────
+
+describe('ADR-0028 cross-context index allowances', () => {
+    const applicationPath = 'src/sample/application/check.ts';
+    const interfacesPath = 'src/sample/interfaces/check.ts';
+
+    it('allows domain to import the rulesets barrel', async () => {
+        const violations = await lint(
+            `import type { RulesetId } from '../../rulesets/index.js';\n`,
+            domainPath,
+        );
+        expect(violations, 'domain → rulesets index should be allowed').toHaveLength(0);
+    });
+
+    it('blocks domain from a deep import into rulesets internals', async () => {
+        const violations = await lint(
+            `import { resolveEffectiveRuleset } from '../../rulesets/domain/service/resolve-effective-ruleset.js';\n`,
+            domainPath,
+        );
+        expect(
+            violations.length,
+            'domain → rulesets deep path expected a boundaries/dependencies error',
+        ).toBeGreaterThan(0);
+    });
+
+    it('allows application to import the rulesets barrel', async () => {
+        const violations = await lint(
+            `import type { RulesetId } from '../../rulesets/index.js';\n`,
+            applicationPath,
+        );
+        expect(violations, 'application → rulesets index should be allowed').toHaveLength(0);
+    });
+
+    it('allows interfaces to import the rulesets barrel', async () => {
+        const violations = await lint(
+            `import type { RulesetId } from '../../rulesets/index.js';\n`,
+            interfacesPath,
+        );
+        expect(violations, 'interfaces → rulesets index should be allowed').toHaveLength(0);
+    });
+
+    it('allows infrastructure to import the rulesets barrel', async () => {
+        const violations = await lint(
+            `import type { RulesetId } from '../../rulesets/index.js';\n`,
+            infraPath,
+        );
+        expect(violations, 'infrastructure → rulesets index should be allowed').toHaveLength(0);
+    });
+
+    it('allows a different context (not sample) to import the rulesets barrel', async () => {
+        const violations = await lint(
+            `import type { RulesetId } from '../../rulesets/index.js';\n`,
+            'src/iam/domain/check.ts',
+        );
+        expect(violations, 'iam domain → rulesets index should be allowed').toHaveLength(0);
+    });
+
+    it('allows infrastructure to import the IAM barrel', async () => {
+        const violations = await lint(
+            `import type { IdentitySnapshot } from '../../iam/index.js';\n`,
+            infraPath,
+        );
+        expect(violations, 'infrastructure → iam index should be allowed').toHaveLength(0);
+    });
+
+    it('blocks domain from importing the IAM barrel', async () => {
+        const violations = await lint(
+            `import type { IdentitySnapshot } from '../../iam/index.js';\n`,
+            domainPath,
+        );
+        expect(
+            violations.length,
+            'domain → iam index expected a boundaries/dependencies error',
+        ).toBeGreaterThan(0);
+    });
+
+    it('blocks application from importing the IAM barrel', async () => {
+        const violations = await lint(
+            `import type { IdentitySnapshot } from '../../iam/index.js';\n`,
+            applicationPath,
+        );
+        expect(
+            violations.length,
+            'application → iam index expected a boundaries/dependencies error',
+        ).toBeGreaterThan(0);
+    });
+
+    it('blocks interfaces from importing the IAM barrel', async () => {
+        const violations = await lint(
+            `import type { IdentitySnapshot } from '../../iam/index.js';\n`,
+            interfacesPath,
+        );
+        expect(
+            violations.length,
+            'interfaces → iam index expected a boundaries/dependencies error',
+        ).toBeGreaterThan(0);
+    });
+
+    it('blocks infrastructure from a deep import into iam internals', async () => {
+        const violations = await lint(
+            `import type { User } from '../../iam/domain/model/user/user.js';\n`,
+            infraPath,
+        );
+        expect(
+            violations.length,
+            'infrastructure → iam deep path expected a boundaries/dependencies error',
+        ).toBeGreaterThan(0);
+    });
+
+    it("blocks any context from importing another context's index (not rulesets/iam)", async () => {
+        const violations = await lint(
+            `import type { RulesetId } from '../../sample/index.js';\n`,
+            'src/rulesets/domain/check.ts',
+        );
+        expect(
+            violations.length,
+            'cross-context index import (not rulesets/iam) expected a boundaries/dependencies error',
+        ).toBeGreaterThan(0);
+    });
+});
+
 // ── Interfaces layer (ADR-0021) ────────────────────────────────────────────
 
 describe('interfaces layer boundary enforcement', () => {

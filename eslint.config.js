@@ -13,6 +13,19 @@ import boundaries from 'eslint-plugin-boundaries';
 // element rather than an external module source.
 const allowKernel = { to: { element: { type: 'kernel' } } };
 
+// ADR-0028: rulesets' barrel is importable by any layer; iam's barrel is
+// importable only by infrastructure. See ADR-0028 for the rationale and the
+// full list of allowed edges. Targets the `context-index` file category
+// (index.ts is a single file, not a folder element) with a literal captured
+// `contextName`, so each clause matches that one context's barrel regardless
+// of which context is importing; deep imports into rulesets/iam internals
+// are not covered and stay disallowed.
+const allowContextIndex = (contextName) => ({
+    to: { file: { categories: 'context-index', captured: { contextName } } },
+});
+const allowRulesetsIndex = allowContextIndex('rulesets');
+const allowIamIndex = allowContextIndex('iam');
+
 export default tseslint.config(
     { ignores: ['**/node_modules/**', '**/dist/**'] },
     eslint.configs.recommended,
@@ -111,6 +124,7 @@ export default tseslint.config(
                             from: { element: { type: 'context-domain' } },
                             allow: [
                                 allowKernel,
+                                allowRulesetsIndex,
                                 {
                                     to: {
                                         element: {
@@ -131,6 +145,7 @@ export default tseslint.config(
                             from: { element: { type: 'context-application' } },
                             allow: [
                                 allowKernel,
+                                allowRulesetsIndex,
                                 {
                                     to: {
                                         element: {
@@ -153,6 +168,8 @@ export default tseslint.config(
                             from: { element: { type: 'context-infrastructure' } },
                             allow: [
                                 allowKernel,
+                                allowRulesetsIndex,
+                                allowIamIndex,
                                 {
                                     to: {
                                         element: {
@@ -206,6 +223,7 @@ export default tseslint.config(
                             from: { element: { type: 'context-interfaces' } },
                             allow: [
                                 allowKernel,
+                                allowRulesetsIndex,
                                 {
                                     to: {
                                         element: {
