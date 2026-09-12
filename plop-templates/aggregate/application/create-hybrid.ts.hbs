@@ -1,0 +1,80 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import { requireActor, type TransactionScope } from '../../../Shared/index.js';
+import { as{{pascalCase name}}Id, as{{pascalCase parent}}Id } from '../../domain/shared/domain-ids.js';
+import { {{pascalCase name}} } from '../../domain/model/{{dashCase name}}/{{dashCase name}}.js';
+import { {{pascalCase parent}}NotFoundError } from '../../domain/model/{{dashCase parent}}/{{dashCase parent}}.js';
+import type { {{pascalCase context}}UnitOfWork } from '../ports/unit-of-work.js';
+
+/**
+ * Inputs to {@link Create{{pascalCase name}}Handler.execute} that are not
+ * derivable from the transaction scope or looked up from the referenced
+ * {{pascalCase parent}}. The acting principal comes from the
+ * `TransactionScope` (via {@link requireActor}); the owning Club comes from
+ * the {{pascalCase parent}} being referenced (looked up by
+ * `{{camelCase parent}}Id`), not from the caller — {{a (pascalCase name)}} {{pascalCase name}} is a
+ * hybrid aggregate and the acting scope need not itself be `club`
+ * (ADR-0026): trusting a caller-supplied `clubId` would let a
+ * {{pascalCase name}} be attributed to a Club that does not actually own the
+ * {{pascalCase parent}}.
+ */
+export interface Create{{pascalCase name}}Command {
+    /** Aggregate id of the {{pascalCase name}} to create. */
+    readonly id: string;
+    /** The {{pascalCase parent}} this {{pascalCase name}} references; its `clubId` becomes the owner. */
+    readonly {{camelCase parent}}Id: string;
+    readonly name: string;
+}
+
+/** Primitive view of the created {{pascalCase name}} (B4). */
+export interface Create{{pascalCase name}}Response {
+    readonly id: string;
+    readonly name: string;
+}
+
+/**
+ * Use case: create {{a (pascalCase name)}} {{pascalCase name}} — a hybrid aggregate referencing an
+ * existing {{pascalCase parent}} — and record the
+ * `{{eventContext context}}.{{pascalCase name}}Created` fact in the same
+ * transaction (ADR-0014).
+ *
+ * The transaction boundary, repository construction, and outbox write are
+ * all hidden behind the injected {@link {{pascalCase context}}UnitOfWork}
+ * port. This use case never touches domain events (ADR-0027):
+ * `{{pascalCase name}}.create` records the fact itself, and saving the
+ * {{pascalCase name}} through `ctx.{{plural (camelCase name)}}.add` pulls and
+ * stamps it.
+ */
+export class Create{{pascalCase name}}Handler {
+    constructor(private readonly unitOfWork: {{pascalCase context}}UnitOfWork) {}
+
+    /**
+     * @throws {ScopeMismatchError} when `scope` has no acting principal (a
+     *   `platform` scope) — see {@link requireActor}.
+     * @throws {{pascalCase parent}}NotFoundError when `command.{{camelCase parent}}Id` names no {{pascalCase parent}}.
+     */
+    async execute(
+        command: Create{{pascalCase name}}Command,
+        scope: TransactionScope,
+    ): Promise<Create{{pascalCase name}}Response> {
+        const createdBy = requireActor(scope);
+        return this.unitOfWork.run(scope, async (ctx) => {
+            const {{camelCase parent}}Id = as{{pascalCase parent}}Id(command.{{camelCase parent}}Id);
+            const {{camelCase parent}} = await ctx.{{plural (camelCase parent)}}.findById({{camelCase parent}}Id);
+            if ({{camelCase parent}} === undefined) {
+                throw new {{pascalCase parent}}NotFoundError({{camelCase parent}}Id);
+            }
+
+            const {{camelCase name}} = {{pascalCase name}}.create({
+                id: as{{pascalCase name}}Id(command.id),
+                clubId: {{camelCase parent}}.clubId,
+                createdBy,
+                {{camelCase parent}}Id,
+                name: command.name,
+            });
+            await ctx.{{plural (camelCase name)}}.add({{camelCase name}});
+            return { id: {{camelCase name}}.id, name: {{camelCase name}}.name };
+        });
+    }
+}

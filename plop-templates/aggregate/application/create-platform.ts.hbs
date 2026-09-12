@@ -1,0 +1,46 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import type { TransactionScope } from '../../../Shared/index.js';
+import { as{{pascalCase name}}Id } from '../../domain/shared/domain-ids.js';
+import { {{pascalCase name}} } from '../../domain/model/{{dashCase name}}/{{dashCase name}}.js';
+import type { {{pascalCase context}}UnitOfWork } from '../ports/unit-of-work.js';
+
+/** Inputs to {@link Create{{pascalCase name}}Handler.execute}. */
+export interface Create{{pascalCase name}}Command {
+    /** Aggregate id of the {{pascalCase name}} to create. */
+    readonly id: string;
+    readonly name: string;
+}
+
+/** Primitive view of the created {{pascalCase name}} (B4). */
+export interface Create{{pascalCase name}}Response {
+    readonly id: string;
+    readonly name: string;
+}
+
+/**
+ * Use case: create {{a (pascalCase name)}} {{pascalCase name}} — platform-wide data with no single
+ * owner (ADR-0005) — and record the
+ * `{{eventContext context}}.{{pascalCase name}}Created` fact in the same
+ * transaction (ADR-0014). `scope` still drives the transaction (RLS session
+ * variables), but is not narrowed to derive any owner id — a
+ * {{pascalCase name}} has none.
+ */
+export class Create{{pascalCase name}}Handler {
+    constructor(private readonly unitOfWork: {{pascalCase context}}UnitOfWork) {}
+
+    async execute(
+        command: Create{{pascalCase name}}Command,
+        scope: TransactionScope,
+    ): Promise<Create{{pascalCase name}}Response> {
+        return this.unitOfWork.run(scope, async (ctx) => {
+            const {{camelCase name}} = {{pascalCase name}}.create({
+                id: as{{pascalCase name}}Id(command.id),
+                name: command.name,
+            });
+            await ctx.{{plural (camelCase name)}}.add({{camelCase name}});
+            return { id: {{camelCase name}}.id, name: {{camelCase name}}.name };
+        });
+    }
+}

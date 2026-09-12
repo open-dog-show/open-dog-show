@@ -1,0 +1,17 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import type { {{pascalCase name}} } from './{{dashCase name}}.js';
+import type { {{pascalCase name}}Id } from '../../shared/domain-ids.js';
+
+/**
+ * Persistence port for the {{pascalCase name}} aggregate.
+ *
+ * `add` is insert-only — a duplicate id fails loudly instead of silently
+ * overwriting; changes go through `findById` → mutator → `update` (ADR-0026).
+ */
+export interface {{pascalCase name}}Repository {
+    findById(id: {{pascalCase name}}Id): Promise<{{pascalCase name}} | undefined>;
+    add({{camelCase name}}: {{pascalCase name}}): Promise<void>;
+    update({{camelCase name}}: {{pascalCase name}}): Promise<void>;
+}

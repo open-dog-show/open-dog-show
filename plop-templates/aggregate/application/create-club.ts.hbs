@@ -1,0 +1,53 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import { requireActor, requireClubScope, type TransactionScope } from '../../../Shared/index.js';
+import { as{{pascalCase name}}Id } from '../../domain/shared/domain-ids.js';
+import { {{pascalCase name}} } from '../../domain/model/{{dashCase name}}/{{dashCase name}}.js';
+import type { {{pascalCase context}}UnitOfWork } from '../ports/unit-of-work.js';
+
+/** Inputs to {@link Create{{pascalCase name}}Handler.execute} that are not derivable from the transaction scope. */
+export interface Create{{pascalCase name}}Command {
+    /** Aggregate id of the {{pascalCase name}} to create. */
+    readonly id: string;
+    readonly name: string;
+}
+
+/** Primitive view of the created {{pascalCase name}} (B4). */
+export interface Create{{pascalCase name}}Response {
+    readonly id: string;
+    readonly name: string;
+}
+
+/**
+ * Use case: create {{a (pascalCase name)}} {{pascalCase name}} — a club-scoped aggregate — and
+ * record the `{{eventContext context}}.{{pascalCase name}}Created` fact in
+ * the same transaction (ADR-0014).
+ *
+ * `scope` must itself be a `club` scope (ADR-0026) — {@link requireClubScope}
+ * throws `ScopeMismatchError` for any other scope kind.
+ */
+export class Create{{pascalCase name}}Handler {
+    constructor(private readonly unitOfWork: {{pascalCase context}}UnitOfWork) {}
+
+    /**
+     * @throws {ScopeMismatchError} when `scope` is not a `club` scope.
+     */
+    async execute(
+        command: Create{{pascalCase name}}Command,
+        scope: TransactionScope,
+    ): Promise<Create{{pascalCase name}}Response> {
+        const clubId = requireClubScope(scope);
+        const createdBy = requireActor(scope);
+        return this.unitOfWork.run(scope, async (ctx) => {
+            const {{camelCase name}} = {{pascalCase name}}.create({
+                id: as{{pascalCase name}}Id(command.id),
+                clubId,
+                createdBy,
+                name: command.name,
+            });
+            await ctx.{{plural (camelCase name)}}.add({{camelCase name}});
+            return { id: {{camelCase name}}.id, name: {{camelCase name}}.name };
+        });
+    }
+}
