@@ -1,0 +1,68 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import {
+    stampDomainEvent,
+    type Clock,
+    type DomainEvent,
+    type DomainEventFact,
+    type EventIdGenerator,
+    type TransactionScope,
+} from '../../../../Shared/index.js';
+import { SystemClock } from '../../../../Shared/infrastructure/system-clock.js';
+import { RandomEventIdGenerator } from '../../../../Shared/infrastructure/random-event-id-generator.js';
+import type {
+    {{pascalCase name}}UnitOfWork,
+    {{pascalCase name}}UnitOfWorkContext,
+} from '../../../application/ports/unit-of-work.js';
+// plop:imports
+
+/**
+ * In-memory {@link {{pascalCase name}}UnitOfWork} for unit-testing
+ * {{dashCase name}}-context use cases without Docker.
+ *
+ * Mirrors a real transaction's atomicity: `run` copies each aggregate's
+ * committed array into a staging array, hands repositories backed by the
+ * staging copies to `body`, and — only once `body` resolves without throwing
+ * — replaces the committed arrays with the staged ones and stamps the
+ * buffered facts into {@link recordedEvents}. A `body` that throws leaves
+ * every committed array untouched (ADR-0027: "a rolled-back attempt writes no
+ * rows"), proven here without a database.
+ */
+export class Fake{{pascalCase name}}UnitOfWork implements {{pascalCase name}}UnitOfWork {
+    readonly recordedEvents: DomainEvent[] = [];
+
+    // plop:state
+
+    constructor(
+        private readonly clock: Clock = new SystemClock(),
+        private readonly eventIdGenerator: EventIdGenerator = new RandomEventIdGenerator(),
+    ) {}
+
+    async run<T>(
+        _scope: TransactionScope,
+        body: (ctx: {{pascalCase name}}UnitOfWorkContext) => Promise<T>,
+    ): Promise<T> {
+        const pendingFacts: DomainEventFact[] = [];
+        const record = (...facts: readonly DomainEventFact[]): void => {
+            pendingFacts.push(...facts);
+        };
+
+        // plop:staging-init
+
+        const ctx: {{pascalCase name}}UnitOfWorkContext = {
+            // plop:repositories
+        };
+
+        const result = await body(ctx);
+
+        // plop:commit
+        for (const fact of pendingFacts) {
+            this.recordedEvents.push(
+                stampDomainEvent(fact, this.eventIdGenerator.generate(), this.clock.now()),
+            );
+        }
+
+        return result;
+    }
+}

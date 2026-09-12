@@ -2,6 +2,9 @@
 -- SPDX-License-Identifier: AGPL-3.0-only
 
 -- Create the runtime app role (non-owner; RLS is enforced for non-owner roles).
+-- The bootstrapRole in migration-runner also creates this, but we include it here
+-- for environments that run migrations directly without the runner.
+--
 -- NOTE: The hardcoded password is for development / CI only.
 -- Production deployments MUST replace 'app_user' with a strong, environment-supplied
 -- secret before applying this migration.
@@ -13,33 +16,35 @@ BEGIN
 END
 $$;
 
-CREATE SCHEMA IF NOT EXISTS {{snakeCase name}};
-
 GRANT USAGE ON SCHEMA {{snakeCase name}} TO app_user;
 
--- ---------------------------------------------------------------------------
--- Items table — Club-scoped (template: club)
--- ---------------------------------------------------------------------------
-
-CREATE TABLE IF NOT EXISTS {{snakeCase name}}.items (
-  id       UUID NOT NULL PRIMARY KEY,
-  club_id  UUID NOT NULL,
-  name     TEXT NOT NULL
-);
-
-ALTER TABLE {{snakeCase name}}.items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE {{snakeCase name}}.items FORCE ROW LEVEL SECURITY;
-
-CREATE POLICY items_club ON {{snakeCase name}}.items
-  AS PERMISSIVE FOR ALL TO app_user
-  USING (club_id = nullif(current_setting('app.club_id', true), '')::uuid);
-
-GRANT SELECT, INSERT, UPDATE, DELETE ON {{snakeCase name}}.items TO app_user;
+-- =============================================================================
+-- RLS policy templates (ADR-0005) — applied per table by `new:aggregate`:
+--
+--   club      — rows owned by one Club; key = club_id
+--   USING (club_id = nullif(current_setting('app.club_id', true), '')::uuid)
+--
+--   exhibitor — cross-Club participant data; key = user_id
+--   USING (user_id = nullif(current_setting('app.user_id', true), '')::uuid)
+--
+--   hybrid    — Club-owned but exhibitor-readable; disjunctive predicate
+--   USING (
+--     club_id    = nullif(current_setting('app.club_id',   true), '')::uuid
+--     OR user_id = nullif(current_setting('app.user_id', true), '')::uuid
+--   )
+--
+--   platform  — reference/operator data; no policy (RLS-exempt).
+--
+-- nullif(…, '') converts an empty string (set by withTransaction for unused
+-- scope keys) to NULL so the ::uuid cast never fails and returns no rows.
+-- =============================================================================
 
 -- ---------------------------------------------------------------------------
 -- Outbox table — infrastructure (no RLS: the dispatcher is a platform-level
 -- background process that reads all pending rows regardless of Club).
 -- app_user needs INSERT for atomic writes during transactions.
+-- ON CONFLICT DO NOTHING does not require UPDATE.
+-- The dispatcher connects as a privileged role and does not use app_user.
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS {{snakeCase name}}.outbox (

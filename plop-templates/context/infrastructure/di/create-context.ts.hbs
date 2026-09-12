@@ -1,0 +1,52 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import type pg from 'pg';
+import {
+    PgOutboxWriter,
+    type Clock,
+    type EventIdGenerator,
+    type DomainEventRehydrationRegistry,
+} from '../../../Shared/index.js';
+import { Pg{{pascalCase name}}UnitOfWork } from '../persistence/postgres/pg-unit-of-work.js';
+import { build{{pascalCase name}}EventRehydrationRegistry } from '../messaging/{{dashCase name}}-event-registry.js';
+// plop:imports
+
+/** Dependencies the composition root supplies to wire the {{dashCase name}} context. */
+export interface {{pascalCase name}}ContextDependencies {
+    readonly pool: pg.Pool;
+    readonly clock: Clock;
+    readonly eventIdGenerator: EventIdGenerator;
+}
+
+/** The {{dashCase name}} context's use cases and event rehydration registry. */
+export interface {{pascalCase name}}Context {
+    readonly useCases: {
+        // plop:usecases-type
+    };
+    readonly eventRegistry: DomainEventRehydrationRegistry;
+}
+
+/**
+ * Wires the {{dashCase name}} context's Postgres unit of work and use cases
+ * from the given dependencies (ADR-0021's `infrastructure/di/`). The
+ * composition root (`apps/`) is the only intended caller.
+ */
+export function create{{pascalCase name}}Context(
+    deps: {{pascalCase name}}ContextDependencies,
+): {{pascalCase name}}Context {
+    const writer = new PgOutboxWriter('{{snakeCase name}}');
+    const unitOfWork = new Pg{{pascalCase name}}UnitOfWork(
+        deps.pool,
+        writer,
+        deps.clock,
+        deps.eventIdGenerator,
+    );
+
+    return {
+        useCases: {
+            // plop:usecases-instances
+        },
+        eventRegistry: build{{pascalCase name}}EventRehydrationRegistry(),
+    };
+}
