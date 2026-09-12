@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from 'vitest';
-import { quoteSchemaIdent } from '../../../src/Shared/infrastructure/schema-ident.js';
+import { quoteSchemaIdent } from '../../../../../src/Shared/infrastructure/persistence/postgres/schema-ident.js';
 
 describe('quoteSchemaIdent', () => {
     it('wraps a simple schema name in double quotes', () => {

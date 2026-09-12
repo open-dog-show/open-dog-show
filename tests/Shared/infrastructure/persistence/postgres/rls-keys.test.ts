@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from 'vitest';
-import { scopeToRlsKeys } from '../../../src/Shared/infrastructure/rls-keys.js';
-import { asClubId, asPrincipalId } from '../../../src/Shared/domain/domain-ids.js';
+import { scopeToRlsKeys } from '../../../../../src/Shared/infrastructure/persistence/postgres/rls-keys.js';
+import { asClubId, asPrincipalId } from '../../../../../src/Shared/domain/domain-ids.js';
 import {
     ClubTransactionScope,
     ExhibitorTransactionScope,
     PlatformTransactionScope,
-} from '../../../src/Shared/index.js';
+} from '../../../../../src/Shared/index.js';
 
 describe('scopeToRlsKeys', () => {
     it('carries both clubId and principalId for a club scope', () => {

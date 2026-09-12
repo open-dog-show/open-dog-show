@@ -4,11 +4,8 @@
 import {
     asEventType,
     type AggregateId,
-    type Clock,
-    type DomainEvent,
-    type EventId,
-    type EventIdGenerator,
-    EventScope,
+    type DomainEventFact,
+    type EventScope,
     type EventType,
 } from '../../../../../Shared/index.js';
 
@@ -27,93 +24,53 @@ export interface ItemSavedPayload {
 /**
  * The fact that an {@link Item} was saved.
  *
- * Modelled as a **class event** implementing {@link DomainEvent} (ADR-0022
- * class-per-event-type domain events): the `type` field is fixed to
- * {@link ITEM_SAVED_TYPE}; the payload is the typed {@link ItemSavedPayload}.
+ * Modelled as a **class event** implementing {@link DomainEventFact} (ADR-0027):
+ * the `type` field is fixed to {@link ITEM_SAVED_TYPE}; the payload is the
+ * typed {@link ItemSavedPayload}. Carries no `eventId` / `occurredAt` — those
+ * are envelope fields the unit of work stamps on afterwards, never this class
+ * or its caller. A private `#brand` field makes the class **nominal** so a
+ * bare fact literal is not assignable to `ItemSaved`.
  *
- * `Clock` / `EventIdGenerator` are injected into the construction path
- * ({@link ItemSaved.from}) so `eventId` and `occurredAt` are deterministic
- * under test and free of hidden I/O at the call site. A private `#brand`
- * field makes the class **nominal** so a bare envelope literal is not
- * assignable to `ItemSaved`, and `instanceof` is the reliable runtime
- * discriminator for outbox consumers.
- *
- * Storage rehydration goes through {@link ItemSaved.rehydrate} (no ports —
- * the stored `eventId` / `occurredAt` are reused), which this context's
- * rehydration registry wires into the outbox codec / polling dispatcher.
+ * Storage rehydration goes through {@link ItemSaved.rehydrate}, which this
+ * context's rehydration registry wires into the outbox codec / polling
+ * dispatcher.
  */
-export class ItemSaved implements DomainEvent {
+export class ItemSaved implements DomainEventFact {
     // Nominal brand: a bare object literal lacks this private field, so it is
     // not assignable to `ItemSaved` — closes the structural-literal leak.
     // eslint-disable-next-line no-unused-private-class-members -- intentional nominal brand; exists for compile-time type pinning, not runtime use.
     readonly #brand = true;
 
     readonly type = ITEM_SAVED_TYPE;
-    readonly eventId: EventId;
-    readonly occurredAt: Date;
     readonly scope: EventScope;
     readonly aggregateId: AggregateId;
     readonly payload: ItemSavedPayload;
 
-    private constructor(
-        eventId: EventId,
-        occurredAt: Date,
-        scope: EventScope,
-        aggregateId: AggregateId,
-        payload: ItemSavedPayload,
-    ) {
-        this.eventId = eventId;
-        this.occurredAt = occurredAt;
+    private constructor(scope: EventScope, aggregateId: AggregateId, payload: ItemSavedPayload) {
         this.scope = scope;
         this.aggregateId = aggregateId;
         this.payload = payload;
     }
 
-    /**
-     * Constructs an {@link ItemSaved} for emission, defaulting `eventId` and
-     * `occurredAt` to the injected {@link Clock} / {@link EventIdGenerator}
-     * ports unless overridden (e.g. tests supplying deterministic values).
-     */
-    static from(
-        params: {
-            readonly scope: EventScope;
-            readonly aggregateId: AggregateId;
-            readonly payload: ItemSavedPayload;
-            /** Override the generated id (useful in tests). */
-            readonly eventId?: EventId | undefined;
-            /** Override the timestamp (useful in tests). */
-            readonly occurredAt?: Date | undefined;
-        },
-        deps: { readonly clock: Clock; readonly eventIdGenerator: EventIdGenerator },
+    /** Constructs an {@link ItemSaved} fact for recording. */
+    static create(
+        aggregateId: AggregateId,
+        scope: EventScope,
+        payload: ItemSavedPayload,
     ): ItemSaved {
-        return new ItemSaved(
-            params.eventId ?? deps.eventIdGenerator.generate(),
-            params.occurredAt ?? deps.clock.now(),
-            params.scope,
-            params.aggregateId,
-            params.payload,
-        );
+        return new ItemSaved(scope, aggregateId, payload);
     }
 
     /**
-     * Rehydrates an {@link ItemSaved} from a stored envelope — the path the
-     * outbox codec / polling dispatcher use via this context's rehydration
-     * registry. No ports: the stored `eventId` / `occurredAt` are reused
-     * verbatim.
+     * Rehydrates an {@link ItemSaved} fact from a stored row's
+     * already-validated fields — the path the outbox codec / polling
+     * dispatcher use via this context's rehydration registry.
      */
-    static rehydrate(envelope: {
-        readonly eventId: EventId;
-        readonly occurredAt: Date;
+    static rehydrate(fact: {
         readonly scope: EventScope;
         readonly aggregateId: AggregateId;
         readonly payload: ItemSavedPayload;
     }): ItemSaved {
-        return new ItemSaved(
-            envelope.eventId,
-            envelope.occurredAt,
-            envelope.scope,
-            envelope.aggregateId,
-            envelope.payload,
-        );
+        return new ItemSaved(fact.scope, fact.aggregateId, fact.payload);
     }
 }

@@ -9,13 +9,9 @@ import type { Brand } from './brand.js';
  * A branded type is structurally identical to `T` at runtime but is
  * treated as a distinct type by the TypeScript compiler.  This prevents
  * accidental substitution of one ID kind for another (e.g. passing a
- * `DogId` where a `ShowId` is expected).
+ * `PrincipalId` where a `ClubId` is expected).
  */
 
-/** Branded string that uniquely identifies a dog show. */
-export type ShowId = Brand<string, 'ShowId'>;
-/** Branded string that uniquely identifies a dog. */
-export type DogId = Brand<string, 'DogId'>;
 /** Branded string that uniquely identifies a kennel-club Club. */
 export type ClubId = Brand<string, 'ClubId'>;
 /**
@@ -38,7 +34,7 @@ export type PrincipalId = Brand<string, 'PrincipalId'>;
  *
  * Acts as the idempotency key for the outbox.  Structurally a plain string
  * (a UUID) at runtime; the brand prevents an `EventId` from being passed where
- * another branded id (e.g. `ShowId`) is expected.
+ * another branded id (e.g. `ClubId`) is expected.
  */
 export type EventId = Brand<string, 'EventId'>;
 /**
@@ -47,10 +43,10 @@ export type EventId = Brand<string, 'EventId'>;
  * The kernel emits domain events for many aggregate kinds (a Show, a Dog, an
  * Entry, …) and cannot know which context-specific brand an aggregate id
  * carries, so this is the **context-neutral** aggregate identifier brand.
- * Contexts may narrow it further at their own boundary (e.g. cast a `ShowId`
- * to an `AggregateId` when handing an event to the kernel).  Structurally a
- * plain string at runtime; the brand prevents an `AggregateId` from being
- * passed where another branded id is expected.
+ * Contexts may narrow it further at their own boundary (e.g. cast a context's
+ * own id brand to an `AggregateId` when handing an event to the kernel).
+ * Structurally a plain string at runtime; the brand prevents an `AggregateId`
+ * from being passed where another branded id is expected.
  */
 export type AggregateId = Brand<string, 'AggregateId'>;
 // `EventType` / `asEventType` live in `domain-event-type.ts` — an event-type
@@ -61,7 +57,7 @@ export type { EventType } from './domain-event-type.js';
 export { asEventType } from './domain-event-type.js';
 
 /**
- * Casts a raw string to a {@link ShowId}.
+ * Casts a raw string to a {@link ClubId}.
  *
  * These `as*` constructors are the **only** safe boundary-crossing points
  * where an untyped string (e.g. from a database row or HTTP request)
@@ -69,13 +65,9 @@ export { asEventType } from './domain-event-type.js';
  * (repository, controller) so the rest of the domain works exclusively
  * with typed IDs.
  */
-export const asShowId = (id: string): ShowId => id as ShowId;
-/** Casts a raw string to a {@link DogId}. See {@link asShowId}. */
-export const asDogId = (id: string): DogId => id as DogId;
-/** Casts a raw string to a {@link ClubId}. See {@link asShowId}. */
 export const asClubId = (id: string): ClubId => id as ClubId;
 /**
- * Casts a raw string to a {@link PrincipalId}. See {@link asShowId}.
+ * Casts a raw string to a {@link PrincipalId}. See {@link asClubId}.
  *
  * Per ADR-0013: at the composition root an untyped actor id (e.g. a `User.id`
  * from the IAM context) is cast to the context-neutral {@link PrincipalId} the
@@ -84,18 +76,18 @@ export const asClubId = (id: string): ClubId => id as ClubId;
  */
 export const asPrincipalId = (id: string): PrincipalId => id as PrincipalId;
 /**
- * Casts a raw string to an {@link EventId}. See {@link asShowId}.
+ * Casts a raw string to an {@link EventId}. See {@link asClubId}.
  *
  * Use this at the boundary where an untyped event id (e.g. from a database
  * outbox row or a replayed event) becomes a typed {@link EventId}.
  */
 export const asEventId = (id: string): EventId => id as EventId;
 /**
- * Casts a raw string to an {@link AggregateId}. See {@link asShowId}.
+ * Casts a raw string to an {@link AggregateId}. See {@link asClubId}.
  *
  * Use this at the boundary where an untyped aggregate id (e.g. from a database
  * row or HTTP request) becomes a typed {@link AggregateId}.  A context may
- * also widen its own narrower aggregate-id brand (e.g. `ShowId`) to an
+ * also widen its own narrower aggregate-id brand (e.g. `EntryId`) to an
  * `AggregateId` when handing an event to the kernel.
  */
 export const asAggregateId = (id: string): AggregateId => id as AggregateId;

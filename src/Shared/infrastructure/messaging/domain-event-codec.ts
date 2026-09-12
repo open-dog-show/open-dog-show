@@ -1,70 +1,58 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { DomainEvent } from './domain-event.js';
-import type { EventScope } from './event-scope.js';
-import { asEventScope } from './event-scope.js';
 import {
-    asAggregateId,
-    asEventId,
-    asEventType,
-    type AggregateId,
-    type EventId,
-    type EventType,
-} from './domain-ids.js';
+    stampDomainEvent,
+    type DomainEvent,
+    type DomainEventFact,
+} from '../../domain/domain-event.js';
+import { asEventScope } from '../../domain/event-scope.js';
+import { asAggregateId, asEventId, asEventType, type EventType } from '../../domain/domain-ids.js';
 
-/** The serialised (JSON-safe) form of a {@link DomainEvent}. */
+/**
+ * The serialised (JSON-safe) form of a {@link DomainEvent}.
+ *
+ * The owning ids are flattened out of `scope` (ADR-0027) so a dispatcher can
+ * route by owner in SQL without re-parsing the payload: `clubId` is set only
+ * for a `club` scope, `principalId` only for an `exhibitor` scope, both `null`
+ * for `platform`.
+ */
 export interface DomainEventJson {
     readonly eventId: string;
     readonly type: string;
     /** ISO-8601 timestamp. */
     readonly occurredAt: string;
-    /** Raw scope string — validated back to {@link EventScope} by {@link decodeDomainEvent}. */
+    /** Raw scope-kind string — validated back to {@link EventScope} by {@link decodeDomainEvent}. */
     readonly scope: string;
+    readonly clubId: string | null;
+    readonly principalId: string | null;
     readonly aggregateId: string;
     readonly payload: unknown;
 }
 
 /**
- * The envelope fields after the boundary casts in {@link rehydrateDomainEvent} —
- * branded ids restored, `occurredAt` normalised to a `Date`, `scope` rebuilt as
- * an {@link EventScope}. This is the shape a {@link DomainEventRehydrator}
- * receives so a class-event rehydrator can construct its class directly from
- * already-validated values instead of re-running the casts.
- */
-export interface RehydratedDomainEventEnvelope {
-    readonly eventId: EventId;
-    readonly type: EventType;
-    readonly occurredAt: Date;
-    readonly scope: EventScope;
-    readonly aggregateId: AggregateId;
-    /**
-     * Event-type-specific structured data, still `unknown`: the codec cannot
-     * validate a payload shape it knows nothing about. A class-event
-     * rehydrator narrows the payload to its own typed shape at its own
-     * boundary.
-     */
-    readonly payload: unknown;
-}
-
-/**
- * Rehydrates a {@link DomainEvent} from a {@link RehydratedDomainEventEnvelope}
- * — i.e. constructs the concrete class event (e.g. `EntrySubmitted`) from
+ * Reconstructs a {@link DomainEventFact} (e.g. `EntrySubmitted`) from
  * already-validated envelope fields. Registered in a
  * {@link DomainEventRehydrationRegistry} keyed by event-type string so the
  * outbox codec / polling dispatcher receive whatever this rehydrator
  * constructs — by convention, and in every rehydrator in this repo, a
  * concrete class instance; the registry itself has no way to verify that a
  * given implementation actually does so.
+ *
+ * The rehydrator receives only the fact fields (`type`, `scope`,
+ * `aggregateId`, `payload`) — `eventId` / `occurredAt` are envelope-only
+ * fields the caller ({@link rehydrateDomainEvent}) attaches afterwards
+ * (ADR-0027: the codec and dispatcher work on the envelope, the fact stays
+ * ignorant of it).
  */
-export type DomainEventRehydrator = (envelope: RehydratedDomainEventEnvelope) => DomainEvent;
+export type DomainEventRehydrator = (fact: DomainEventFact) => DomainEventFact;
 
 /**
  * Event-type → class rehydration registry (ADR-0022 class events).
  *
  * Maps an event-type string (e.g. `'sample.EntrySubmitted'`) to the
  * {@link DomainEventRehydrator} that constructs the concrete class event from
- * the rehydrated envelope. The registry is populated by a context's composition
+ * the rehydrated fact fields. The registry is populated by a context's composition
  * root (the kernel cannot import a context's event classes), then passed to the
  * outbox codec / polling dispatcher so a stored row is rehydrated back into its
  * class instance. An unregistered type is rejected by {@link rehydrateDomainEvent}
@@ -96,7 +84,7 @@ export class DomainEventRehydrationRegistry {
  * a malformed outbox row or JSON envelope must never propagate as a typed
  * {@link DomainEvent} carrying an unusable timestamp. This is a
  * technical/boundary error (corrupt data, not a domain-rule violation), so it
- * extends `Error` rather than {@link DomainError}; `field` names which envelope
+ * extends `Error` rather than `DomainError`; `field` names which envelope
  * field was unrecoverable and `value` the offending input.
  */
 export class InvalidDomainEventEnvelopeError extends Error {
@@ -166,9 +154,10 @@ export function assertPayloadHasStringField<TField extends string>(
  * Encode a {@link DomainEvent} to a JSON-safe object.
  *
  * The `occurredAt` Date is converted to an ISO-8601 string; the `EventScope`
- * is flattened to its `kind` tag (the wire form — rehydrated by
- * {@link decodeDomainEvent} via {@link asEventScope}); everything else is left
- * as-is (branded string ids are plain strings at runtime).
+ * is flattened to its `kind` tag plus the owning `clubId`/`principalId`
+ * columns (ADR-0027 — rehydrated by {@link decodeDomainEvent} via
+ * {@link asEventScope}); everything else is left as-is (branded string ids
+ * are plain strings at runtime).
  */
 export function encodeDomainEvent(event: DomainEvent): DomainEventJson {
     return {
@@ -176,6 +165,8 @@ export function encodeDomainEvent(event: DomainEvent): DomainEventJson {
         type: event.type,
         occurredAt: event.occurredAt.toISOString(),
         scope: event.scope.kind,
+        clubId: event.scope.kind === 'club' ? event.scope.clubId : null,
+        principalId: event.scope.kind === 'exhibitor' ? event.scope.principalId : null,
         aggregateId: event.aggregateId,
         payload: event.payload,
     };
@@ -240,9 +231,14 @@ function parseStrictIso(value: string): Date {
  * ({@link decodeDomainEvent}) do not re-implement the `asEventId` /
  * `asEventType` / `asEventScope` / `asAggregateId` casts.
  *
+ * The registered rehydrator only ever sees the **fact** — `type`, `scope`,
+ * `aggregateId`, `payload` — never `eventId`/`occurredAt` (ADR-0027): this
+ * function attaches those two envelope-only fields to the rehydrated fact
+ * afterwards, so the returned value satisfies `DomainEvent`.
+ *
  * `registry` must have a rehydrator registered for the row's `type` — by
  * convention that rehydrator constructs the concrete class event (e.g.
- * `EntrySubmitted`) from the already-validated envelope, so the polling
+ * `EntrySubmitted`) from the already-validated fact, so the polling
  * dispatcher and the JSON codec receive a class instance rather than a bare
  * envelope literal (ADR-0022, #176) — though this function has no way to
  * verify that a registered rehydrator actually does so. An unregistered
@@ -257,6 +253,8 @@ export function rehydrateDomainEvent(
         readonly type: string;
         readonly occurredAt: Date | string;
         readonly scope: string;
+        readonly clubId: string | null;
+        readonly principalId: string | null;
         readonly aggregateId: string;
         readonly payload: unknown;
     },
@@ -270,7 +268,7 @@ export function rehydrateDomainEvent(
     // mirroring the asEventType / asEventScope reject-at-the-boundary contract.
     const occurredAt = normalizeOccurredAt(envelope.occurredAt);
     const type = asEventType(envelope.type);
-    const scope = asEventScope(envelope.scope);
+    const scope = asEventScope(envelope.scope, envelope.clubId, envelope.principalId);
     const eventId = asEventId(envelope.eventId);
     const aggregateId = asAggregateId(envelope.aggregateId);
 
@@ -278,14 +276,8 @@ export function rehydrateDomainEvent(
     if (rehydrator === undefined) {
         throw new UnregisteredDomainEventTypeError(type);
     }
-    return rehydrator({
-        eventId,
-        type,
-        occurredAt,
-        scope,
-        aggregateId,
-        payload: envelope.payload,
-    });
+    const fact = rehydrator({ type, scope, aggregateId, payload: envelope.payload });
+    return stampDomainEvent(fact, eventId, occurredAt);
 }
 
 /**

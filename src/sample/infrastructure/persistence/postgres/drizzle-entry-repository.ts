@@ -24,7 +24,7 @@ export class DrizzleEntryRepository implements EntryRepository {
                 Entry.rehydrate({
                     id: asEntryId(row.id),
                     clubId: asClubId(row.clubId),
-                    principalId: asPrincipalId(row.principalId),
+                    createdBy: asPrincipalId(row.principalId),
                     showId: asShowId(row.showId),
                     dogName: row.dogName,
                 }),
@@ -42,7 +42,7 @@ export class DrizzleEntryRepository implements EntryRepository {
                 .values({
                     id: entry.id,
                     clubId: entry.clubId,
-                    principalId: entry.principalId,
+                    principalId: entry.createdBy,
                     showId: entry.showId,
                     dogName: entry.dogName,
                 })

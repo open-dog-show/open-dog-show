@@ -12,7 +12,11 @@ import {
     ExhibitorTransactionScope,
     PgOutboxWriter,
 } from '../../../../../src/Shared/index.js';
+import { SystemClock } from '../../../../../src/Shared/infrastructure/system-clock.js';
+import { RandomEventIdGenerator } from '../../../../../src/Shared/infrastructure/random-event-id-generator.js';
 import { PgSampleUnitOfWork } from '../../../../../src/sample/infrastructure/persistence/postgres/pg-unit-of-work.js';
+import { Show } from '../../../../../src/sample/domain/model/show/show.js';
+import { asShowId } from '../../../../../src/sample/domain/shared/domain-ids.js';
 
 // Fixed IDs for deterministic test data.
 const CLUB_A_ID = '00000000-0000-4000-8000-000000000001';
@@ -32,7 +36,12 @@ describe('RLS isolation — sample context', () => {
         await bootstrapSampleSchema(harness);
 
         appPool = harness.appUserPool;
-        unitOfWork = new PgSampleUnitOfWork(appPool, new PgOutboxWriter('sample'));
+        unitOfWork = new PgSampleUnitOfWork(
+            appPool,
+            new PgOutboxWriter('sample'),
+            new SystemClock(),
+            new RandomEventIdGenerator(),
+        );
 
         // Seed test data as superuser (bypasses RLS entirely).
         await harness.seed(async (client) => {
@@ -55,27 +64,45 @@ describe('RLS isolation — sample context', () => {
         await harness.stop();
     });
 
-    describe('Club-scoped table isolation (shows)', () => {
-        it('club-A scope sees only Club A shows', async () => {
+    describe('read-open, write-scoped table isolation (shows)', () => {
+        // Shows must be discoverable by any exhibitor deciding whether to
+        // enter one, so SELECT carries no ownership predicate (unlike the
+        // plain `club` template) — every scope sees every Show.
+        it('club-A scope sees every Show, not only Club A’s', async () => {
             await unitOfWork.run(
                 ClubTransactionScope.of(asClubId(CLUB_A_ID), asPrincipalId(ACCOUNT_A_ID)),
                 async (ctx) => {
                     const shows = await ctx.shows.findAll();
-                    expect(shows).toHaveLength(1);
-                    expect(shows[0]?.name).toBe('Club A Show');
+                    expect(shows.map((s) => s.name).sort()).toEqual(['Club A Show', 'Club B Show']);
                 },
             );
         });
 
-        it('club-B scope sees only Club B shows, not Club A', async () => {
+        it('an exhibitor scope (no clubId at all) also sees every Show', async () => {
             await unitOfWork.run(
-                ClubTransactionScope.of(asClubId(CLUB_B_ID), asPrincipalId(ACCOUNT_B_ID)),
+                ExhibitorTransactionScope.of(asPrincipalId(ACCOUNT_A_ID)),
                 async (ctx) => {
                     const shows = await ctx.shows.findAll();
-                    expect(shows).toHaveLength(1);
-                    expect(shows[0]?.name).toBe('Club B Show');
+                    expect(shows.map((s) => s.name).sort()).toEqual(['Club A Show', 'Club B Show']);
                 },
             );
+        });
+
+        it('club-B scope cannot create a Show attributed to Club A', async () => {
+            const forgedShow = Show.create(
+                asShowId('00000000-0000-4000-8000-000000000099'),
+                asClubId(CLUB_A_ID),
+                'Forged Show',
+            );
+
+            await expect(
+                unitOfWork.run(
+                    ClubTransactionScope.of(asClubId(CLUB_B_ID), asPrincipalId(ACCOUNT_B_ID)),
+                    async (ctx) => {
+                        await ctx.shows.save(forgedShow);
+                    },
+                ),
+            ).rejects.toThrow();
         });
     });
 

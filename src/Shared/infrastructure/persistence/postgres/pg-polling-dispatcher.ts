@@ -2,13 +2,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type pg from 'pg';
-import type { DomainEvent } from '../domain/domain-event.js';
+import type { DomainEvent } from '../../../domain/domain-event.js';
 import {
     rehydrateDomainEvent,
     type DomainEventRehydrationRegistry,
-} from '../domain/domain-event-codec.js';
+} from '../../messaging/domain-event-codec.js';
 import { quoteSchemaIdent } from './schema-ident.js';
 import { runInClientTransaction } from './with-transaction.js';
+import { TransactionFailed } from './transaction-failed.js';
+import { OutboxDispatchFailed } from './outbox-dispatch-failed.js';
 
 /**
  * Default number of pending outbox rows one {@link PgPollingDispatcher.poll}
@@ -42,7 +44,13 @@ export type EventHandler = (event: DomainEvent, signal: AbortSignal) => Promise<
  *   only that row for retry — already-dispatched rows in the same batch are
  *   not rolled back.
  * - `FOR UPDATE SKIP LOCKED` prevents concurrent dispatcher instances from
- *   processing the same row simultaneously.
+ *   processing the same row simultaneously **while it is locked**. The lock is
+ *   released on `ROLLBACK` (a handler failure) before the separate
+ *   attempts/`last_error` recording transaction commits, so a narrow window
+ *   exists in which a second dispatcher can select and re-run the same
+ *   still-`attempts`-stale row before that recording commits — an extra
+ *   redelivery beyond ordinary at-least-once, tolerated by the same handler
+ *   idempotency the delivery guarantee below already requires.
  * - `dispatched_at` is set on success.
  * - Delivery is at-least-once; the handler is expected to be idempotent on
  *   `event.eventId`.
@@ -55,8 +63,11 @@ export type EventHandler = (event: DomainEvent, signal: AbortSignal) => Promise<
  *   timeout); on timeout the handler's `AbortSignal` is aborted and the call is
  *   treated as a handler failure (attempt incremented). The row lock is held
  *   until the handler settles, so a timed-out handler must honour the signal.
- * - On a handler error `poll` rethrows — the batch does not continue past a
- *   failing row, so rows after it are left pending too.
+ * - On a per-row failure (handler error, or an unregistered event type) `poll`
+ *   rethrows {@link OutboxDispatchFailed} — the batch does not continue past a
+ *   failing row, so rows after it are left pending too. A failure before any
+ *   row was selected (e.g. a connection fault) propagates as
+ *   {@link TransactionFailed} instead — it is not a per-row dispatch failure.
  */
 export class PgPollingDispatcher {
     private readonly quotedSchema: string;
@@ -126,72 +137,121 @@ export class PgPollingDispatcher {
      */
     private async processOne(): Promise<boolean> {
         return this.withClient(async (client) => {
-            // The next eligible row is selected and locked in one query inside the
-            // dispatch transaction below, so `FOR UPDATE SKIP LOCKED` skips a head
-            // row already locked by a concurrent dispatcher and continues with the
-            // next available row instead of stopping the poll early. `seq` is
-            // captured into the outer scope so the failure-recording transaction
-            // (run after the dispatch transaction rolls back) can target the same
-            // row. Skipping `attempts >= maxAttempts` quarantines poison pills so a
-            // permanently-failing row cannot starve later rows.
+            // `seq` / `rawEventId` / `rawType` are captured into the outer scope
+            // — before rehydration — so a failure (including rehydration itself
+            // failing) still carries row context for `OutboxDispatchFailed`.
             let seq: string | undefined;
+            let rawEventId: string | undefined;
+            let rawType: string | undefined;
 
             try {
                 return await runInClientTransaction(client, async (c) => {
-                    const res = await c.query<OutboxRowRaw>(
-                        `SELECT seq, event_id, type, occurred_at, scope, aggregate_id, payload
-                         FROM ${this.quotedSchema}.outbox
-                         WHERE dispatched_at IS NULL AND attempts < $1
-                         ORDER BY seq
-                         FOR UPDATE SKIP LOCKED
-                         LIMIT 1`,
-                        [this.maxAttempts],
-                    );
-                    const [row] = res.rows;
+                    const row = await this.selectNextRow(c);
                     if (row === undefined) return false; // no eligible row available to this worker
                     seq = row.seq;
+                    rawEventId = row.event_id;
+                    rawType = row.type;
 
-                    const event = this.rowToEvent(row);
-                    // Abort the handler on timeout so it can cancel in-flight I/O.
-                    // The row lock is held until the handler settles — the signal
-                    // is the only cancellation path (see `handlerTimeoutMs`).
-                    const controller = new AbortController();
-                    const timer =
-                        this.handlerTimeoutMs > 0
-                            ? setTimeout(() => controller.abort(), this.handlerTimeoutMs)
-                            : undefined;
-                    try {
-                        await this.handler(event, controller.signal);
-                    } finally {
-                        if (timer !== undefined) clearTimeout(timer);
-                    }
-                    await c.query(
-                        `UPDATE ${this.quotedSchema}.outbox SET dispatched_at = NOW() WHERE seq = $1`,
-                        [row.seq],
-                    );
+                    await this.dispatchRow(c, row);
                     return true;
                 });
             } catch (err) {
-                // Handler failed (or aborted on timeout): the dispatch transaction
-                // rolled back, so the row stays pending. Record the failure in a
-                // separate short transaction (attempts + last_error) so the row is
-                // eventually skipped as a poison pill instead of retried forever.
-                // Best-effort: a recording failure must not mask the original error.
-                if (seq !== undefined) {
-                    await runInClientTransaction(client, async (c) => {
-                        await c.query(
-                            `UPDATE ${this.quotedSchema}.outbox
-                             SET attempts = attempts + 1, last_error = $2
-                             WHERE seq = $1`,
-                            [seq, String(err)],
-                        );
-                    }).catch(() => {
-                        // best-effort failure recording — surface the original error below
-                    });
+                if (seq === undefined) {
+                    // Failed before (or while) selecting a row — e.g. a connection
+                    // fault (TransactionFailed). Not a per-row dispatch failure.
+                    throw err;
                 }
-                throw err;
+                throw await this.recordDispatchFailure(
+                    client,
+                    seq,
+                    rawEventId ?? '',
+                    rawType ?? '',
+                    err,
+                );
             }
         });
+    }
+
+    /**
+     * Selects and locks the next eligible pending row, or `undefined` when
+     * none is available to this worker. `FOR UPDATE SKIP LOCKED` skips a head
+     * row already locked by a concurrent dispatcher and continues with the
+     * next available row instead of stopping the poll early; skipping
+     * `attempts >= maxAttempts` quarantines poison pills so a
+     * permanently-failing row cannot starve later rows. Must be called inside
+     * the dispatch transaction (`processOne`'s `runInClientTransaction`).
+     */
+    private async selectNextRow(client: pg.PoolClient): Promise<OutboxRowRaw | undefined> {
+        const res = await client.query<OutboxRowRaw>(
+            `SELECT seq, event_id, type, occurred_at, scope, club_id, user_id, aggregate_id, payload
+             FROM ${this.quotedSchema}.outbox
+             WHERE dispatched_at IS NULL AND attempts < $1
+             ORDER BY seq
+             FOR UPDATE SKIP LOCKED
+             LIMIT 1`,
+            [this.maxAttempts],
+        );
+        return res.rows[0];
+    }
+
+    /**
+     * Rehydrates `row` and delivers it to the handler, then marks it
+     * dispatched. Aborts the handler on `handlerTimeoutMs`; the row lock is
+     * held until the handler settles, so a timed-out handler must honour the
+     * signal to release it promptly.
+     */
+    private async dispatchRow(client: pg.PoolClient, row: OutboxRowRaw): Promise<void> {
+        const event = this.rowToEvent(row);
+        const controller = new AbortController();
+        const timer =
+            this.handlerTimeoutMs > 0
+                ? setTimeout(() => controller.abort(), this.handlerTimeoutMs)
+                : undefined;
+        try {
+            await this.handler(event, controller.signal);
+        } finally {
+            if (timer !== undefined) clearTimeout(timer);
+        }
+        await client.query(
+            `UPDATE ${this.quotedSchema}.outbox SET dispatched_at = NOW() WHERE seq = $1`,
+            [row.seq],
+        );
+    }
+
+    /**
+     * Records a per-row dispatch failure (handler error, or an unregistered
+     * event type) — the dispatch transaction already rolled back, so this
+     * runs in a separate short transaction that increments `attempts` and
+     * sets `last_error`, eventually quarantining a poison pill. A failure in
+     * *this* recording is not silently swallowed — it is captured and
+     * returned on the built {@link OutboxDispatchFailed}'s `cause.recordingError`
+     * rather than discarded.
+     */
+    private async recordDispatchFailure(
+        client: pg.PoolClient,
+        seq: string,
+        eventId: string,
+        type: string,
+        cause: unknown,
+    ): Promise<OutboxDispatchFailed> {
+        let attempts = 0;
+        let recordingError: unknown;
+        try {
+            attempts = await runInClientTransaction(client, async (c) => {
+                const { rows } = await c.query<{ attempts: number }>(
+                    `UPDATE ${this.quotedSchema}.outbox
+                     SET attempts = attempts + 1, last_error = $2
+                     WHERE seq = $1
+                     RETURNING attempts`,
+                    [seq, String(cause)],
+                );
+                return rows[0]?.attempts ?? 0;
+            });
+        } catch (recErr) {
+            recordingError = recErr;
+        }
+
+        return new OutboxDispatchFailed({ seq, eventId, type, attempts, cause, recordingError });
     }
 
     /**
@@ -201,7 +261,12 @@ export class PgPollingDispatcher {
      * because {@link processOne} needs `FOR UPDATE SKIP LOCKED` mid-transaction.
      */
     private async withClient<T>(body: (client: pg.PoolClient) => Promise<T>): Promise<T> {
-        const client = await this.pool.connect();
+        let client: pg.PoolClient;
+        try {
+            client = await this.pool.connect();
+        } catch (cause) {
+            throw new TransactionFailed('connecting to the pool', cause);
+        }
         try {
             return await body(client);
         } finally {
@@ -224,6 +289,8 @@ export class PgPollingDispatcher {
                 type: row.type,
                 occurredAt: row.occurred_at,
                 scope: row.scope,
+                clubId: row.club_id,
+                principalId: row.user_id,
                 aggregateId: row.aggregate_id,
                 payload: row.payload,
             },
@@ -242,6 +309,8 @@ interface OutboxRowRaw {
     type: string;
     occurred_at: Date; // pg driver parses TIMESTAMPTZ into a JS Date
     scope: string; // raw text — validated to EventScope by asEventScope
+    club_id: string | null;
+    user_id: string | null;
     aggregate_id: string;
     payload: unknown; // pg driver parses JSONB into a JS object
 }

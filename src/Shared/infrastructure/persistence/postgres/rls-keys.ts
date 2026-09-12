@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { ClubId, PrincipalId } from '../domain/domain-ids.js';
-import type { TransactionScope } from '../domain/transaction-scope.js';
+import type { ClubId, PrincipalId } from '../../../domain/domain-ids.js';
+import type { TransactionScope } from '../../../domain/transaction-scope.js';
 
 /**
  * The pair of RLS session keys derived from a {@link TransactionScope}.
@@ -16,8 +16,7 @@ import type { TransactionScope } from '../domain/transaction-scope.js';
  *
  * The RLS session-variable setter consumes this with `?? ''` (the `set_config`
  * GUC needs text, and `nullif(current_setting(...), '')::uuid` collapses `''`
- * to `NULL`); the outbox writer binds the values directly — `null` for the
- * non-applicable `club_id` / `user_id` columns.
+ * to `NULL`).
  *
  * The `principalId` field is the kernel's context-neutral actor id
  * (`PrincipalId`, ADR-0013). The SQL wire name stays `user_id` / `app.user_id`
@@ -36,9 +35,8 @@ export interface RlsKeys {
  * - `exhibitor` → only `principalId` is set; `clubId` is `null`.
  * - `platform`  → both are `null` (no Club or user isolation).
  *
- * Shared by the RLS session-variable setter (in `with-transaction.ts`) and the
- * outbox writer (in `pg-outbox-writer.ts`).  Internal — not part of the
- * kernel's public surface.
+ * Used by the RLS session-variable setter in `with-transaction.ts`. Internal
+ * — not part of the kernel's public surface.
  */
 export function scopeToRlsKeys(scope: TransactionScope): RlsKeys {
     switch (scope.kind) {
