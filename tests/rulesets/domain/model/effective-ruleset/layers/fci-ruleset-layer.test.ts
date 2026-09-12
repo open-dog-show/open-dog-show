@@ -40,7 +40,10 @@ import {
 } from '../../../../../../src/rulesets/domain/model/effective-ruleset/layers/kmsh-ruleset-layer.js';
 import { resolveEffectiveRuleset } from '../../../../../../src/rulesets/domain/service/resolve-effective-ruleset.js';
 import { CertificateKind } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/certificate-kind.js';
-import { asClassId } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+import {
+    asClassId,
+    asEffectiveRulesetId,
+} from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
 import { findOrFail } from '../../../../../../tests/test-kit/index.js';
 import type { AwardTypeId } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
 import { LocalDate } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
@@ -51,6 +54,7 @@ import type {
 import type { EffectiveRuleset } from '../../../../../../src/rulesets/domain/model/effective-ruleset/effective-ruleset.js';
 
 const RESOLVE_DATE: LocalDate = LocalDate.of(2026, 8, 11);
+const RULESET_ID = asEffectiveRulesetId('ruleset-1');
 
 // ---------------------------------------------------------------------------
 // FCI base layer — structure
@@ -480,10 +484,10 @@ describe('fciLayer — fedBy declarations (ADR-0017)', () => {
 // ---------------------------------------------------------------------------
 
 describe('resolveEffectiveRuleset with FCI layer only', () => {
-    const ruleset = resolveEffectiveRuleset([fciLayer], RESOLVE_DATE);
+    const ruleset = resolveEffectiveRuleset(RULESET_ID, [fciLayer], RESOLVE_DATE);
 
     it('stamps the resolution date', () => {
-        expect(ruleset.resolvedAt).toEqual(RESOLVE_DATE);
+        expect(ruleset.resolvedFor).toEqual(RESOLVE_DATE);
     });
 
     it('records FCI as the sole source layer', () => {
@@ -579,7 +583,7 @@ describe('kmshLayer — structure', () => {
 // ---------------------------------------------------------------------------
 
 describe('resolveEffectiveRuleset with FCI + KMSH layers', () => {
-    const ruleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
+    const ruleset = resolveEffectiveRuleset(RULESET_ID, [fciLayer, kmshLayer], RESOLVE_DATE);
 
     it('records both source layers in order', () => {
         expect(ruleset.sourceLayerIds).toEqual([FCI_LAYER_ID, KMSH_LAYER_ID]);
@@ -644,7 +648,7 @@ describe('fedBy layering — FCI base vs KMSH override', () => {
     };
 
     it('FCI-only: BOB fedBy has no national CAC feeder', () => {
-        const ruleset = resolveEffectiveRuleset([fciLayer], RESOLVE_DATE);
+        const ruleset = resolveEffectiveRuleset(RULESET_ID, [fciLayer], RESOLVE_DATE);
         expect(individual(ruleset, FCI_AWARD_BOB).fedBy).toEqual([
             { kind: 'award', awardTypeId: FCI_AWARD_CACIB },
             { kind: 'class', classId: asClassId('junior') },
@@ -653,7 +657,7 @@ describe('fedBy layering — FCI base vs KMSH override', () => {
     });
 
     it('FCI-only: BOS fedBy has no national CAC feeder', () => {
-        const ruleset = resolveEffectiveRuleset([fciLayer], RESOLVE_DATE);
+        const ruleset = resolveEffectiveRuleset(RULESET_ID, [fciLayer], RESOLVE_DATE);
         expect(individual(ruleset, FCI_AWARD_BOS).fedBy).toEqual([
             { kind: 'award', awardTypeId: FCI_AWARD_CACIB },
             { kind: 'class', classId: asClassId('junior') },
@@ -662,7 +666,7 @@ describe('fedBy layering — FCI base vs KMSH override', () => {
     });
 
     it('FCI + KMSH: BOB fedBy adds the national CAC feeder (wholesale override)', () => {
-        const ruleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
+        const ruleset = resolveEffectiveRuleset(RULESET_ID, [fciLayer, kmshLayer], RESOLVE_DATE);
         expect(individual(ruleset, FCI_AWARD_BOB).fedBy).toEqual([
             { kind: 'award', awardTypeId: FCI_AWARD_CACIB },
             { kind: 'award', awardTypeId: KMSH_AWARD_CAC },
@@ -672,7 +676,7 @@ describe('fedBy layering — FCI base vs KMSH override', () => {
     });
 
     it('FCI + KMSH: BOS fedBy adds the national CAC feeder (wholesale override)', () => {
-        const ruleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
+        const ruleset = resolveEffectiveRuleset(RULESET_ID, [fciLayer, kmshLayer], RESOLVE_DATE);
         expect(individual(ruleset, FCI_AWARD_BOS).fedBy).toEqual([
             { kind: 'award', awardTypeId: FCI_AWARD_CACIB },
             { kind: 'award', awardTypeId: KMSH_AWARD_CAC },
@@ -682,7 +686,7 @@ describe('fedBy layering — FCI base vs KMSH override', () => {
     });
 
     it('FCI + KMSH: BIG/BIS feeders are unchanged by the KMSH layer', () => {
-        const ruleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
+        const ruleset = resolveEffectiveRuleset(RULESET_ID, [fciLayer, kmshLayer], RESOLVE_DATE);
         expect(individual(ruleset, FCI_AWARD_BIG).fedBy).toEqual([
             { kind: 'award', awardTypeId: FCI_AWARD_BOB },
         ]);
@@ -692,7 +696,7 @@ describe('fedBy layering — FCI base vs KMSH override', () => {
     });
 
     it('FCI + KMSH: Best Junior/Veteran/Puppy/Minor Puppy feeders are unchanged', () => {
-        const ruleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
+        const ruleset = resolveEffectiveRuleset(RULESET_ID, [fciLayer, kmshLayer], RESOLVE_DATE);
         expect(individual(ruleset, FCI_AWARD_BEST_JUNIOR).fedBy).toEqual([
             { kind: 'class', classId: asClassId('junior') },
         ]);
@@ -708,7 +712,7 @@ describe('fedBy layering — FCI base vs KMSH override', () => {
     });
 
     it('FCI + KMSH: national CAC award type has no fedBy (per-sex)', () => {
-        const ruleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
+        const ruleset = resolveEffectiveRuleset(RULESET_ID, [fciLayer, kmshLayer], RESOLVE_DATE);
         const cac = ruleset.awardTypes.find((a) => a.id === KMSH_AWARD_CAC);
         expect(cac).toBeDefined();
         if (cac !== undefined) {

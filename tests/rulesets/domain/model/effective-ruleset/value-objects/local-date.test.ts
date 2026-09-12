@@ -5,6 +5,7 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
     LocalDate,
     InvalidLocalDateError,
+    LocalDateBeforeReferenceError,
 } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
 import { asAgeMonths } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/age-months.js';
 
@@ -148,12 +149,34 @@ describe('LocalDate', () => {
             ).toEqual(asAgeMonths(2));
         });
 
-        it('returns a negative age when this date is before `from`', () => {
-            // show 2026-05-04, born 2026-09-01 → -4 completed months
-            // (show day 4 >= birth day 1, so no current-month subtraction)
-            expect(LocalDate.of(2026, 5, 4).completedMonthsSince(LocalDate.of(2026, 9, 1))).toEqual(
-                asAgeMonths(-4),
-            );
+        it('throws when this date is before `from`', () => {
+            // show 2026-05-04, born 2026-09-01 → this date precedes the reference
+            expect(() =>
+                LocalDate.of(2026, 5, 4).completedMonthsSince(LocalDate.of(2026, 9, 1)),
+            ).toThrow(LocalDateBeforeReferenceError);
+        });
+
+        it('does not throw when this date equals `from` (zero elapsed months)', () => {
+            const date = LocalDate.of(2026, 5, 4);
+            expect(date.completedMonthsSince(LocalDate.of(2026, 5, 4))).toEqual(asAgeMonths(0));
+        });
+    });
+
+    describe('LocalDateBeforeReferenceError', () => {
+        it('carries the offending date and reference and is an Error', () => {
+            const date = LocalDate.of(2026, 5, 4);
+            const reference = LocalDate.of(2026, 9, 1);
+            try {
+                date.completedMonthsSince(reference);
+                throw new Error('expected completedMonthsSince to throw');
+            } catch (error) {
+                expect(error).toBeInstanceOf(LocalDateBeforeReferenceError);
+                expect(error).toBeInstanceOf(Error);
+                const invalid = error as LocalDateBeforeReferenceError;
+                expect(invalid.date).toBe(date);
+                expect(invalid.reference).toBe(reference);
+                expect(invalid.name).toBe('LocalDateBeforeReferenceError');
+            }
         });
     });
 

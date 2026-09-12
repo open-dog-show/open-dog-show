@@ -17,7 +17,10 @@ import {
     DogEligibilityProfile,
     type DogEligibilityProfileAttributes,
 } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/dog-eligibility-profile.js';
-import { LocalDate } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
+import {
+    LocalDate,
+    LocalDateBeforeReferenceError,
+} from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -148,8 +151,11 @@ describe('FciClassEligibilityPolicy — age window', () => {
         const profile = makeProfile({ dateOfBirth: futureBirth });
 
         // A show date before the dog's date of birth is a corrupt profile — it
-        // must surface as a RangeError rather than silently filtering the dog out.
-        expect(() => policy.isEligible(classDef, profile, SHOW_DATE)).toThrow(RangeError);
+        // must surface (LocalDate.completedMonthsSince itself rejects it)
+        // rather than silently filtering the dog out.
+        expect(() => policy.isEligible(classDef, profile, SHOW_DATE)).toThrow(
+            LocalDateBeforeReferenceError,
+        );
     });
 });
 

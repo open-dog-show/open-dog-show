@@ -6,20 +6,7 @@ import type {
     GradeScaleId,
 } from '../../model/effective-ruleset/value-objects/domain-ids.js';
 import type { EffectiveRuleset } from '../../model/effective-ruleset/effective-ruleset.js';
-import { findGrade } from '../../model/effective-ruleset/effective-ruleset.js';
 import type { Grade } from '../../model/effective-ruleset/entities/grade-scale.js';
-
-/**
- * Returns `true` when `actual` is at least as good as `minimum`.
- * Lower ordinal = better grade (Excellent = 0, Very Good = 1, …).
- *
- * Shared by the per-sex requirement check ({@link meetsAwardRequirements}) and
- * the higher-scope candidate check (`FciAwardPolicy.candidateMeetsMinimumGrade`)
- * so the ordinal-comparison rule lives in one place.
- */
-export function gradeAtLeast(actual: Grade, minimum: Grade): boolean {
-    return actual.ordinal <= minimum.ordinal;
-}
 
 /**
  * Returns the {@link Grade} for `gradeId` within the named `gradeScaleId`, or
@@ -34,7 +21,7 @@ export function resolveGrade(
     ruleset: EffectiveRuleset,
 ): Grade | undefined {
     if (gradeId === undefined) return undefined;
-    return findGrade(ruleset, gradeScaleId, gradeId);
+    return ruleset.gradeScale(gradeScaleId)?.grade(gradeId);
 }
 
 /**
@@ -52,8 +39,8 @@ export function resolveGradePairOnSharedScale(
     ruleset: EffectiveRuleset,
 ): { readonly candidate: Grade; readonly minimum: Grade } | undefined {
     for (const scale of ruleset.gradeScales) {
-        const candidate = scale.grades.find((g) => g.id === candidateGradeId);
-        const minimum = scale.grades.find((g) => g.id === minimumGradeId);
+        const candidate = scale.grade(candidateGradeId);
+        const minimum = scale.grade(minimumGradeId);
         if (candidate && minimum) {
             return { candidate, minimum };
         }

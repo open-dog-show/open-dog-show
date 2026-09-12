@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { GradeId, GradeScaleId, SpecialOutcomeId } from '../value-objects/domain-ids.js';
+import type { GradeOrdinal } from '../value-objects/grade-ordinal.js';
+import { asGradeOrdinal } from '../value-objects/grade-ordinal.js';
+import { DomainError } from '../../../../../Shared/domain/domain-error.js';
 
 /**
  * An ordinal quality grade within a {@link GradeScale} (e.g. Excellent, Very
@@ -13,15 +16,25 @@ import type { GradeId, GradeScaleId, SpecialOutcomeId } from '../value-objects/d
 export class Grade {
     readonly id: GradeId;
     /** Lower ordinal = better grade; 0 is the best grade on the scale. */
-    readonly ordinal: number;
+    readonly ordinal: GradeOrdinal;
 
-    private constructor(id: GradeId, ordinal: number) {
+    private constructor(id: GradeId, ordinal: GradeOrdinal) {
         this.id = id;
         this.ordinal = ordinal;
     }
 
     static of(id: GradeId, ordinal: number): Grade {
-        return new Grade(id, ordinal);
+        return new Grade(id, asGradeOrdinal(ordinal));
+    }
+
+    /**
+     * True when this grade is at least as good as `minimum` — lower ordinal
+     * = better grade. The ordering rule is not FCI-specific (it applies to
+     * any Grade Scale), so it lives on the entity rather than in an
+     * FCI-namespaced service.
+     */
+    isAtLeast(minimum: Grade): boolean {
+        return this.ordinal <= minimum.ordinal;
     }
 }
 
@@ -55,11 +68,32 @@ export interface GradeScaleAttributes {
 }
 
 /**
+ * Thrown by {@link GradeScale.of} when `placeableThresholdId` is not among
+ * `grades`.
+ */
+export class UnknownPlaceableThresholdError extends DomainError {
+    readonly gradeScaleId: GradeScaleId;
+    readonly placeableThresholdId: GradeId;
+
+    constructor(gradeScaleId: GradeScaleId, placeableThresholdId: GradeId) {
+        super(
+            `Grade scale '${gradeScaleId}' placeable threshold '${placeableThresholdId}' is not among its grades`,
+            { gradeScaleId, placeableThresholdId },
+        );
+        this.gradeScaleId = gradeScaleId;
+        this.placeableThresholdId = placeableThresholdId;
+    }
+}
+
+/**
  * The ruleset-owned ordered set of quality grades for a Class, paired with
  * the minimum {@link Grade} required for a Dog to receive an ordinal Placement.
  *
  * An entity (ADR-0022): private constructor plus the {@link GradeScale.of}
  * factory is the only construction path. Identified by `id`, not by value.
+ * The constructor rejects a `placeableThresholdId` not among `grades`
+ * ({@link UnknownPlaceableThresholdError}) — a scale is always internally
+ * consistent (ADR-0029).
  */
 export class GradeScale {
     readonly id: GradeScaleId;
@@ -68,6 +102,12 @@ export class GradeScale {
     readonly specialOutcomes: ReadonlyArray<SpecialOutcome>;
 
     private constructor(attributes: GradeScaleAttributes) {
+        if (!attributes.grades.some((g) => g.id === attributes.placeableThresholdId)) {
+            throw new UnknownPlaceableThresholdError(
+                attributes.id,
+                attributes.placeableThresholdId,
+            );
+        }
         this.id = attributes.id;
         this.grades = [...attributes.grades];
         this.placeableThresholdId = attributes.placeableThresholdId;
@@ -76,5 +116,10 @@ export class GradeScale {
 
     static of(attributes: GradeScaleAttributes): GradeScale {
         return new GradeScale(attributes);
+    }
+
+    /** Returns the {@link Grade} with `id` on this scale, or `undefined` when absent. */
+    grade(id: GradeId): Grade | undefined {
+        return this.grades.find((g) => g.id === id);
     }
 }

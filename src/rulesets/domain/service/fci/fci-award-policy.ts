@@ -11,11 +11,6 @@ import type {
     HigherScopeAwardType,
 } from '../../model/effective-ruleset/entities/award-type.js';
 import type { EffectiveRuleset } from '../../model/effective-ruleset/effective-ruleset.js';
-import {
-    findAwardType,
-    findClassDefinition,
-    higherScopeAwardTypesForScope,
-} from '../../model/effective-ruleset/effective-ruleset.js';
 import type {
     AwardPolicy,
     AwardValidationResult,
@@ -28,7 +23,7 @@ import type {
     StreamCandidate,
 } from '../../model/effective-ruleset/value-objects/judging-scope-results.js';
 import { meetsAwardRequirements } from './meets-award-requirements.js';
-import { gradeAtLeast, resolveGradePairOnSharedScale } from './grade-comparison.js';
+import { resolveGradePairOnSharedScale } from './grade-comparison.js';
 
 /**
  * BOB and BOS — the two breed-scope awards that, when both proposed, must
@@ -119,11 +114,11 @@ export class FciAwardPolicy implements AwardPolicy {
         const eligible = new Set<AwardTypeId>();
 
         for (const placement of placements) {
-            const classDef = findClassDefinition(ruleset, placement.classId);
+            const classDef = ruleset.classDefinition(placement.classId);
             if (classDef === undefined) continue;
 
             for (const awardTypeId of classDef.awardTypeIds) {
-                const awardType = findAwardType(ruleset, awardTypeId);
+                const awardType = ruleset.awardType(awardTypeId);
                 if (awardType === undefined || awardType.scope === 'collective') continue;
 
                 if (meetsAwardRequirements(placement, awardType, classDef, ruleset).meets) {
@@ -158,7 +153,7 @@ export class FciAwardPolicy implements AwardPolicy {
         placements: ReadonlyArray<ClassPlacement>,
         ruleset: EffectiveRuleset,
     ): AwardValidationResult {
-        const awardType = findAwardType(ruleset, assignment.awardTypeId);
+        const awardType = ruleset.awardType(assignment.awardTypeId);
         if (awardType === undefined) {
             return { valid: false, reason: `Unknown award type '${assignment.awardTypeId}'` };
         }
@@ -177,7 +172,7 @@ export class FciAwardPolicy implements AwardPolicy {
             };
         }
 
-        const classDef = findClassDefinition(ruleset, placement.classId);
+        const classDef = ruleset.classDefinition(placement.classId);
         if (classDef === undefined) {
             return { valid: false, reason: `Unknown class '${placement.classId}'` };
         }
@@ -205,7 +200,7 @@ export class FciAwardPolicy implements AwardPolicy {
         ruleset: EffectiveRuleset,
     ): ReadonlyArray<AwardTypeId> {
         const eligible = new Set<AwardTypeId>();
-        for (const individual of higherScopeAwardTypesForScope(ruleset, scope.kind)) {
+        for (const individual of ruleset.higherScopeAwardTypes(scope.kind)) {
             if (this.awardIsEligible(individual, scope, ruleset)) {
                 eligible.add(individual.id);
             }
@@ -248,7 +243,7 @@ export class FciAwardPolicy implements AwardPolicy {
         assignment: ProposedAwardAssignment,
         ruleset: EffectiveRuleset,
     ): AwardValidationResult {
-        const awardType = findAwardType(ruleset, assignment.awardTypeId);
+        const awardType = ruleset.awardType(assignment.awardTypeId);
         if (awardType === undefined) {
             return { valid: false, reason: `Unknown award type '${assignment.awardTypeId}'` };
         }
@@ -264,13 +259,9 @@ export class FciAwardPolicy implements AwardPolicy {
                 reason: `Award type '${awardType.id}' (scope ${awardType.scope}) cannot be proposed in a ${scope.kind} scope`,
             };
         }
+        // HigherScopeAwardType's constructor already guarantees a non-empty
+        // fedBy (EmptyFeederListError) — no re-check needed here.
         const individual = awardType;
-        if (individual.fedBy.length === 0) {
-            return {
-                valid: false,
-                reason: `Award type '${individual.id}' declares no feeders`,
-            };
-        }
         const candidate = this.feederCandidates(individual.fedBy, scope.streams).find(
             (c) => c.entryRef === assignment.entryRef,
         );
@@ -306,7 +297,7 @@ export class FciAwardPolicy implements AwardPolicy {
         const sexOf = (entryRef: EntryRef) =>
             scope.streams.find((s) => s.candidates.some((c) => c.entryRef === entryRef))?.sex;
         const breedProposals = proposed.filter((p) => {
-            const at = findAwardType(ruleset, p.awardTypeId);
+            const at = ruleset.awardType(p.awardTypeId);
             return at !== undefined && at.scope === 'breed';
         });
         const refs = breedProposals.map((p) => p.entryRef);
@@ -339,7 +330,7 @@ export class FciAwardPolicy implements AwardPolicy {
         ruleset: EffectiveRuleset,
     ): AwardValidationResult | undefined {
         const proposedIds = new Set(proposed.map((p) => p.awardTypeId));
-        for (const individual of higherScopeAwardTypesForScope(ruleset, scope.kind)) {
+        for (const individual of ruleset.higherScopeAwardTypes(scope.kind)) {
             if (individual.isDiscretionary) continue;
             if (proposedIds.has(individual.id)) continue;
             if (this.awardIsEligible(individual, scope, ruleset)) {
@@ -362,7 +353,8 @@ export class FciAwardPolicy implements AwardPolicy {
         scope: StreamedScope,
         ruleset: EffectiveRuleset,
     ): boolean {
-        if (individual.fedBy.length === 0) return false;
+        // HigherScopeAwardType's constructor already guarantees a non-empty
+        // fedBy (EmptyFeederListError) — no re-check needed here.
         const matched = this.matchedStreams(individual.fedBy, scope.streams);
         if (matched.length === 0) return false;
         // Resolve the qualifying streams once and derive sex presence from
@@ -427,6 +419,6 @@ export class FciAwardPolicy implements AwardPolicy {
         ruleset: EffectiveRuleset,
     ): boolean {
         const pair = resolveGradePairOnSharedScale(candidateGradeId, minimumGradeId, ruleset);
-        return pair !== undefined && gradeAtLeast(pair.candidate, pair.minimum);
+        return pair !== undefined && pair.candidate.isAtLeast(pair.minimum);
     }
 }

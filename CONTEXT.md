@@ -23,7 +23,7 @@ The complete content of one Ruleset Layer as in force from a stated effective da
 _Avoid_: Ruleset Version, Layer Version, Revision
 
 **Effective Ruleset**:
-The immutable snapshot a Show is judged under: for each of its Ruleset Layers, the latest Ruleset Layer Edition in force on the Show's date, composed into one set of rules and recording which editions were the source. Pinned onto the Show at setup, and re-pinnable only until entries open, so results are immune to later Ruleset edits. The domain core operates only on the Effective Ruleset.
+The immutable snapshot a Show is judged under: for each of its Ruleset Layers, the latest Ruleset Layer Edition in force on the Show's date, composed into one set of rules and recording which editions were the source. Identified by an EffectiveRulesetId — informally "the pin" — assigned when a Show pins or re-pins its Effective Ruleset; the id is the pin, so there is no separate version field. Pinned onto the Show at setup, and re-pinnable only until entries open, so results are immune to later Ruleset edits. The domain core operates only on the Effective Ruleset.
 _Avoid_: Resolved Ruleset (acceptable synonym), Merged Ruleset
 
 **Show Type**:
