@@ -1,0 +1,21 @@
+-- SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+-- SPDX-License-Identifier: AGPL-3.0-only
+
+-- {{pascalCase name}} table — club scope (ADR-0005 template: club).
+-- Visible only to the owning Club.
+
+CREATE TABLE IF NOT EXISTS {{snakeCase context}}.{{plural (snakeCase name)}} (
+  id       UUID NOT NULL PRIMARY KEY,
+  club_id  UUID NOT NULL,
+  user_id  UUID NOT NULL,
+  name     TEXT NOT NULL
+);
+
+ALTER TABLE {{snakeCase context}}.{{plural (snakeCase name)}} ENABLE ROW LEVEL SECURITY;
+ALTER TABLE {{snakeCase context}}.{{plural (snakeCase name)}} FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY {{plural (snakeCase name)}}_club ON {{snakeCase context}}.{{plural (snakeCase name)}}
+  AS PERMISSIVE FOR ALL TO app_user
+  USING (club_id = nullif(current_setting('app.club_id', true), '')::uuid);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON {{snakeCase context}}.{{plural (snakeCase name)}} TO app_user;

@@ -1,0 +1,70 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { eq } from 'drizzle-orm';
+import type pg from 'pg';
+import { asClubId, asPrincipalId } from '../../../../Shared/index.js';
+import {
+    as{{pascalCase name}}Id,
+    as{{pascalCase parent}}Id,
+    type {{pascalCase name}}Id,
+} from '../../../domain/shared/domain-ids.js';
+import { {{plural (camelCase name)}}Table } from './schema.js';
+import { {{pascalCase name}} } from '../../../domain/model/{{dashCase name}}/{{dashCase name}}.js';
+import type { {{pascalCase name}}Repository } from '../../../domain/model/{{dashCase name}}/{{dashCase name}}-repository.js';
+import { {{pascalCase name}}PersistenceFailed } from './{{dashCase name}}-persistence-failed.js';
+
+export class Drizzle{{pascalCase name}}Repository implements {{pascalCase name}}Repository {
+    private readonly drizzle;
+
+    constructor(client: pg.PoolClient) {
+        this.drizzle = drizzle(client);
+    }
+
+    async findById(id: {{pascalCase name}}Id): Promise<{{pascalCase name}} | undefined> {
+        try {
+            const [row] = await this.drizzle
+                .select()
+                .from({{plural (camelCase name)}}Table)
+                .where(eq({{plural (camelCase name)}}Table.id, id));
+            return row === undefined
+                ? undefined
+                : {{pascalCase name}}.rehydrate({
+                      id: as{{pascalCase name}}Id(row.id),
+                      clubId: asClubId(row.clubId),
+                      createdBy: asPrincipalId(row.principalId),
+                      {{camelCase parent}}Id: as{{pascalCase parent}}Id(row.{{camelCase parent}}Id),
+                      name: row.name,
+                  });
+        } catch (cause) {
+            // E3: wrap the raw drizzle/pg exception at the boundary.
+            throw new {{pascalCase name}}PersistenceFailed('reading a {{dashCase name}}', cause);
+        }
+    }
+
+    async add({{camelCase name}}: {{pascalCase name}}): Promise<void> {
+        try {
+            await this.drizzle.insert({{plural (camelCase name)}}Table).values({
+                id: {{camelCase name}}.id,
+                clubId: {{camelCase name}}.clubId,
+                principalId: {{camelCase name}}.createdBy,
+                {{camelCase parent}}Id: {{camelCase name}}.{{camelCase parent}}Id,
+                name: {{camelCase name}}.name,
+            });
+        } catch (cause) {
+            throw new {{pascalCase name}}PersistenceFailed('adding a {{dashCase name}}', cause);
+        }
+    }
+
+    async update({{camelCase name}}: {{pascalCase name}}): Promise<void> {
+        try {
+            await this.drizzle
+                .update({{plural (camelCase name)}}Table)
+                .set({ name: {{camelCase name}}.name })
+                .where(eq({{plural (camelCase name)}}Table.id, {{camelCase name}}.id));
+        } catch (cause) {
+            throw new {{pascalCase name}}PersistenceFailed('updating a {{dashCase name}}', cause);
+        }
+    }
+}
