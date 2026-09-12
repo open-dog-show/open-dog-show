@@ -4,6 +4,24 @@
 import type { ClassId, GradeScaleId, AwardTypeId } from '../value-objects/domain-ids.js';
 import type { AgeMonths } from '../value-objects/age-months.js';
 import type { CertificateKind } from '../value-objects/certificate-kind.js';
+import { DomainError } from '../../../../../Shared/domain/domain-error.js';
+
+/** Thrown by {@link ClassDefinition.of} when `fromAgeMonths >= lessThanAgeMonths`. */
+export class InvalidClassAgeRangeError extends DomainError {
+    readonly classId: ClassId;
+    readonly fromAgeMonths: AgeMonths;
+    readonly lessThanAgeMonths: AgeMonths;
+
+    constructor(classId: ClassId, fromAgeMonths: AgeMonths, lessThanAgeMonths: AgeMonths) {
+        super(
+            `Class '${classId}' fromAgeMonths (${fromAgeMonths}) must be less than lessThanAgeMonths (${lessThanAgeMonths})`,
+            { classId, fromAgeMonths, lessThanAgeMonths },
+        );
+        this.classId = classId;
+        this.fromAgeMonths = fromAgeMonths;
+        this.lessThanAgeMonths = lessThanAgeMonths;
+    }
+}
 
 /** Attributes for {@link ClassDefinition.of}. */
 export interface ClassDefinitionAttributes {
@@ -42,6 +60,17 @@ export class ClassDefinition {
     readonly awardTypeIds: ReadonlyArray<AwardTypeId>;
 
     private constructor(attributes: ClassDefinitionAttributes) {
+        if (
+            attributes.fromAgeMonths !== undefined &&
+            attributes.lessThanAgeMonths !== undefined &&
+            attributes.fromAgeMonths >= attributes.lessThanAgeMonths
+        ) {
+            throw new InvalidClassAgeRangeError(
+                attributes.id,
+                attributes.fromAgeMonths,
+                attributes.lessThanAgeMonths,
+            );
+        }
         this.id = attributes.id;
         this.fromAgeMonths = attributes.fromAgeMonths;
         this.lessThanAgeMonths = attributes.lessThanAgeMonths;

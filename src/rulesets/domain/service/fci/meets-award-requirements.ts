@@ -5,7 +5,7 @@ import type { IndividualAwardType } from '../../model/effective-ruleset/entities
 import type { ClassDefinition } from '../../model/effective-ruleset/entities/class-definition.js';
 import type { EffectiveRuleset } from '../../model/effective-ruleset/effective-ruleset.js';
 import type { ClassPlacement } from '../../model/effective-ruleset/value-objects/judging-scope-results.js';
-import { gradeAtLeast, resolveGrade } from './grade-comparison.js';
+import { resolveGrade } from './grade-comparison.js';
 
 /**
  * The outcome of checking a single dog's placement against an
@@ -45,15 +45,12 @@ export function meetsAwardRequirements(
         };
     }
 
-    const minGrade = resolveGrade(awardType.minimumGradeId, classDef.gradeScaleId, ruleset);
-    if (!minGrade) {
-        return {
-            meets: false,
-            reason: `Award type '${awardType.id}' references unknown minimum grade '${awardType.minimumGradeId}'`,
-        };
-    }
+    // EffectiveRuleset.resolve's validating factory guarantees every award
+    // type's minimumGradeId resolves on the scale it is used with (ADR-0029),
+    // so no compensating "unknown minimum grade" check is needed here.
+    const minGrade = resolveGrade(awardType.minimumGradeId, classDef.gradeScaleId, ruleset)!;
 
-    if (!gradeAtLeast(dogGrade, minGrade)) {
+    if (!dogGrade.isAtLeast(minGrade)) {
         return {
             meets: false,
             reason: `Dog '${placement.entryRef}' received grade '${placement.gradeId}' but '${awardType.id}' requires at least '${awardType.minimumGradeId}'`,

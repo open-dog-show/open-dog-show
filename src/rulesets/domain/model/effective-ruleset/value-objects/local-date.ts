@@ -27,6 +27,32 @@ export class InvalidLocalDateError extends DomainError {
 }
 
 /**
+ * Thrown by {@link LocalDate.completedMonthsSince} when `this` date is before
+ * the `from` reference date — a negative elapsed age is never a legitimate
+ * answer, so it surfaces here rather than flowing through as a negative
+ * `AgeMonths` for a caller to catch downstream.
+ */
+export class LocalDateBeforeReferenceError extends DomainError {
+    readonly date: LocalDate;
+    readonly reference: LocalDate;
+
+    constructor(date: LocalDate, reference: LocalDate) {
+        super(
+            `Date ${date.year}-${date.month}-${date.day} is before reference date ${reference.year}-${reference.month}-${reference.day}`,
+            {
+                // Plain primitives, not the LocalDate instances themselves —
+                // LocalDate has no toJSON, so a structured logger reading
+                // `context` would otherwise see empty objects (L4).
+                date: { year: date.year, month: date.month, day: date.day },
+                reference: { year: reference.year, month: reference.month, day: reference.day },
+            },
+        );
+        this.date = date;
+        this.reference = reference;
+    }
+}
+
+/**
  * A calendar date without time or timezone — not a JavaScript {@link Date}.
  * Age eligibility for class entry is evaluated against a LocalDate on the show
  * day (FCI 2026; KMSH ART.23).
@@ -105,8 +131,12 @@ export class LocalDate {
      * subtracted (FCI 2026; KMSH ART.23).
      *
      * @example showDate.completedMonthsSince(dateOfBirth)
+     * @throws {@link LocalDateBeforeReferenceError} when this date is before `from`.
      */
     completedMonthsSince(from: LocalDate): AgeMonths {
+        if (this.#ms < from.#ms) {
+            throw new LocalDateBeforeReferenceError(this, from);
+        }
         const months = (this.year - from.year) * 12 + (this.month - from.month);
         return asAgeMonths(this.day < from.day ? months - 1 : months);
     }

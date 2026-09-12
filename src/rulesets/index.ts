@@ -14,7 +14,10 @@ export type {
     RulesetLayerId,
     EffectiveRulesetId,
 } from './domain/model/effective-ruleset/value-objects/domain-ids.js';
-export type { AgeMonths } from './domain/model/effective-ruleset/value-objects/age-months.js';
+export {
+    InvalidAgeMonthsError,
+    type AgeMonths,
+} from './domain/model/effective-ruleset/value-objects/age-months.js';
 export type { EntryRef } from './domain/model/effective-ruleset/value-objects/entry-ref.js';
 export {
     asClassId,
@@ -34,11 +37,13 @@ export { asEntryRef } from './domain/model/effective-ruleset/value-objects/entry
 export type { Sex } from './domain/model/effective-ruleset/value-objects/sex.js';
 export {
     asPlacement,
+    InvalidPlacementError,
     type Placement,
 } from './domain/model/effective-ruleset/value-objects/placement.js';
 export {
     LocalDate,
     InvalidLocalDateError,
+    LocalDateBeforeReferenceError,
 } from './domain/model/effective-ruleset/value-objects/local-date.js';
 export { CertificateKind } from './domain/model/effective-ruleset/value-objects/certificate-kind.js';
 export {
@@ -47,13 +52,20 @@ export {
 } from './domain/model/effective-ruleset/value-objects/dog-eligibility-profile.js';
 export type { ClassEligibilityPolicy } from './domain/service/class-eligibility-policy.js';
 export {
+    type GradeOrdinal,
+    InvalidGradeOrdinalError,
+    asGradeOrdinal,
+} from './domain/model/effective-ruleset/value-objects/grade-ordinal.js';
+export {
     Grade,
     SpecialOutcome,
     GradeScale,
+    UnknownPlaceableThresholdError,
     type GradeScaleAttributes,
 } from './domain/model/effective-ruleset/entities/grade-scale.js';
 export {
     ClassDefinition,
+    InvalidClassAgeRangeError,
     type ClassDefinitionAttributes,
 } from './domain/model/effective-ruleset/entities/class-definition.js';
 export {
@@ -86,10 +98,9 @@ export {
 } from './domain/model/effective-ruleset/entities/show-type.js';
 export {
     EffectiveRuleset,
-    findAwardType,
-    findClassDefinition,
-    findGrade,
-    higherScopeAwardTypesForScope,
+    UnknownGradeScaleReferenceError,
+    UnknownAwardTypeReferenceError,
+    UnknownMinimumGradeReferenceError,
 } from './domain/model/effective-ruleset/effective-ruleset.js';
 export {
     RulesetLayer,

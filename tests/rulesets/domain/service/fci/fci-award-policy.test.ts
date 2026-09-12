@@ -8,6 +8,7 @@ import {
     asClassId,
     asGradeScaleId,
     asRulesetLayerId,
+    asEffectiveRulesetId,
 } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
 import { asAgeMonths } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/age-months.js';
 import { asEntryRef } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/entry-ref.js';
@@ -69,6 +70,7 @@ import {
 // ---------------------------------------------------------------------------
 
 const GRADE_SCALE_ID = asGradeScaleId('test-standard');
+const RULESET_ID = asEffectiveRulesetId('ruleset-1');
 
 // ---------------------------------------------------------------------------
 // Shared award type IDs
@@ -181,6 +183,7 @@ const classDefinitions: ReadonlyArray<ClassDefinition> = [
 ];
 
 const RULESET: EffectiveRuleset = EffectiveRuleset.resolve(
+    RULESET_ID,
     [
         RulesetLayer.of({
             id: asRulesetLayerId('fci'),
@@ -206,10 +209,14 @@ const policy = new FciAwardPolicy();
 const RESOLVE_DATE: LocalDate = LocalDate.of(2026, 1, 1);
 
 /** FCI base layer only — BOB fedBy has no national CAC feeder. */
-const FCI_RULESET: EffectiveRuleset = resolveEffectiveRuleset([fciLayer], RESOLVE_DATE);
+const FCI_RULESET: EffectiveRuleset = resolveEffectiveRuleset(RULESET_ID, [fciLayer], RESOLVE_DATE);
 
 /** FCI + KMSH — BOB/BOS overridden to add the national CAC feeder. */
-const KMSH_RULESET: EffectiveRuleset = resolveEffectiveRuleset([fciLayer, kmshLayer], RESOLVE_DATE);
+const KMSH_RULESET: EffectiveRuleset = resolveEffectiveRuleset(
+    RULESET_ID,
+    [fciLayer, kmshLayer],
+    RESOLVE_DATE,
+);
 
 const cand = (entryRef: string, gradeId: GradeId): StreamCandidate =>
     StreamCandidate.of(asEntryRef(entryRef), gradeId);

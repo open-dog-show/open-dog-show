@@ -10,6 +10,7 @@ import {
     asGradeId,
     asGradeScaleId,
     asRulesetLayerId,
+    asEffectiveRulesetId,
 } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
 import { asAgeMonths } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/age-months.js';
 import { asEntryRef } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/entry-ref.js';
@@ -65,7 +66,10 @@ const cacib: IndividualAwardType = PerSexAwardType.of({
     isDiscretionary: true,
 });
 
+const RULESET_ID = asEffectiveRulesetId('ruleset-1');
+
 const RULESET: EffectiveRuleset = EffectiveRuleset.resolve(
+    RULESET_ID,
     [
         RulesetLayer.of({
             id: asRulesetLayerId('fci'),
@@ -182,24 +186,9 @@ describe('meetsAwardRequirements', () => {
         });
     });
 
-    it('does not meet when the award minimum grade is unknown in the class grade scale', () => {
-        const awardWithUnknownMinGrade: IndividualAwardType = PerSexAwardType.of({
-            id: CACIB_ID,
-            minimumGradeId: UNKNOWN_GRADE_ID,
-            worstEligiblePlacement: asPlacement(1),
-            isDiscretionary: true,
-        });
-
-        const result = meetsAwardRequirements(
-            placement(EXCELLENT, 1),
-            awardWithUnknownMinGrade,
-            classDefinition,
-            RULESET,
-        );
-
-        expect(result).toEqual({
-            meets: false,
-            reason: `Award type 'cacib' references unknown minimum grade 'does-not-exist'`,
-        });
-    });
+    // The "award minimum grade unknown in class scale" case is no longer
+    // reachable through a properly-resolved ruleset: EffectiveRuleset.resolve
+    // guarantees every award type's minimumGradeId resolves on the scale it
+    // is used with (ADR-0029) — see effective-ruleset.test.ts's "reference
+    // validation" suite for that construction-time guarantee.
 });

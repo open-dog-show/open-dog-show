@@ -35,16 +35,11 @@ export class FciClassEligibilityPolicy implements ClassEligibilityPolicy {
         dogProfile: DogEligibilityProfile,
         showDate: LocalDate,
     ): boolean {
+        // A show date before the dog's date of birth is a corrupt profile (or
+        // a mis-ordered show date); LocalDate.completedMonthsSince itself
+        // rejects it (LocalDateBeforeReferenceError) rather than silently
+        // filtering the dog out.
         const age = showDate.completedMonthsSince(dogProfile.dateOfBirth);
-
-        if (age < 0) {
-            // A show date before the dog's date of birth is a corrupt profile
-            // (or a mis-ordered show date). Surface it rather than silently
-            // filtering the dog out — a silent `false` hides bad data.
-            throw new RangeError(
-                `Show date ${showDate.year}-${showDate.month}-${showDate.day} is before the dog's date of birth ${dogProfile.dateOfBirth.year}-${dogProfile.dateOfBirth.month}-${dogProfile.dateOfBirth.day}; a corrupt eligibility profile must surface, not silently fail closed`,
-            );
-        }
 
         if (classDefinition.fromAgeMonths !== undefined && age < classDefinition.fromAgeMonths) {
             return false;

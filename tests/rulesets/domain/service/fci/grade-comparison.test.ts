@@ -3,7 +3,6 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-    gradeAtLeast,
     resolveGrade,
     resolveGradePairOnSharedScale,
 } from '../../../../../src/rulesets/domain/service/fci/grade-comparison.js';
@@ -11,6 +10,7 @@ import {
     asGradeId,
     asGradeScaleId,
     asRulesetLayerId,
+    asEffectiveRulesetId,
 } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
 import { LocalDate } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
 import {
@@ -39,6 +39,8 @@ function scale(id: string, ...grades: Grade[]): GradeScale {
     });
 }
 
+const RULESET_ID = asEffectiveRulesetId('ruleset-1');
+
 function ruleset(...scales: GradeScale[]): EffectiveRuleset {
     const layer = RulesetLayer.of({
         id: asRulesetLayerId('test'),
@@ -48,22 +50,8 @@ function ruleset(...scales: GradeScale[]): EffectiveRuleset {
         awardTypes: [],
         showTypes: [],
     });
-    return EffectiveRuleset.resolve([layer], LocalDate.of(2026, 1, 1));
+    return EffectiveRuleset.resolve(RULESET_ID, [layer], LocalDate.of(2026, 1, 1));
 }
-
-describe('gradeAtLeast', () => {
-    it('a lower ordinal is at least as good as a higher one (better grade)', () => {
-        expect(gradeAtLeast(grade('excellent', 0), grade('very-good', 1))).toBe(true);
-    });
-
-    it('equal ordinals are at least as good', () => {
-        expect(gradeAtLeast(grade('excellent', 0), grade('excellent', 0))).toBe(true);
-    });
-
-    it('a higher ordinal is not at least as good as a lower one (worse grade)', () => {
-        expect(gradeAtLeast(grade('very-good', 1), grade('excellent', 0))).toBe(false);
-    });
-});
 
 describe('resolveGrade', () => {
     const RULESET = ruleset(scale('adult', grade('excellent', 0), grade('very-good', 1)));
