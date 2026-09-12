@@ -1,0 +1,64 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { PostgresHarness } from '../../../../test-kit/index.js';
+import { bootstrap{{pascalCase context}}Schema } from '../../../fixtures.js';
+import {
+    asPrincipalId,
+    ExhibitorTransactionScope,
+    PgOutboxWriter,
+} from '../../../../../src/Shared/index.js';
+import { SystemClock } from '../../../../../src/Shared/infrastructure/system-clock.js';
+import { RandomEventIdGenerator } from '../../../../../src/Shared/infrastructure/random-event-id-generator.js';
+import { Pg{{pascalCase context}}UnitOfWork } from '../../../../../src/{{dashCase context}}/infrastructure/persistence/postgres/pg-unit-of-work.js';
+import { {{pascalCase name}} } from '../../../../../src/{{dashCase context}}/domain/model/{{dashCase name}}/{{dashCase name}}.js';
+import { as{{pascalCase name}}Id } from '../../../../../src/{{dashCase context}}/domain/shared/domain-ids.js';
+
+const PRINCIPAL_A_ID = asPrincipalId('00000000-0000-4000-8000-000000000011');
+const PRINCIPAL_B_ID = asPrincipalId('00000000-0000-4000-8000-000000000012');
+const {{constantCase name}}_ID = as{{pascalCase name}}Id('00000000-0000-4000-8000-000000000021');
+
+/** Proves the ADR-0005 `exhibitor` RLS policy: visible only to the creating exhibitor. */
+describe('{{pascalCase name}} RLS isolation (exhibitor scope)', () => {
+    const harness = new PostgresHarness();
+    let unitOfWork: Pg{{pascalCase context}}UnitOfWork;
+
+    beforeAll(async () => {
+        await bootstrap{{pascalCase context}}Schema(harness);
+        unitOfWork = new Pg{{pascalCase context}}UnitOfWork(
+            harness.appUserPool,
+            new PgOutboxWriter('{{snakeCase context}}'),
+            new SystemClock(),
+            new RandomEventIdGenerator(),
+        );
+
+        await unitOfWork.run(ExhibitorTransactionScope.of(PRINCIPAL_A_ID), async (ctx) => {
+            await ctx.{{plural (camelCase name)}}.add(
+                {{pascalCase name}}.create({
+                    id: {{constantCase name}}_ID,
+                    createdBy: PRINCIPAL_A_ID,
+                    name: 'Exhibitor {{A (pascalCase name)}} {{pascalCase name}}',
+                }),
+            );
+        });
+    }, 120_000);
+
+    afterAll(async () => {
+        await harness.stop();
+    });
+
+    it('exhibitor A can find their own {{pascalCase name}}', async () => {
+        await unitOfWork.run(ExhibitorTransactionScope.of(PRINCIPAL_A_ID), async (ctx) => {
+            const found = await ctx.{{plural (camelCase name)}}.findById({{constantCase name}}_ID);
+            expect(found?.name).toBe('Exhibitor {{A (pascalCase name)}} {{pascalCase name}}');
+        });
+    });
+
+    it("exhibitor B cannot find exhibitor A's {{pascalCase name}}", async () => {
+        await unitOfWork.run(ExhibitorTransactionScope.of(PRINCIPAL_B_ID), async (ctx) => {
+            const found = await ctx.{{plural (camelCase name)}}.findById({{constantCase name}}_ID);
+            expect(found).toBeUndefined();
+        });
+    });
+});
