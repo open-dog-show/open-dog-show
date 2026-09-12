@@ -1,0 +1,14 @@
+{{plural (camelCase name)}}: {
+    findById: async (id) => staged{{pascalCase name}}s.find(({{camelCase name}}) => {{camelCase name}}.id === id),
+    add: async ({{camelCase name}}) => {
+        staged{{pascalCase name}}s.push({{camelCase name}});
+        record(...{{camelCase name}}.pullEvents());
+    },
+    update: async (updated) => {
+        const index = staged{{pascalCase name}}s.findIndex(({{camelCase name}}) => {{camelCase name}}.id === updated.id);
+        if (index !== -1) {
+            staged{{pascalCase name}}s[index] = updated;
+        }
+        record(...updated.pullEvents());
+    },
+},
