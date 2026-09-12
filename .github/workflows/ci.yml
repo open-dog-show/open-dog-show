@@ -105,3 +105,27 @@ jobs:
 
             - name: Run generated integration test
               run: pnpm exec vitest run --config vitest.integration.config.ts tests/smoke-test
+
+    regen-check:
+        name: Sample regeneration (ADR-0025)
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: pnpm/action-setup@v4
+              with:
+                  version: 9
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+                  cache: 'pnpm'
+
+            - name: Install
+              run: pnpm install --frozen-lockfile
+
+            - name: Regenerate src/sample and tests/sample from the generators
+              run: pnpm regen:sample
+
+            - name: Fail on any drift between the generators' output and the committed sample
+              run: git diff --exit-code -- src/sample tests/sample
