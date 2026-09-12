@@ -9,8 +9,9 @@ import { runMigrations } from '../test-kit/index.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /**
- * Absolute path to the sample context's Drizzle migration directory. Shared by
- * the sample integration tests so the migration directory is resolved once.
+ * Absolute path to the sample context's Drizzle migration
+ * directory. Shared by the sample integration tests so the
+ * migration directory is resolved once.
  */
 export const SAMPLE_MIGRATIONS_DIR = resolve(
     __dirname,
@@ -18,9 +19,10 @@ export const SAMPLE_MIGRATIONS_DIR = resolve(
 );
 
 /**
- * Starts `harness` and applies the sample context's migrations, leaving the
- * harness ready for use. Shared by the sample integration tests so the
- * migration bootstrap is not duplicated in each `beforeAll`.
+ * Starts `harness` and applies the sample context's migrations,
+ * leaving the harness ready for use. Shared by the sample
+ * integration tests so the migration bootstrap is not duplicated in each
+ * `beforeAll`.
  */
 export async function bootstrapSampleSchema(harness: PostgresHarness): Promise<void> {
     await harness.start();
