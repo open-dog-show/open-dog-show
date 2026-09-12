@@ -1,0 +1,72 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import { describe, it, expect } from 'vitest';
+import { asPrincipalId, ExhibitorEventScope } from '../../../../../src/Shared/index.js';
+import {
+    {{pascalCase name}},
+    Invalid{{pascalCase name}}NameError,
+} from '../../../../../src/{{dashCase context}}/domain/model/{{dashCase name}}/{{dashCase name}}.js';
+import { as{{pascalCase name}}Id } from '../../../../../src/{{dashCase context}}/domain/shared/domain-ids.js';
+
+const PRINCIPAL_ID = asPrincipalId('00000000-0000-4000-8000-000000000011');
+const {{constantCase name}}_ID = as{{pascalCase name}}Id('00000000-0000-4000-8000-000000000021');
+
+describe('{{pascalCase name}}', () => {
+    it('create records {{pascalCase name}}Created scoped to the acting exhibitor', () => {
+        const {{camelCase name}} = {{pascalCase name}}.create({
+            id: {{constantCase name}}_ID,
+            createdBy: PRINCIPAL_ID,
+            name: 'Original name',
+        });
+
+        const [event] = {{camelCase name}}.pullEvents();
+        expect(event?.type).toBe('{{eventContext context}}.{{pascalCase name}}Created');
+        expect(event?.scope).toEqual(ExhibitorEventScope.of(PRINCIPAL_ID));
+        expect(event?.payload).toEqual({ name: 'Original name' });
+        expect({{camelCase name}}.name).toBe('Original name');
+    });
+
+    it('create rejects a blank name', () => {
+        expect(() =>
+            {{pascalCase name}}.create({ id: {{constantCase name}}_ID, createdBy: PRINCIPAL_ID, name: '   ' }),
+        ).toThrow(Invalid{{pascalCase name}}NameError);
+    });
+
+    it('rehydrate does not record an event', () => {
+        const {{camelCase name}} = {{pascalCase name}}.rehydrate({
+            id: {{constantCase name}}_ID,
+            createdBy: PRINCIPAL_ID,
+            name: 'Restored name',
+        });
+
+        expect({{camelCase name}}.pullEvents()).toEqual([]);
+        expect({{camelCase name}}.name).toBe('Restored name');
+    });
+
+    it('rename records {{pascalCase name}}Renamed and updates the name', () => {
+        const {{camelCase name}} = {{pascalCase name}}.rehydrate({
+            id: {{constantCase name}}_ID,
+            createdBy: PRINCIPAL_ID,
+            name: 'Old name',
+        });
+
+        {{camelCase name}}.rename('New name');
+
+        const [event] = {{camelCase name}}.pullEvents();
+        expect(event?.type).toBe('{{eventContext context}}.{{pascalCase name}}Renamed');
+        expect(event?.scope).toEqual(ExhibitorEventScope.of(PRINCIPAL_ID));
+        expect(event?.payload).toEqual({ name: 'New name' });
+        expect({{camelCase name}}.name).toBe('New name');
+    });
+
+    it('rename rejects a blank name', () => {
+        const {{camelCase name}} = {{pascalCase name}}.rehydrate({
+            id: {{constantCase name}}_ID,
+            createdBy: PRINCIPAL_ID,
+            name: 'Old name',
+        });
+
+        expect(() => {{camelCase name}}.rename('')).toThrow(Invalid{{pascalCase name}}NameError);
+    });
+});

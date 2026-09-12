@@ -1,0 +1,58 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import { describe, it, expect } from 'vitest';
+import {
+    asClubId,
+    asPrincipalId,
+    ClubEventScope,
+    ClubTransactionScope,
+    ExhibitorTransactionScope,
+} from '../../../../src/Shared/index.js';
+import { Fake{{pascalCase context}}UnitOfWork } from '../../../../src/{{dashCase context}}/infrastructure/persistence/inmemory/fake-{{dashCase context}}-unit-of-work.js';
+import { Create{{pascalCase parent}}Handler } from '../../../../src/{{dashCase context}}/application/create-{{dashCase parent}}/create-{{dashCase parent}}.js';
+import { Create{{pascalCase name}}Handler } from '../../../../src/{{dashCase context}}/application/create-{{dashCase name}}/create-{{dashCase name}}.js';
+import { {{pascalCase parent}}NotFoundError } from '../../../../src/{{dashCase context}}/domain/model/{{dashCase parent}}/{{dashCase parent}}.js';
+
+const CLUB_ID = asClubId('00000000-0000-4000-8000-000000000001');
+const CLUB_PRINCIPAL_ID = asPrincipalId('00000000-0000-4000-8000-000000000011');
+const EXHIBITOR_ID = asPrincipalId('00000000-0000-4000-8000-000000000012');
+
+describe('Create{{pascalCase name}}Handler', () => {
+    it("creates {{a (pascalCase name)}} {{pascalCase name}} owned by the referenced {{pascalCase parent}}'s Club, even when the actor has no Club of their own", async () => {
+        const unitOfWork = new Fake{{pascalCase context}}UnitOfWork();
+        await new Create{{pascalCase parent}}Handler(unitOfWork).execute(
+            { id: '00000000-0000-4000-8000-000000000031', name: 'The {{pascalCase parent}}' },
+            ClubTransactionScope.of(CLUB_ID, CLUB_PRINCIPAL_ID),
+        );
+
+        const response = await new Create{{pascalCase name}}Handler(unitOfWork).execute(
+            {
+                id: '00000000-0000-4000-8000-000000000021',
+                {{camelCase parent}}Id: '00000000-0000-4000-8000-000000000031',
+                name: 'A name',
+            },
+            ExhibitorTransactionScope.of(EXHIBITOR_ID),
+        );
+
+        expect(response).toEqual({ id: '00000000-0000-4000-8000-000000000021', name: 'A name' });
+        const createdEvent = unitOfWork.recordedEvents.at(-1);
+        expect(createdEvent?.type).toBe('{{eventContext context}}.{{pascalCase name}}Created');
+        expect(createdEvent?.scope).toEqual(ClubEventScope.of(CLUB_ID));
+    });
+
+    it('throws {{pascalCase parent}}NotFoundError when the referenced {{pascalCase parent}} does not exist', async () => {
+        const unitOfWork = new Fake{{pascalCase context}}UnitOfWork();
+
+        await expect(
+            new Create{{pascalCase name}}Handler(unitOfWork).execute(
+                {
+                    id: '00000000-0000-4000-8000-000000000021',
+                    {{camelCase parent}}Id: '00000000-0000-4000-8000-000000000099',
+                    name: 'A name',
+                },
+                ExhibitorTransactionScope.of(EXHIBITOR_ID),
+            ),
+        ).rejects.toThrow({{pascalCase parent}}NotFoundError);
+    });
+});
