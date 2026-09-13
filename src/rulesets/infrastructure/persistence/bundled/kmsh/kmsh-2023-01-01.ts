@@ -1,28 +1,22 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { RulesetLayer } from '../entities/ruleset-layer.js';
-import { ClassDefinition } from '../entities/class-definition.js';
+import { RulesetLayerEdition } from '../../../../domain/model/ruleset-layer-edition/ruleset-layer-edition.js';
+import { LocalDate } from '../../../../domain/model/effective-ruleset/value-objects/local-date.js';
+import { ClassDefinition } from '../../../../domain/model/effective-ruleset/entities/class-definition.js';
 import {
     HigherScopeAwardType,
     PerSexAwardType,
     AwardFeeder,
     ClassFeeder,
-} from '../entities/award-type.js';
-import { ShowType } from '../entities/show-type.js';
+} from '../../../../domain/model/effective-ruleset/entities/award-type.js';
+import { ShowType } from '../../../../domain/model/effective-ruleset/entities/show-type.js';
+import { asPlacement } from '../../../../domain/model/effective-ruleset/value-objects/placement.js';
+import { asAgeMonths } from '../../../../domain/model/effective-ruleset/value-objects/age-months.js';
+import { CertificateKind } from '../../../../domain/model/effective-ruleset/value-objects/certificate-kind.js';
 import {
-    asRulesetLayerId,
-    asClassId,
-    asAwardTypeId,
-    asShowTypeId,
-} from '../value-objects/domain-ids.js';
-import { asPlacement } from '../value-objects/placement.js';
-import { asAgeMonths } from '../value-objects/age-months.js';
-import { CertificateKind } from '../value-objects/certificate-kind.js';
-import {
-    FCI_LAYER_ID,
-    FCI_ADULT_GRADE_SCALE_ID,
     FCI_PUPPY_GRADE_SCALE_ID,
+    FCI_ADULT_GRADE_SCALE_ID,
     FCI_GRADE_EXCELLENT,
     FCI_AWARD_CACIB,
     FCI_AWARD_RES_CACIB,
@@ -39,47 +33,24 @@ import {
     FCI_AWARD_BEST_BRACE,
     FCI_AWARD_BEST_BREEDERS_GROUP,
     FCI_AWARD_BEST_PROGENY_GROUP,
-} from './fci-ruleset-layer.js';
-
-// ---------------------------------------------------------------------------
-// Identifiers
-// ---------------------------------------------------------------------------
-
-export const KMSH_LAYER_ID = asRulesetLayerId('kmsh');
-
-/**
- * National CAC (Certificaat Aanleg voor het Kampioenschap /
- * Certificat d'Aptitude au Championnat) — Belgian national qualification
- * for the Champion title, awarded per-sex at national shows.
- * Toekennen van CAC is niet verplicht in België (Bijlage 1 §1a).
- */
-export const KMSH_AWARD_CAC = asAwardTypeId('cac');
+    FCI_CLASS_MINOR_PUPPY,
+    FCI_CLASS_JUNIOR,
+    FCI_CLASS_VETERAN,
+} from '../fci/index.js';
+import {
+    KMSH_LAYER_ID,
+    KMSH_AWARD_CAC,
+    KMSH_AWARD_RCAC,
+    KMSH_CLASS_FOKKERSKLAS,
+    KMSH_SHOW_TYPE_NATIONAL_SHOW,
+} from './kmsh-ids.js';
 
 /**
- * Reserve CAC (RCAC) — Bijlage 1 §1a: awarded to the best dog from the
- * remaining CACIB-eligible-class dogs plus the 2nd-placed dog from the
- * class where the CAC was awarded, provided it received Excellent.
- * Not compulsory.
- */
-export const KMSH_AWARD_RCAC = asAwardTypeId('rcac');
-
-/**
- * Fokkersklas / Classe des éleveurs — KMSH national class available at
- * breed-specific shows (ART.24). Handler must be the breeder of the dog
- * (bredByExhibitor). Eligible for CAC and RCAC.
- */
-export const KMSH_CLASS_FOKKERSKLAS = asClassId('fokkersklas');
-
-// ---------------------------------------------------------------------------
-// KMSH / SRSH national override RulesetLayer
-// ---------------------------------------------------------------------------
-
-/**
- * The KMSH / SRSH (Koninklijke Maatschappij Sint-Hubertus /
- * Société Royale Saint-Hubert) national override {@link RulesetLayer}.
+ * The KMSH / SRSH (Koninklijke Maatschappij Sint-Hubertus / Société Royale
+ * Saint-Hubert) national override {@link RulesetLayerEdition}, effective
+ * from 2023-01-01 (Reglement van de Tentoonstellingen, Sectie 4A, 2023).
  *
- * Extends the FCI base layer with Belgian-specific rules
- * (Reglement van de Tentoonstellingen, Sectie 4A, 2023):
+ * Extends the FCI base layer with Belgian-specific rules:
  *
  * - **Minor Puppy class override** — ART.23 sets a lower age bound of 3
  *   months ("minimum 3 tot 6 maanden"); the FCI base layer has no floor.
@@ -92,16 +63,19 @@ export const KMSH_CLASS_FOKKERSKLAS = asClassId('fokkersklas');
  * The KMSH layer intentionally does NOT override the FCI grade scales —
  * language is not a rule difference (ADR-0010).
  *
- * Compose as `resolveEffectiveRuleset([fciLayer, kmshLayer], date)`.
+ * No further edition has been researched; layer order (this composed after
+ * an FCI edition) is supplied by the caller of `resolveEffectiveRuleset`
+ * (layer ordering is the Ruleset's ordered layer list, ADR-0029 — Rulesets
+ * persistence lands with Show Organisation, #17).
  */
-export const kmshLayer: RulesetLayer = RulesetLayer.of({
-    id: KMSH_LAYER_ID,
-    parentLayerId: FCI_LAYER_ID,
+export const kmsh20230101: RulesetLayerEdition = RulesetLayerEdition.of({
+    layerId: KMSH_LAYER_ID,
+    effectiveFrom: LocalDate.of(2023, 1, 1),
     classDefinitions: [
         // Override Minor Puppy: KMSH ART.23 specifies minimum 3 months
         // ("minimum 3 tot 6 maanden"), unlike FCI which has no numeric floor.
         ClassDefinition.of({
-            id: asClassId('minor-puppy'),
+            id: FCI_CLASS_MINOR_PUPPY,
             fromAgeMonths: asAgeMonths(3),
             lessThanAgeMonths: asAgeMonths(6),
             requiredCertificates: [CertificateKind.Vaccination],
@@ -152,8 +126,8 @@ export const kmshLayer: RulesetLayer = RulesetLayer.of({
             fedBy: [
                 AwardFeeder.of(FCI_AWARD_CACIB),
                 AwardFeeder.of(KMSH_AWARD_CAC),
-                ClassFeeder.of(asClassId('junior')),
-                ClassFeeder.of(asClassId('veteran')),
+                ClassFeeder.of(FCI_CLASS_JUNIOR),
+                ClassFeeder.of(FCI_CLASS_VETERAN),
             ],
         }),
         HigherScopeAwardType.breed({
@@ -164,14 +138,14 @@ export const kmshLayer: RulesetLayer = RulesetLayer.of({
             fedBy: [
                 AwardFeeder.of(FCI_AWARD_CACIB),
                 AwardFeeder.of(KMSH_AWARD_CAC),
-                ClassFeeder.of(asClassId('junior')),
-                ClassFeeder.of(asClassId('veteran')),
+                ClassFeeder.of(FCI_CLASS_JUNIOR),
+                ClassFeeder.of(FCI_CLASS_VETERAN),
             ],
         }),
     ],
     showTypes: [
         ShowType.of({
-            id: asShowTypeId('kmsh-national-show'),
+            id: KMSH_SHOW_TYPE_NATIONAL_SHOW,
             availableAwardTypeIds: [
                 KMSH_AWARD_CAC,
                 KMSH_AWARD_RCAC,

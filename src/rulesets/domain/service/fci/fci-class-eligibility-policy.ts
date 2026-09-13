@@ -28,6 +28,12 @@ import type { LocalDate } from '../../model/effective-ruleset/value-objects/loca
  * `src/rulesets/index.ts` so the main export stays the abstraction surface
  * (the ports + data model); the composition root (`apps/api`) will wire it.
  * See ADR-0021.
+ *
+ * **Reviewer note (ADR-0001's 2026-09-11 amendment):** `showDate` is used
+ * only for the age evaluation above — this policy never branches on a date
+ * or on which {@link RulesetLayerEdition} is in force. A rule that differs
+ * between editions is edition data (a field on `ClassDefinition`), resolved
+ * upstream by `resolveEffectiveRuleset` before this policy ever runs.
  */
 export class FciClassEligibilityPolicy implements ClassEligibilityPolicy {
     isEligible(

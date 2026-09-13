@@ -29,7 +29,7 @@ import {
     GradeScale,
     Grade,
 } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/grade-scale.js';
-import { RulesetLayer } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/ruleset-layer.js';
+import { RulesetLayerEdition } from '../../../../../src/rulesets/domain/model/ruleset-layer-edition/ruleset-layer-edition.js';
 import { EffectiveRuleset } from '../../../../../src/rulesets/domain/model/effective-ruleset/effective-ruleset.js';
 import {
     StreamCandidate,
@@ -42,10 +42,9 @@ import {
     type JudgingScopeResults,
 } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/judging-scope-results.js';
 import type { ProposedAwardAssignment } from '../../../../../src/rulesets/domain/service/award-policy.js';
-import { resolveEffectiveRuleset } from '../../../../../src/rulesets/domain/service/resolve-effective-ruleset.js';
 import { LocalDate } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
 import {
-    fciLayer,
+    fci20270101,
     FCI_GRADE_EXCELLENT,
     FCI_GRADE_VERY_GOOD,
     FCI_GRADE_VERY_PROMISING,
@@ -59,11 +58,11 @@ import {
     FCI_AWARD_BEST_VETERAN,
     FCI_AWARD_BEST_PUPPY,
     FCI_AWARD_BEST_MINOR_PUPPY,
-} from '../../../../../src/rulesets/domain/model/effective-ruleset/layers/fci-ruleset-layer.js';
+} from '../../../../../src/rulesets/infrastructure/persistence/bundled/fci/index.js';
 import {
-    kmshLayer,
+    kmsh20230101,
     KMSH_AWARD_CAC,
-} from '../../../../../src/rulesets/domain/model/effective-ruleset/layers/kmsh-ruleset-layer.js';
+} from '../../../../../src/rulesets/infrastructure/persistence/bundled/kmsh/index.js';
 
 // ---------------------------------------------------------------------------
 // Shared grade IDs
@@ -185,9 +184,9 @@ const classDefinitions: ReadonlyArray<ClassDefinition> = [
 const RULESET: EffectiveRuleset = EffectiveRuleset.resolve(
     RULESET_ID,
     [
-        RulesetLayer.of({
-            id: asRulesetLayerId('fci'),
-            parentLayerId: undefined,
+        RulesetLayerEdition.of({
+            layerId: asRulesetLayerId('fci'),
+            effectiveFrom: LocalDate.of(2026, 1, 1),
             classDefinitions,
             gradeScales: [gradeScale],
             awardTypes,
@@ -206,15 +205,25 @@ const policy = new FciAwardPolicy();
 // Real-ruleset fixtures (ADR-0017 feeder model) + stream helpers
 // ---------------------------------------------------------------------------
 
-const RESOLVE_DATE: LocalDate = LocalDate.of(2026, 1, 1);
+const RESOLVE_DATE: LocalDate = LocalDate.of(2027, 6, 1);
+
+// The pure merge/validate step (EffectiveRuleset.resolve) is exercised
+// directly against the real bundled FCI/KMSH editions — the date-based
+// edition *selection* pipeline (resolveEffectiveRuleset +
+// RulesetLayerEditionRepository) is covered separately, by
+// tests/rulesets/infrastructure/persistence/bundled/.
 
 /** FCI base layer only — BOB fedBy has no national CAC feeder. */
-const FCI_RULESET: EffectiveRuleset = resolveEffectiveRuleset(RULESET_ID, [fciLayer], RESOLVE_DATE);
+const FCI_RULESET: EffectiveRuleset = EffectiveRuleset.resolve(
+    RULESET_ID,
+    [fci20270101],
+    RESOLVE_DATE,
+);
 
 /** FCI + KMSH — BOB/BOS overridden to add the national CAC feeder. */
-const KMSH_RULESET: EffectiveRuleset = resolveEffectiveRuleset(
+const KMSH_RULESET: EffectiveRuleset = EffectiveRuleset.resolve(
     RULESET_ID,
-    [fciLayer, kmshLayer],
+    [fci20270101, kmsh20230101],
     RESOLVE_DATE,
 );
 

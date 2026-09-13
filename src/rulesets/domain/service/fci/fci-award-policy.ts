@@ -72,6 +72,12 @@ type StreamedScope = Extract<JudgingScopeResults, { streams: ReadonlyArray<Candi
  * `src/rulesets/index.ts` so the main export stays the abstraction surface
  * (the ports + data model); the composition root (`apps/api`) will wire it.
  * See ADR-0021.
+ *
+ * **Reviewer note (ADR-0001's 2026-09-11 amendment):** this policy never
+ * branches on a date or on which {@link RulesetLayerEdition} is in force —
+ * it reads only the `EffectiveRuleset` snapshot it is given. A rule that
+ * differs between editions is edition data (a field on `AwardType`), resolved
+ * upstream by `resolveEffectiveRuleset` before this policy ever runs.
  */
 export class FciAwardPolicy implements AwardPolicy {
     eligibleAwardTypes(

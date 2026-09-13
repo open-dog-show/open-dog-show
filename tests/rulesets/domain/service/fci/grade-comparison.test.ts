@@ -17,7 +17,7 @@ import {
     Grade,
     GradeScale,
 } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/grade-scale.js';
-import { RulesetLayer } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/ruleset-layer.js';
+import { RulesetLayerEdition } from '../../../../../src/rulesets/domain/model/ruleset-layer-edition/ruleset-layer-edition.js';
 import { EffectiveRuleset } from '../../../../../src/rulesets/domain/model/effective-ruleset/effective-ruleset.js';
 
 const EXCELLENT = asGradeId('excellent');
@@ -42,15 +42,15 @@ function scale(id: string, ...grades: Grade[]): GradeScale {
 const RULESET_ID = asEffectiveRulesetId('ruleset-1');
 
 function ruleset(...scales: GradeScale[]): EffectiveRuleset {
-    const layer = RulesetLayer.of({
-        id: asRulesetLayerId('test'),
-        parentLayerId: undefined,
+    const edition = RulesetLayerEdition.of({
+        layerId: asRulesetLayerId('test'),
+        effectiveFrom: LocalDate.of(2026, 1, 1),
         classDefinitions: [],
         gradeScales: scales,
         awardTypes: [],
         showTypes: [],
     });
-    return EffectiveRuleset.resolve(RULESET_ID, [layer], LocalDate.of(2026, 1, 1));
+    return EffectiveRuleset.resolve(RULESET_ID, [edition], LocalDate.of(2026, 1, 1));
 }
 
 describe('resolveGrade', () => {

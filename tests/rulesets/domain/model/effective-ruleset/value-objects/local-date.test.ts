@@ -123,6 +123,22 @@ describe('LocalDate', () => {
         });
     });
 
+    describe('isOnOrBefore', () => {
+        it('is true when the dates are equal', () => {
+            expect(LocalDate.of(2026, 8, 4).isOnOrBefore(LocalDate.of(2026, 8, 4))).toBe(true);
+        });
+
+        it('is true when this date is strictly earlier', () => {
+            expect(LocalDate.of(2026, 8, 4).isOnOrBefore(LocalDate.of(2026, 8, 5))).toBe(true);
+            expect(LocalDate.of(2026, 8, 4).isOnOrBefore(LocalDate.of(2027, 1, 1))).toBe(true);
+        });
+
+        it('is false when this date is strictly later', () => {
+            expect(LocalDate.of(2026, 8, 5).isOnOrBefore(LocalDate.of(2026, 8, 4))).toBe(false);
+            expect(LocalDate.of(2027, 1, 1).isOnOrBefore(LocalDate.of(2026, 8, 4))).toBe(false);
+        });
+    });
+
     describe('completedMonthsSince', () => {
         it('returns the elapsed completed calendar months (same day-of-month)', () => {
             // born 2026-05-04, show 2026-08-04 → 3 completed months

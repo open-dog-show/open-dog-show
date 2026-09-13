@@ -26,7 +26,7 @@ import {
     GradeScale,
     Grade,
 } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/grade-scale.js';
-import { RulesetLayer } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/ruleset-layer.js';
+import { RulesetLayerEdition } from '../../../../../src/rulesets/domain/model/ruleset-layer-edition/ruleset-layer-edition.js';
 import { EffectiveRuleset } from '../../../../../src/rulesets/domain/model/effective-ruleset/effective-ruleset.js';
 import { LocalDate } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
 import { ClassPlacement } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/judging-scope-results.js';
@@ -71,9 +71,9 @@ const RULESET_ID = asEffectiveRulesetId('ruleset-1');
 const RULESET: EffectiveRuleset = EffectiveRuleset.resolve(
     RULESET_ID,
     [
-        RulesetLayer.of({
-            id: asRulesetLayerId('fci'),
-            parentLayerId: undefined,
+        RulesetLayerEdition.of({
+            layerId: asRulesetLayerId('fci'),
+            effectiveFrom: LocalDate.of(2026, 1, 1),
             classDefinitions: [classDefinition],
             gradeScales: [gradeScale],
             awardTypes: [cacib],

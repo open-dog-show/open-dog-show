@@ -103,10 +103,15 @@ export {
     UnknownMinimumGradeReferenceError,
 } from './domain/model/effective-ruleset/effective-ruleset.js';
 export {
-    RulesetLayer,
-    type RulesetLayerAttributes,
-} from './domain/model/effective-ruleset/entities/ruleset-layer.js';
-export { resolveEffectiveRuleset } from './domain/service/resolve-effective-ruleset.js';
+    RulesetLayerEdition,
+    type RulesetLayerEditionAttributes,
+    type RulesetLayerEditionReference,
+} from './domain/model/ruleset-layer-edition/ruleset-layer-edition.js';
+export type { RulesetLayerEditionRepository } from './domain/model/ruleset-layer-edition/ruleset-layer-edition-repository.js';
+export {
+    resolveEffectiveRuleset,
+    NoEditionInForceError,
+} from './domain/service/resolve-effective-ruleset.js';
 export {
     ClassPlacement,
     type ClassPlacementAttributes,

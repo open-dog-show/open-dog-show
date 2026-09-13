@@ -124,6 +124,16 @@ export class LocalDate {
     }
 
     /**
+     * True when this date denotes the same calendar day as `other` or an
+     * earlier one. Used to pick the latest {@link RulesetLayerEdition}
+     * effective on or before a Show's date (ADR-0029) — the one date
+     * comparison the Rulesets domain needs outside age evaluation.
+     */
+    isOnOrBefore(other: LocalDate): boolean {
+        return this.#ms <= other.#ms;
+    }
+
+    /**
      * Completed calendar months elapsed from `from` up to this date — the
      * age-in-months unit (ADR-0008). A dog born on the 4th reaches the next
      * month-age on the 4th of the subsequent month: when this date's day is
