@@ -1,0 +1,11 @@
+{{plural (camelCase name)}}: {
+    findById: (id) => {{camelCase name}}Repository.findById(id),
+    add: async ({{camelCase name}}) => {
+        await {{camelCase name}}Repository.add({{camelCase name}});
+        record(...{{camelCase name}}.pullEvents());
+    },
+    update: async ({{camelCase name}}) => {
+        await {{camelCase name}}Repository.update({{camelCase name}});
+        record(...{{camelCase name}}.pullEvents());
+    },
+},

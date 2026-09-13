@@ -3,20 +3,31 @@
 
 import { pgSchema, uuid, text } from 'drizzle-orm/pg-core';
 
-const schema = pgSchema('sample');
+export const schema = pgSchema('sample');
 
-export const showsTable = schema.table('shows', {
+// plop:tables
+export const announcementsTable = schema.table('announcements', {
     id: uuid('id').primaryKey(),
-    clubId: uuid('club_id').notNull(),
     name: text('name').notNull(),
 });
 
-export const entriesTable = schema.table('entries', {
+export const ticketsTable = schema.table('tickets', {
     id: uuid('id').primaryKey(),
     clubId: uuid('club_id').notNull(),
-    // The TS field is `principalId` (the kernel's context-neutral actor id,
-    // ADR-0013); the SQL column stays `user_id` (ADR-0005 wire name unchanged).
     principalId: uuid('user_id').notNull(),
-    showId: uuid('show_id').notNull(),
-    dogName: text('dog_name').notNull(),
+    itemId: uuid('item_id').notNull(),
+    name: text('name').notNull(),
+});
+
+export const notesTable = schema.table('notes', {
+    id: uuid('id').primaryKey(),
+    principalId: uuid('user_id').notNull(),
+    name: text('name').notNull(),
+});
+
+export const itemsTable = schema.table('items', {
+    id: uuid('id').primaryKey(),
+    clubId: uuid('club_id').notNull(),
+    principalId: uuid('user_id').notNull(),
+    name: text('name').notNull(),
 });

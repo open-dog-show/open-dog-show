@@ -1,0 +1,100 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import {
+    AggregateRoot,
+    asAggregateId,
+    PlatformEventScope,
+    DomainError,
+} from '../../../../Shared/index.js';
+import type { {{pascalCase name}}Id } from '../../shared/domain-ids.js';
+import { {{pascalCase name}}Created } from './events/{{dashCase name}}-created.js';
+import { {{pascalCase name}}Renamed } from './events/{{dashCase name}}-renamed.js';
+
+/**
+ * {{A (pascalCase name)}} {{pascalCase name}} — a platform-scoped placeholder aggregate generated
+ * by `new:aggregate --scope platform` (ADR-0025/0026/0027).
+ *
+ * Modelled as a class aggregate extending {@link AggregateRoot}: platform
+ * data has no single owner (ADR-0005), so {{a (pascalCase name)}} {{pascalCase name}} carries
+ * neither a `clubId` nor a `createdBy` — both {@link create} and
+ * {@link rename} record their own fact, scoped platform-wide
+ * (`PlatformEventScope`, ADR-0027). A private `#brand` field makes the class
+ * **nominal** so a bare `{ id, name }` object literal is not assignable to
+ * `{{pascalCase name}}` — the type is closed against unvalidated
+ * construction. Storage load goes through {@link {{pascalCase name}}.rehydrate},
+ * which does not record an event.
+ */
+export class {{pascalCase name}} extends AggregateRoot {
+    // Nominal brand: a bare object literal lacks this private field, so it is
+    // not assignable to `{{pascalCase name}}` — closes the structural-literal leak.
+    // eslint-disable-next-line no-unused-private-class-members -- intentional nominal brand; exists for compile-time type pinning, not runtime use.
+    readonly #brand = true;
+    #name: string;
+
+    readonly id: {{pascalCase name}}Id;
+
+    get name(): string {
+        return this.#name;
+    }
+
+    private constructor(id: {{pascalCase name}}Id, name: string) {
+        super();
+        this.id = id;
+        this.#name = name;
+    }
+
+    /** Creates a new {{pascalCase name}}, recording `{{pascalCase name}}Created` scoped platform-wide. */
+    static create(input: { readonly id: {{pascalCase name}}Id; readonly name: string }): {{pascalCase name}} {
+        assert{{pascalCase name}}Name(input.name);
+        const {{camelCase name}} = new {{pascalCase name}}(input.id, input.name);
+        {{camelCase name}}.record(
+            {{pascalCase name}}Created.create(
+                asAggregateId({{camelCase name}}.id),
+                PlatformEventScope.of(),
+                { name: {{camelCase name}}.name },
+            ),
+        );
+        return {{camelCase name}};
+    }
+
+    /**
+     * Rehydrates {{a (pascalCase name)}} {{pascalCase name}} from storage. No event is recorded —
+     * rehydration replays past state, it does not produce a new fact.
+     */
+    static rehydrate(input: { readonly id: {{pascalCase name}}Id; readonly name: string }): {{pascalCase name}} {
+        return new {{pascalCase name}}(input.id, input.name);
+    }
+
+    /** Renames this {{pascalCase name}}, recording `{{pascalCase name}}Renamed` scoped platform-wide. */
+    rename(name: string): void {
+        assert{{pascalCase name}}Name(name);
+        this.#name = name;
+        this.record(
+            {{pascalCase name}}Renamed.create(asAggregateId(this.id), PlatformEventScope.of(), { name }),
+        );
+    }
+}
+
+function assert{{pascalCase name}}Name(name: string): void {
+    if (name.trim().length === 0) {
+        throw new Invalid{{pascalCase name}}NameError(name);
+    }
+}
+
+/** Thrown by {@link {{pascalCase name}}.create} / {@link {{pascalCase name}}.rename} for a blank name. */
+export class Invalid{{pascalCase name}}NameError extends DomainError {
+    constructor(name: string) {
+        super(`{{pascalCase name}} name must not be blank (got '${name}')`, { name });
+    }
+}
+
+/** Thrown when a use case looks up {{a (pascalCase name)}} {{pascalCase name}} by id and none exists — e.g. `Rename{{pascalCase name}}Handler`. */
+export class {{pascalCase name}}NotFoundError extends DomainError {
+    readonly id: {{pascalCase name}}Id;
+
+    constructor(id: {{pascalCase name}}Id) {
+        super(`No {{pascalCase name}} found with id '${id}'`, { id });
+        this.id = id;
+    }
+}

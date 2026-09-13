@@ -1,0 +1,8 @@
+registry.register({{constantCase name}}_CREATED_TYPE, ({ scope, aggregateId, payload }) => {
+    assertPayloadHasStringField(payload, 'name');
+    return {{pascalCase name}}Created.rehydrate({ scope, aggregateId, payload });
+});
+registry.register({{constantCase name}}_RENAMED_TYPE, ({ scope, aggregateId, payload }) => {
+    assertPayloadHasStringField(payload, 'name');
+    return {{pascalCase name}}Renamed.rehydrate({ scope, aggregateId, payload });
+});

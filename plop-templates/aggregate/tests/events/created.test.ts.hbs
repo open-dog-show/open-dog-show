@@ -1,0 +1,35 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import { describe, it, expect } from 'vitest';
+import { asAggregateId, PlatformEventScope } from '../../../../../../src/Shared/index.js';
+import {
+    {{constantCase name}}_CREATED_TYPE,
+    {{pascalCase name}}Created,
+} from '../../../../../../src/{{dashCase context}}/domain/model/{{dashCase name}}/events/{{dashCase name}}-created.js';
+
+const AGGREGATE_ID = asAggregateId('00000000-0000-4000-8000-000000000021');
+
+describe('{{pascalCase name}}Created', () => {
+    it('create constructs a fact with the fixed type and given scope/payload', () => {
+        const event = {{pascalCase name}}Created.create(AGGREGATE_ID, PlatformEventScope.of(), {
+            name: 'A name',
+        });
+
+        expect(event.type).toBe({{constantCase name}}_CREATED_TYPE);
+        expect(event.aggregateId).toBe(AGGREGATE_ID);
+        expect(event.scope).toEqual(PlatformEventScope.of());
+        expect(event.payload).toEqual({ name: 'A name' });
+    });
+
+    it('rehydrate reconstructs the same fact shape from stored fields', () => {
+        const event = {{pascalCase name}}Created.rehydrate({
+            scope: PlatformEventScope.of(),
+            aggregateId: AGGREGATE_ID,
+            payload: { name: 'A name' },
+        });
+
+        expect(event).toBeInstanceOf({{pascalCase name}}Created);
+        expect(event.payload).toEqual({ name: 'A name' });
+    });
+});

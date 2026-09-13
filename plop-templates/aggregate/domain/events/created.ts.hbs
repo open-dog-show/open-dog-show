@@ -1,0 +1,87 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import {
+    asEventType,
+    type AggregateId,
+    type DomainEventFact,
+    type EventScope,
+    type EventType,
+} from '../../../../../Shared/index.js';
+
+/**
+ * The fully-qualified event-type string for {@link {{pascalCase name}}Created}
+ * — the wire/DB form stored in the outbox `type` column and the registry key
+ * the codec uses to rehydrate a stored row back into a
+ * {@link {{pascalCase name}}Created} instance.
+ */
+export const {{constantCase name}}_CREATED_TYPE: EventType = asEventType(
+    '{{eventContext context}}.{{pascalCase name}}Created',
+);
+
+/** Event-type-specific structured data carried by {@link {{pascalCase name}}Created}. */
+export interface {{pascalCase name}}CreatedPayload {
+    readonly name: string;
+}
+
+/**
+ * The fact that {{a (pascalCase name)}} {{pascalCase name}} was created.
+ *
+ * Modelled as a **class event** implementing {@link DomainEventFact}
+ * (ADR-0027): the `type` field is fixed to
+ * {@link {{constantCase name}}_CREATED_TYPE}; the payload is the typed
+ * {@link {{pascalCase name}}CreatedPayload}. Carries no `eventId` /
+ * `occurredAt` — those are envelope fields the unit of work stamps on
+ * afterwards, from `Clock` / `EventIdGenerator` injected at the composition
+ * root, never from this class or its caller (the aggregate root records
+ * facts from domain data only). A private `#brand` field makes the class
+ * **nominal** so a bare envelope literal is not assignable to
+ * `{{pascalCase name}}Created`.
+ *
+ * Storage rehydration goes through {@link {{pascalCase name}}Created.rehydrate},
+ * which the context's rehydration registry wires into the outbox codec /
+ * polling dispatcher.
+ */
+export class {{pascalCase name}}Created implements DomainEventFact {
+    // Nominal brand: a bare envelope literal lacks this private field, so it is
+    // not assignable to `{{pascalCase name}}Created` — closes the structural-literal leak.
+    // eslint-disable-next-line no-unused-private-class-members -- intentional nominal brand; exists for compile-time type pinning, not runtime use.
+    readonly #brand = true;
+
+    readonly type = {{constantCase name}}_CREATED_TYPE;
+    readonly scope: EventScope;
+    readonly aggregateId: AggregateId;
+    readonly payload: {{pascalCase name}}CreatedPayload;
+
+    private constructor(
+        scope: EventScope,
+        aggregateId: AggregateId,
+        payload: {{pascalCase name}}CreatedPayload,
+    ) {
+        this.scope = scope;
+        this.aggregateId = aggregateId;
+        this.payload = payload;
+    }
+
+    /** Constructs a {@link {{pascalCase name}}Created} fact — called by `{{pascalCase name}}.create`. */
+    static create(
+        aggregateId: AggregateId,
+        scope: EventScope,
+        payload: {{pascalCase name}}CreatedPayload,
+    ): {{pascalCase name}}Created {
+        return new {{pascalCase name}}Created(scope, aggregateId, payload);
+    }
+
+    /**
+     * Rehydrates a {@link {{pascalCase name}}Created} fact from a stored row's
+     * already-validated fields — the path the outbox codec / polling
+     * dispatcher use via the context's rehydration registry.
+     */
+    static rehydrate(fact: {
+        readonly scope: EventScope;
+        readonly aggregateId: AggregateId;
+        readonly payload: {{pascalCase name}}CreatedPayload;
+    }): {{pascalCase name}}Created {
+        return new {{pascalCase name}}Created(fact.scope, fact.aggregateId, fact.payload);
+    }
+}

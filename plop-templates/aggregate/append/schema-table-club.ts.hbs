@@ -1,0 +1,6 @@
+export const {{plural (camelCase name)}}Table = schema.table('{{plural (snakeCase name)}}', {
+    id: uuid('id').primaryKey(),
+    clubId: uuid('club_id').notNull(),
+    principalId: uuid('user_id').notNull(),
+    name: text('name').notNull(),
+});

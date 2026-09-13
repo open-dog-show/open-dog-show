@@ -36,6 +36,15 @@ export default tseslint.config(
             'unicorn/filename-case': ['error', { case: 'kebabCase', checkDirectories: false }],
         },
     },
+    // plopfile.js is a plain Node script (not a .ts file, so it doesn't get
+    // typescript-eslint's no-undef exemption for ambient Node globals) — its
+    // custom migration-sequencing action reads the filesystem via `process.cwd()`.
+    {
+        files: ['plopfile.js'],
+        languageOptions: {
+            globals: { process: 'readonly' },
+        },
+    },
     // ── ADR-0006 / ADR-0020 / ADR-0021 boundary rules ────────────────────────
     // Layer taxonomy (inward-only) and context-zone taxonomy (no cross-context
     // imports) applied to context source files. Contexts live directly under

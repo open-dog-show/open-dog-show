@@ -1,0 +1,79 @@
+// SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import { describe, it, expect } from 'vitest';
+import {
+    asClubId,
+    asPrincipalId,
+    ClubTransactionScope,
+    ExhibitorTransactionScope,
+} from '../../../../src/Shared/index.js';
+import { Fake{{pascalCase context}}UnitOfWork } from '../../../../src/{{dashCase context}}/infrastructure/persistence/inmemory/fake-{{dashCase context}}-unit-of-work.js';
+import { Create{{pascalCase parent}}Handler } from '../../../../src/{{dashCase context}}/application/create-{{dashCase parent}}/create-{{dashCase parent}}.js';
+import { Create{{pascalCase name}}Handler } from '../../../../src/{{dashCase context}}/application/create-{{dashCase name}}/create-{{dashCase name}}.js';
+import { Rename{{pascalCase name}}Handler } from '../../../../src/{{dashCase context}}/application/rename-{{dashCase name}}/rename-{{dashCase name}}.js';
+import {
+    {{pascalCase name}}NotFoundError,
+    Invalid{{pascalCase name}}NameError,
+} from '../../../../src/{{dashCase context}}/domain/model/{{dashCase name}}/{{dashCase name}}.js';
+
+const CLUB_ID = asClubId('00000000-0000-4000-8000-000000000001');
+const CLUB_PRINCIPAL_ID = asPrincipalId('00000000-0000-4000-8000-000000000011');
+const EXHIBITOR_ID = asPrincipalId('00000000-0000-4000-8000-000000000012');
+const EXHIBITOR_SCOPE = ExhibitorTransactionScope.of(EXHIBITOR_ID);
+
+async function seed{{pascalCase name}}(unitOfWork: Fake{{pascalCase context}}UnitOfWork): Promise<void> {
+    await new Create{{pascalCase parent}}Handler(unitOfWork).execute(
+        { id: '00000000-0000-4000-8000-000000000031', name: 'The {{pascalCase parent}}' },
+        ClubTransactionScope.of(CLUB_ID, CLUB_PRINCIPAL_ID),
+    );
+    await new Create{{pascalCase name}}Handler(unitOfWork).execute(
+        {
+            id: '00000000-0000-4000-8000-000000000021',
+            {{camelCase parent}}Id: '00000000-0000-4000-8000-000000000031',
+            name: 'Old name',
+        },
+        EXHIBITOR_SCOPE,
+    );
+}
+
+describe('Rename{{pascalCase name}}Handler', () => {
+    it('renames an existing {{pascalCase name}}', async () => {
+        const unitOfWork = new Fake{{pascalCase context}}UnitOfWork();
+        await seed{{pascalCase name}}(unitOfWork);
+
+        const result = await new Rename{{pascalCase name}}Handler(unitOfWork).execute(
+            { id: '00000000-0000-4000-8000-000000000021', name: 'New name' },
+            EXHIBITOR_SCOPE,
+        );
+
+        expect(result).toEqual({
+            ok: true,
+            value: { id: '00000000-0000-4000-8000-000000000021', name: 'New name' },
+        });
+        expect(unitOfWork.recordedEvents.at(-1)?.type).toBe('{{eventContext context}}.{{pascalCase name}}Renamed');
+    });
+
+    it('returns {{pascalCase name}}NotFoundError for an unknown id', async () => {
+        const unitOfWork = new Fake{{pascalCase context}}UnitOfWork();
+
+        const result = await new Rename{{pascalCase name}}Handler(unitOfWork).execute(
+            { id: '00000000-0000-4000-8000-000000000099', name: 'New name' },
+            EXHIBITOR_SCOPE,
+        );
+
+        expect(result).toEqual({ ok: false, error: expect.any({{pascalCase name}}NotFoundError) });
+    });
+
+    it('returns Invalid{{pascalCase name}}NameError for a blank name', async () => {
+        const unitOfWork = new Fake{{pascalCase context}}UnitOfWork();
+        await seed{{pascalCase name}}(unitOfWork);
+
+        const result = await new Rename{{pascalCase name}}Handler(unitOfWork).execute(
+            { id: '00000000-0000-4000-8000-000000000021', name: '   ' },
+            EXHIBITOR_SCOPE,
+        );
+
+        expect(result).toEqual({ ok: false, error: expect.any(Invalid{{pascalCase name}}NameError) });
+    });
+});

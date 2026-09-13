@@ -1,11 +1,17 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-export type { Item, ItemRepository } from './domain/model/item/item.js';
-export { ITEM_SAVED_TYPE, ItemSaved, type ItemSavedPayload } from './domain/model/item/events/item-saved.js';
-export type { ItemUnitOfWork, ItemUnitOfWorkContext } from './application/ports/unit-of-work.js';
-export type { SaveItemInput } from './application/save-item/save-item.js';
-export { SaveItemUseCase } from './application/save-item/save-item.js';
-export { DrizzleItemRepository } from './infrastructure/persistence/postgres/drizzle-item-repository.js';
-export { PgItemUnitOfWork } from './infrastructure/persistence/postgres/pg-unit-of-work.js';
-export { buildItemEventRehydrationRegistry } from './infrastructure/messaging/item-event-registry.js';
+/**
+ * Public surface of the {{dashCase name}} context (ADR-0028): command/response
+ * types, handler types, expected-outcome errors, event classes + `_TYPE`
+ * constants + payload types, and the `create{{pascalCase name}}Context` wiring
+ * factory. Aggregates, repositories, ports, ORM adapters and fakes stay
+ * internal — another context or `apps/` may import only what is exported
+ * here; tests import internals by deep path.
+ */
+export { create{{pascalCase name}}Context } from './infrastructure/di/create-{{dashCase name}}-context.js';
+export type {
+    {{pascalCase name}}ContextDependencies,
+    {{pascalCase name}}Context,
+} from './infrastructure/di/create-{{dashCase name}}-context.js';
+// plop:exports
