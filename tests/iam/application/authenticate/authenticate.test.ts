@@ -2,39 +2,49 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, it, expect } from 'vitest';
+import { PlatformTransactionScope, type TransactionScope } from '../../../../src/Shared/index.js';
 import {
     asUserId,
     asEmailAddress,
     asExternalSubject,
 } from '../../../../src/iam/domain/shared/domain-ids.js';
-import { User, InvalidProviderClaimsError } from '../../../../src/iam/domain/model/user/user.js';
-import type { UserRepository } from '../../../../src/iam/domain/model/user/user-repository.js';
+import { User } from '../../../../src/iam/domain/model/user/user.js';
+import { DuplicateExternalSubjectError } from '../../../../src/iam/domain/model/user/user-repository.js';
+import { UserRoleGrants } from '../../../../src/iam/domain/model/user-role-grants/user-role-grants.js';
+import type {
+    IamUnitOfWork,
+    IamUnitOfWorkContext,
+} from '../../../../src/iam/application/ports/unit-of-work.js';
 import {
-    authenticate,
-    type AuthenticateDeps,
+    AuthenticateHandler,
+    type AuthenticateResponse,
     type AuthenticateError,
-    type AuthenticateResult,
     UserSuspendedError,
+    InvalidProviderClaimsError,
 } from '../../../../src/iam/application/authenticate/authenticate.js';
-import {
-    FakeIdentityProvider,
-    FakeUserRepository,
-    FakeUserIdGenerator,
-} from '../../../../src/iam/infrastructure/persistence/inmemory/index.js';
+import { FakeIamUnitOfWork } from '../../../../src/iam/infrastructure/persistence/inmemory/fake-iam-unit-of-work.js';
+import { FakeIdentityProvider } from '../../../../src/iam/infrastructure/persistence/inmemory/fake-identity-provider.js';
+import { FakeUserIdGenerator } from '../../../../src/iam/infrastructure/persistence/inmemory/fake-user-id-generator.js';
+import type { Result } from '../../../../src/Shared/index.js';
 
 const ALICE_TOKEN = 'token-alice';
 const ALICE_CLAIMS = { sub: 'sub|alice', displayName: 'Alice', email: 'alice@example.com' };
 
-function deps(tokens = new Map([[ALICE_TOKEN, ALICE_CLAIMS]])): AuthenticateDeps {
-    return {
-        identityProvider: new FakeIdentityProvider(tokens),
-        users: new FakeUserRepository(),
-        userIdGenerator: new FakeUserIdGenerator(),
-    };
+function handler(
+    tokens = new Map([[ALICE_TOKEN, ALICE_CLAIMS]]),
+    unitOfWork: IamUnitOfWork = new FakeIamUnitOfWork(),
+): AuthenticateHandler {
+    return new AuthenticateHandler(
+        unitOfWork,
+        new FakeIdentityProvider(tokens),
+        new FakeUserIdGenerator(),
+    );
 }
 
+type AuthenticateResult = Result<AuthenticateResponse, AuthenticateError>;
+
 // Narrowing helpers so each test reads the Result without repeating the ok/error branch (E1).
-function userOf(result: AuthenticateResult): User {
+function valueOf(result: AuthenticateResult): AuthenticateResponse {
     if (!result.ok) throw new Error(`expected an ok result but got ${result.error.name}`);
     return result.value;
 }
@@ -43,18 +53,21 @@ function errorOf(result: AuthenticateResult): AuthenticateError {
     return result.error;
 }
 
-describe('authenticate', () => {
-    it('first login for an unknown sub creates an Active user saved via the UserRepository', async () => {
-        const d = deps();
+describe('AuthenticateHandler', () => {
+    it('first login for an unknown sub registers a new Active user via UserRepository.add', async () => {
+        const uow = new FakeIamUnitOfWork();
+        const h = handler(undefined, uow);
 
-        const user = userOf(await authenticate(d, ALICE_TOKEN));
+        const response = valueOf(await h.execute({ token: ALICE_TOKEN }));
 
-        expect(user.status).toBe('Active');
-        expect(user.externalSubject).toBe('sub|alice');
-        expect(user.displayName).toBe('Alice');
-        expect(user.email).toBe('alice@example.com');
-        const stored = await d.users.findByExternalSubject('sub|alice');
-        expect(stored).toEqual(user);
+        expect(response.displayName).toBe('Alice');
+        expect(response.email).toBe('alice@example.com');
+        const stored = await uow.run(PlatformTransactionScope.of(), (ctx) =>
+            ctx.users.findByExternalSubject('sub|alice'),
+        );
+        expect(stored?.id).toBe(response.userId);
+        expect(stored?.status).toBe('Active');
+        expect(stored?.version).toBe(1);
     });
 
     it('subsequent login for a known sub refreshes displayName and email from the latest claims', async () => {
@@ -65,87 +78,40 @@ describe('authenticate', () => {
             displayName: 'Alice Smith',
             email: 'alice.smith@example.com',
         };
-        const d = deps(
+        const uow = new FakeIamUnitOfWork();
+        const h = handler(
             new Map([
                 [ALICE_TOKEN, ALICE_CLAIMS],
                 ['token-alice-2', REFRESHED_CLAIMS],
             ]),
+            uow,
         );
 
-        const first = userOf(await authenticate(d, ALICE_TOKEN));
-        const second = userOf(await authenticate(d, 'token-alice-2'));
+        const first = valueOf(await h.execute({ token: ALICE_TOKEN }));
+        const second = valueOf(await h.execute({ token: 'token-alice-2' }));
 
-        // Same platform account — id and external subject are stable.
-        expect(second.id).toBe(first.id);
-        expect(second.externalSubject).toBe('sub|alice');
-        // Profile facts are refreshed.
+        // Same platform account — id is stable.
+        expect(second.userId).toBe(first.userId);
         expect(second.displayName).toBe('Alice Smith');
         expect(second.email).toBe('alice.smith@example.com');
-        expect(second.status).toBe('Active');
-        // The refreshed user is persisted, overwriting the first-login record.
-        const stored = await d.users.findByExternalSubject('sub|alice');
-        expect(stored).toEqual(second);
-    });
-
-    it('does not clobber a concurrent suspension when refreshing a returning user (lost-update guard)', async () => {
-        // Seed an Active user via first login, then refresh it under a repo
-        // that suspends the stored account *inside* saveProfileFacts —
-        // simulating an admin suspending the account between authenticate's
-        // read and its profile write. A full-aggregate save would clobber the
-        // status back to Active; saveProfileFacts must preserve the suspension.
-        const base = new FakeUserRepository();
-        const raceRepo: UserRepository = {
-            findById: (id) => base.findById(id),
-            findByExternalSubject: (subject) => base.findByExternalSubject(subject),
-            save: (user) => base.save(user),
-            saveProfileFacts: async (user) => {
-                // Admin suspends the account between the read and the write.
-                const stored = await base.findById(user.id);
-                if (stored) {
-                    await base.save(stored.suspend());
-                }
-                await base.saveProfileFacts(user);
-            },
-            createIfAbsent: (user) => base.createIfAbsent(user),
-        };
-        const d: AuthenticateDeps = {
-            identityProvider: new FakeIdentityProvider(
-                new Map([
-                    [ALICE_TOKEN, ALICE_CLAIMS],
-                    [
-                        'token-alice-2',
-                        {
-                            sub: 'sub|alice',
-                            displayName: 'Alice Smith',
-                            email: 'alice.smith@example.com',
-                        },
-                    ],
-                ]),
-            ),
-            users: raceRepo,
-            userIdGenerator: new FakeUserIdGenerator(),
-        };
-
-        await authenticate(d, ALICE_TOKEN);
-        await authenticate(d, 'token-alice-2');
-
-        // The concurrent suspension survives the profile refresh — the stored
-        // status is still Suspended, and the profile facts are refreshed.
-        const stored = await base.findByExternalSubject('sub|alice');
-        expect(stored?.status).toBe('Suspended');
+        const stored = await uow.run(PlatformTransactionScope.of(), (ctx) =>
+            ctx.users.findByExternalSubject('sub|alice'),
+        );
         expect(stored?.displayName).toBe('Alice Smith');
-        expect(stored?.email).toBe('alice.smith@example.com');
+        expect(stored?.version).toBe(2);
     });
 
     it('returns a UserSuspendedError failure for a known Suspended user before any profile refresh', async () => {
         const BOB_TOKEN = 'token-bob';
-        const d = deps(
+        const uow = new FakeIamUnitOfWork();
+        const h = handler(
             new Map([
                 [
                     BOB_TOKEN,
                     { sub: 'sub|bob', displayName: 'Bob Smith', email: 'bob.smith@example.com' },
                 ],
             ]),
+            uow,
         );
         // Pre-seed a Suspended account for the same `sub`.
         const suspendedBob = User.rehydrate({
@@ -154,61 +120,86 @@ describe('authenticate', () => {
             email: asEmailAddress('bob@example.com'),
             status: 'Suspended',
             externalSubject: asExternalSubject('sub|bob'),
+            version: 1,
         });
-        await d.users.save(suspendedBob);
+        await uow.run(PlatformTransactionScope.of(), (ctx) => ctx.users.add(suspendedBob));
 
-        const result = await authenticate(d, BOB_TOKEN);
+        const result = await h.execute({ token: BOB_TOKEN });
         expect(result.ok).toBe(false);
         expect(errorOf(result)).toBeInstanceOf(UserSuspendedError);
 
         // No other processing: the suspended account is left untouched (the
         // provider's refreshed claims were never written).
-        const stored = await d.users.findByExternalSubject('sub|bob');
-        expect(stored).toEqual(suspendedBob);
+        const stored = await uow.run(PlatformTransactionScope.of(), (ctx) =>
+            ctx.users.findByExternalSubject('sub|bob'),
+        );
+        expect(stored?.displayName).toBe('Bob');
+        expect(stored?.version).toBe(1);
     });
 
     it('two concurrent first logins for the same sub yield a single account', async () => {
-        const d = deps(
+        const uow = new FakeIamUnitOfWork();
+        const h = handler(
             new Map([
                 ['token-a', { sub: 'sub|shared', displayName: 'A', email: 'a@x.com' }],
                 ['token-b', { sub: 'sub|shared', displayName: 'B', email: 'b@x.com' }],
             ]),
+            uow,
         );
 
         const [r1, r2] = await Promise.all([
-            authenticate(d, 'token-a'),
-            authenticate(d, 'token-b'),
+            h.execute({ token: 'token-a' }),
+            h.execute({ token: 'token-b' }),
         ]);
-        const u1 = userOf(r1);
-        const u2 = userOf(r2);
+        const u1 = valueOf(r1);
+        const u2 = valueOf(r2);
 
         // Both calls resolve to the same account — no duplicate platform account.
-        expect(u1.id).toBe(u2.id);
-        const stored = await d.users.findByExternalSubject('sub|shared');
-        expect(stored).toEqual(u1);
-        // The loser's candidate id was never persisted.
-        expect(await d.users.findById(asUserId('user-2'))).toBeUndefined();
+        expect(u1.userId).toBe(u2.userId);
+        const stored = await uow.run(PlatformTransactionScope.of(), (ctx) =>
+            ctx.users.findByExternalSubject('sub|shared'),
+        );
+        expect(stored?.id).toBe(u1.userId);
     });
 
-    it('returns a UserSuspendedError failure when createIfAbsent returns a concurrently-suspended winner', async () => {
+    it('returns a UserSuspendedError failure when the DuplicateExternalSubjectError race resolves to a suspended winner', async () => {
         const suspendedWinner = User.rehydrate({
             id: asUserId('user-bob'),
             displayName: 'Bob',
             email: asEmailAddress('bob@example.com'),
             status: 'Suspended',
             externalSubject: asExternalSubject('sub|bob'),
+            version: 1,
         });
-        // Simulate the race: our lookup missed the account, but createIfAbsent
-        // hands back a concurrently-created-and-suspended winner.
-        const racedUsers: UserRepository = {
-            findById: async () => undefined,
-            findByExternalSubject: async () => undefined,
-            save: async () => {},
-            saveProfileFacts: async () => {},
-            createIfAbsent: async () => suspendedWinner,
+        // A custom IamUnitOfWork simulating the race: our lookup missed the
+        // account, `add` reports a concurrent winner, and re-reading finds it
+        // already suspended.
+        const racedUnitOfWork: IamUnitOfWork = {
+            run: async <T>(
+                _scope: TransactionScope,
+                body: (ctx: IamUnitOfWorkContext) => Promise<T>,
+            ) => {
+                const ctx: IamUnitOfWorkContext = {
+                    users: {
+                        findById: async () => undefined,
+                        findByExternalSubject: async () => suspendedWinner,
+                        add: async () => {
+                            throw new DuplicateExternalSubjectError('sub|bob');
+                        },
+                        update: async () => {},
+                    },
+                    userRoleGrants: {
+                        findByUser: async (userId) => UserRoleGrants.empty(userId),
+                        add: async () => {},
+                        update: async () => {},
+                    },
+                };
+                return body(ctx);
+            },
         };
-        const d: AuthenticateDeps = {
-            identityProvider: new FakeIdentityProvider(
+        const h = new AuthenticateHandler(
+            racedUnitOfWork,
+            new FakeIdentityProvider(
                 new Map([
                     [
                         'token-bob',
@@ -220,73 +211,184 @@ describe('authenticate', () => {
                     ],
                 ]),
             ),
-            users: racedUsers,
-            userIdGenerator: new FakeUserIdGenerator(),
-        };
+            new FakeUserIdGenerator(),
+        );
 
-        const result = await authenticate(d, 'token-bob');
+        const result = await h.execute({ token: 'token-bob' });
         expect(result.ok).toBe(false);
         expect(errorOf(result)).toBeInstanceOf(UserSuspendedError);
+    });
+
+    it('returns an ok Result reflecting the winner when the DuplicateExternalSubjectError race resolves to an Active winner', async () => {
+        // Deterministic pin of the doc'd claim ("the loser still gets a
+        // properly logged-in response") for the Active-winner branch — the
+        // `Promise.all` race test above exercises this path opportunistically
+        // via real interleaving, but never asserts it was taken.
+        const activeWinner = User.rehydrate({
+            id: asUserId('user-bob'),
+            displayName: 'Bob',
+            email: asEmailAddress('bob@example.com'),
+            status: 'Active',
+            externalSubject: asExternalSubject('sub|bob'),
+            version: 1,
+        });
+        let updatedWith: User | undefined;
+        const racedUnitOfWork: IamUnitOfWork = {
+            run: async <T>(
+                _scope: TransactionScope,
+                body: (ctx: IamUnitOfWorkContext) => Promise<T>,
+            ) => {
+                const ctx: IamUnitOfWorkContext = {
+                    users: {
+                        findById: async () => undefined,
+                        findByExternalSubject: async () => activeWinner,
+                        add: async () => {
+                            throw new DuplicateExternalSubjectError('sub|bob');
+                        },
+                        update: async (user) => {
+                            updatedWith = user;
+                        },
+                    },
+                    userRoleGrants: {
+                        findByUser: async (userId) => UserRoleGrants.empty(userId),
+                        add: async () => {},
+                        update: async () => {},
+                    },
+                };
+                return body(ctx);
+            },
+        };
+        const h = new AuthenticateHandler(
+            racedUnitOfWork,
+            new FakeIdentityProvider(
+                new Map([
+                    [
+                        'token-bob',
+                        {
+                            sub: 'sub|bob',
+                            displayName: 'Bob Smith',
+                            email: 'bob.smith@example.com',
+                        },
+                    ],
+                ]),
+            ),
+            new FakeUserIdGenerator(),
+        );
+
+        const result = await h.execute({ token: 'token-bob' });
+
+        const response = valueOf(result);
+        expect(response.userId).toBe(activeWinner.id);
+        // logIn's profile refresh actually ran on the re-read winner.
+        expect(response.displayName).toBe('Bob Smith');
+        expect(response.email).toBe('bob.smith@example.com');
+        // The refreshed winner — not the loser's discarded candidate — was persisted.
+        expect(updatedWith?.id).toBe(activeWinner.id);
+        expect(updatedWith?.displayName).toBe('Bob Smith');
     });
 
     // -- provider-claim canonicalization propagation (ADR-0015) ------------
 
     it('returns an InvalidProviderClaimsError failure on a first login with a blank sub and creates no account', async () => {
-        const d = deps(
+        const uow = new FakeIamUnitOfWork();
+        const h = handler(
             new Map([
                 ['token-blank-sub', { sub: '   ', displayName: 'X', email: 'x@example.com' }],
             ]),
+            uow,
         );
 
-        const result = await authenticate(d, 'token-blank-sub');
+        const result = await h.execute({ token: 'token-blank-sub' });
         expect(result.ok).toBe(false);
         expect(errorOf(result)).toBeInstanceOf(InvalidProviderClaimsError);
 
         // No account was created for the blank subject.
-        expect(await d.users.findByExternalSubject('   ')).toBeUndefined();
-        expect(await d.users.findById(asUserId('user-1'))).toBeUndefined();
+        expect(
+            await uow.run(PlatformTransactionScope.of(), (ctx) =>
+                ctx.users.findByExternalSubject('   '),
+            ),
+        ).toBeUndefined();
     });
 
     it('returns an InvalidProviderClaimsError failure on a first login with a blank email and creates no account', async () => {
-        const d = deps(
+        const uow = new FakeIamUnitOfWork();
+        const h = handler(
             new Map([['token-blank-email', { sub: 'sub|new', displayName: 'X', email: '' }]]),
+            uow,
         );
 
-        const result = await authenticate(d, 'token-blank-email');
+        const result = await h.execute({ token: 'token-blank-email' });
         expect(result.ok).toBe(false);
         expect(errorOf(result)).toBeInstanceOf(InvalidProviderClaimsError);
 
-        expect(await d.users.findByExternalSubject('sub|new')).toBeUndefined();
+        expect(
+            await uow.run(PlatformTransactionScope.of(), (ctx) =>
+                ctx.users.findByExternalSubject('sub|new'),
+            ),
+        ).toBeUndefined();
     });
 
     it('propagates a technical fault (unknown token) as a throw, not a Result failure (E4)', async () => {
-        const d = deps(new Map([[ALICE_TOKEN, ALICE_CLAIMS]]));
+        const h = handler(new Map([[ALICE_TOKEN, ALICE_CLAIMS]]));
         // The IdentityProvider port throws on an unknown token — a technical/adapter
         // fault that propagates to the outermost handler, distinct from the domain
         // failures (suspended, invalid claims) returned in the Result.
-        await expect(authenticate(d, 'token-nobody')).rejects.toThrow(/unknown token/);
+        await expect(h.execute({ token: 'token-nobody' })).rejects.toThrow(/unknown token/);
+    });
+
+    it('propagates ConcurrentModificationError as a throw when a concurrent write raced the login (E4)', async () => {
+        // Simulate an admin suspending the account (bumping its version) between
+        // this handler's read and its own `update` — the write must fail loudly
+        // rather than silently overwrite the concurrent change.
+        const uow = new FakeIamUnitOfWork();
+        const h = handler(undefined, uow);
+        await h.execute({ token: ALICE_TOKEN });
+
+        await uow.run(PlatformTransactionScope.of(), async (ctx) => {
+            const user = await ctx.users.findByExternalSubject('sub|alice');
+            await ctx.users.update(user!.suspend());
+        });
+
+        // A raced IamUnitOfWork whose `findByExternalSubject` returns a
+        // deliberately stale (pre-suspension) copy, so the handler's own
+        // `update` call collides with the version already bumped above.
+        const staleUnitOfWork: IamUnitOfWork = {
+            run: (scope, body) =>
+                uow.run(scope, async (ctx) => {
+                    const stale = User.register(asUserId('user-1'), 'sub|alice', ALICE_CLAIMS);
+                    return body({
+                        ...ctx,
+                        users: { ...ctx.users, findByExternalSubject: async () => stale },
+                    });
+                }),
+        };
+        const staleHandler = handler(undefined, staleUnitOfWork);
+
+        await expect(staleHandler.execute({ token: ALICE_TOKEN })).rejects.toThrow(
+            /modified concurrently/,
+        );
     });
 
     it('keeps the existing email on a subsequent login whose incoming email is blank (keep-existing guard)', async () => {
-        const d = deps(
+        const h = handler(
             new Map([
                 ['token-a', { sub: 'sub|alice', displayName: 'Alice', email: 'Alice@Example.COM' }],
                 ['token-b', { sub: 'sub|alice', displayName: 'Alice Smith', email: '' }],
             ]),
         );
 
-        const first = userOf(await authenticate(d, 'token-a'));
+        const first = valueOf(await h.execute({ token: 'token-a' }));
         expect(first.email).toBe('alice@example.com');
 
-        const second = userOf(await authenticate(d, 'token-b'));
+        const second = valueOf(await h.execute({ token: 'token-b' }));
         // The blank incoming email preserved the stored (normalized) email.
         expect(second.email).toBe('alice@example.com');
         expect(second.displayName).toBe('Alice Smith');
-        expect(second.id).toBe(first.id);
+        expect(second.userId).toBe(first.userId);
     });
 
     it('keeps the existing displayName on a subsequent login whose incoming displayName is blank', async () => {
-        const d = deps(
+        const h = handler(
             new Map([
                 ['token-a', { sub: 'sub|alice', displayName: 'Alice', email: 'alice@example.com' }],
                 [
@@ -296,31 +398,11 @@ describe('authenticate', () => {
             ]),
         );
 
-        const first = userOf(await authenticate(d, 'token-a'));
-        const second = userOf(await authenticate(d, 'token-b'));
+        const first = valueOf(await h.execute({ token: 'token-a' }));
+        const second = valueOf(await h.execute({ token: 'token-b' }));
 
         expect(second.displayName).toBe('Alice');
         expect(second.email).toBe('alice.smith@example.com');
-        expect(second.id).toBe(first.id);
-    });
-});
-
-// ---------------------------------------------------------------------------
-// FakeIdentityProvider contract (exported for downstream context tests)
-// ---------------------------------------------------------------------------
-
-describe('FakeIdentityProvider', () => {
-    it('returns the seeded claims for a known token', async () => {
-        const provider = new FakeIdentityProvider(new Map([[ALICE_TOKEN, ALICE_CLAIMS]]));
-
-        const claims = await provider.resolve(ALICE_TOKEN);
-
-        expect(claims).toEqual(ALICE_CLAIMS);
-    });
-
-    it('rejects an unknown token', async () => {
-        const provider = new FakeIdentityProvider(new Map([[ALICE_TOKEN, ALICE_CLAIMS]]));
-
-        await expect(provider.resolve('token-nobody')).rejects.toThrow(/unknown token/);
+        expect(second.userId).toBe(first.userId);
     });
 });

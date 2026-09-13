@@ -4,10 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import { DomainError } from '../../../src/Shared/domain/domain-error.js';
 import { User, UserSuspendedError } from '../../../src/iam/domain/model/user/user.js';
-import {
-    DuplicateRoleGrantError,
-    RoleGrant,
-} from '../../../src/iam/domain/model/role-grant/role-grant.js';
+import { DuplicateRoleGrantError } from '../../../src/iam/domain/model/user-role-grants/user-role-grants.js';
 import { InvalidLocalDateError } from '../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
 import {
     asUserId,
@@ -24,10 +21,13 @@ describe('DomainError base', () => {
             email: asEmailAddress('a@x.com'),
             status: 'Suspended',
             externalSubject: asExternalSubject('sub|1'),
+            version: 1,
         }),
     );
     const duplicateGrant = new DuplicateRoleGrantError(
-        RoleGrant.platformAdministrator(asUserId('user-1')),
+        asUserId('user-1'),
+        'PlatformAdministrator',
+        undefined,
     );
     const badDate = new InvalidLocalDateError(2026, 13, 99);
 

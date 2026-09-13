@@ -12,7 +12,7 @@ export type UserStatus = 'Active' | 'Suspended';
  *
  * The `(displayName, email)` pair travels together from the provider into the
  * `User` aggregate; bundling it as one type removes the positional-swap risk of
- * passing two bare strings to {@link User.create} / {@link User.prototype.refreshProfile}.
+ * passing two bare strings to {@link User.register} / {@link User.prototype.logIn}.
  */
 export interface UserProfileFacts {
     readonly displayName: string;
@@ -26,19 +26,21 @@ export interface UserAttributes {
     readonly email: EmailAddress;
     readonly status: UserStatus;
     readonly externalSubject: ExternalSubject;
+    /** Optimistic-concurrency stamp — bumped by `UserRepository.update` on a successful write. */
+    readonly version: number;
 }
 
 /**
- * Thrown by {@link User.create} and {@link User.rehydrate} when a required
+ * Thrown by {@link User.register} and {@link User.rehydrate} when a required
  * provider claim is blank (empty or whitespace-only after its normalization).
  *
  * `field` discriminates which required claim was rejected — `sub` (the
- * external subject) or `email`. {@link authenticate} catches this and returns
- * it as an `AuthenticateResult` failure (alongside {@link UserSuspendedError}),
- * so callers branch on the `Result` rather than handling a rejected promise;
- * the composition root / API boundary maps that failure to an auth response. A blank
- * `displayName` is *not* rejected (it is cosmetic) and never produces this
- * error.
+ * external subject) or `email`. {@link AuthenticateHandler} catches this and
+ * returns it as a `Result` failure (alongside {@link UserSuspendedError}), so
+ * callers branch on the `Result` rather than handling a rejected promise; the
+ * composition root / API boundary maps that failure to an auth response. A
+ * blank `displayName` is *not* rejected (it is cosmetic) and never produces
+ * this error.
  */
 export class InvalidProviderClaimsError extends DomainError {
     readonly field: 'sub' | 'email';
@@ -72,9 +74,9 @@ export class InvalidUserStatusTransitionError extends DomainError {
 }
 
 /**
- * Thrown when an authentication attempt targets a `Suspended` user. The
- * aggregate owns this rule (and the error) so the suspension check lives with
- * the `User` invariant rather than being re-implemented by each caller.
+ * Thrown when a login attempt targets a `Suspended` user. The aggregate owns
+ * this rule (and the error) so the suspension check lives with the `User`
+ * invariant rather than being re-implemented by each caller.
  */
 export class UserSuspendedError extends DomainError {
     readonly userId: UserId;
@@ -88,7 +90,7 @@ export class UserSuspendedError extends DomainError {
 /**
  * Canonicalize an email claim: trim, then lowercase. Returns the empty string
  * for a blank (empty or whitespace-only) input — the caller decides whether a
- * blank email is allowed (creation rejects it; refresh keeps the existing value).
+ * blank email is allowed (creation rejects it; login keeps the existing value).
  */
 function normalizeEmail(email: string): string {
     return email.trim().toLowerCase();
@@ -108,22 +110,30 @@ function isBlank(value: string): boolean {
  * external identity-provider subject claim.
  *
  * Modelled as a class aggregate (ADR-0022): the account's status transitions
- * ({@link suspend}/{@link reactivate}) and the authentication guard
- * ({@link assertCanAuthenticate}) are instance methods rather than
- * module-level functions operating on a structural type, so the aggregate is
- * not anemic. A private `#brand` field makes the class **nominal** (mirrors
- * {@link RoleGrant}) so a bare `{ id, displayName, ... }` object literal (the
- * TS structural-literal leak a `private constructor` cannot block on its own)
- * is not assignable to `User`. The constructor also runs a **guard** — a blank
- * `sub`/`email` throws {@link InvalidProviderClaimsError} — on every
- * construction path (mirrors {@link RoleGrant}'s correlated-field guard,
- * ADR-0024): a blank subject or email is never a valid `User`, at creation or
- * on reload, so {@link rehydrate} enforces it too rather than trusting a
- * storage row unconditionally. {@link create} and {@link rehydrate} are the
- * two construction paths (new vs. reconstituted from storage); `create`
+ * ({@link suspend}/{@link reactivate}) and the login guard (folded into
+ * {@link logIn}) are instance methods rather than module-level functions
+ * operating on a structural type, so the aggregate is not anemic. A private
+ * `#brand` field makes the class **nominal** (mirrors {@link RoleGrant}) so a
+ * bare `{ id, displayName, ... }` object literal (the TS structural-literal
+ * leak a `private constructor` cannot block on its own) is not assignable to
+ * `User`. The constructor also runs a **guard** — a blank `sub`/`email`
+ * throws {@link InvalidProviderClaimsError} — on every construction path
+ * (mirrors {@link RoleGrant}'s correlated-field guard, ADR-0024): a blank
+ * subject or email is never a valid `User`, at creation or on reload, so
+ * {@link rehydrate} enforces it too rather than trusting a storage row
+ * unconditionally. {@link register} and {@link rehydrate} are the two
+ * construction paths (new vs. reconstituted from storage); `register`
  * additionally canonicalizes raw claims (ADR-0015) before the guard runs,
  * while `rehydrate` does not re-canonicalize — it assumes a stored row's
- * values are already in canonical form, only re-checking that they're present.
+ * values are already in canonical form, only re-checking that they're
+ * present.
+ *
+ * `version` is a plain optimistic-concurrency stamp (ADR-0026/#189): a
+ * mutator (`suspend`, `reactivate`, `logIn`) carries it through unchanged —
+ * bumping it is `UserRepository.update`'s job, at the moment of the write,
+ * so a stale `update` (the stored version has since moved) fails loudly
+ * (`ConcurrentModificationError`) instead of silently overwriting a
+ * concurrent change.
  */
 export class User {
     // Nominal brand: a bare object literal lacks this private field, so it is
@@ -142,6 +152,8 @@ export class User {
     /** Opaque external identity provider subject claim — used only by the ACL adapter. */
     readonly externalSubject: ExternalSubject;
 
+    readonly version: number;
+
     private constructor(attributes: UserAttributes) {
         if (isBlank(attributes.externalSubject)) {
             throw new InvalidProviderClaimsError('sub');
@@ -154,15 +166,16 @@ export class User {
         this.email = attributes.email;
         this.status = attributes.status;
         this.externalSubject = attributes.externalSubject;
+        this.version = attributes.version;
     }
 
     /**
-     * Factory for a new `Active` user.
+     * Factory for a new `Active` user — the first-login path.
      *
-     * A user is created on first login from the identity-provider claims: the
-     * platform `UserId` (distinct from the provider `sub`, ADR-0013), the opaque
-     * external subject, and the initial display name and email. The account always
-     * starts `Active`.
+     * A user is registered on first login from the identity-provider claims:
+     * the platform `UserId` (distinct from the provider `sub`, ADR-0013), the
+     * opaque external subject, and the initial display name and email. The
+     * account always starts `Active`, at version `1`.
      *
      * The aggregate canonicalizes what it is given (ADR-0015): `email` is trimmed
      * and lowercased and `displayName` is trimmed, while `externalSubject` (the
@@ -172,28 +185,29 @@ export class User {
      * with {@link InvalidProviderClaimsError}; a blank `displayName` is allowed
      * (it is cosmetic and some providers omit it).
      */
-    static create(id: UserId, externalSubject: string, profile: UserProfileFacts): User {
+    static register(id: UserId, externalSubject: string, profile: UserProfileFacts): User {
         return new User({
             id,
             displayName: normalizeDisplayName(profile.displayName),
             email: asEmailAddress(normalizeEmail(profile.email)),
             status: 'Active',
             externalSubject: asExternalSubject(externalSubject),
+            version: 1,
         });
     }
 
     /**
      * Rehydrate a {@link User} from already-canonical storage columns — the
-     * repository-load path. Unlike {@link create}, this does not re-run claim
+     * repository-load path. Unlike {@link register}, this does not re-run claim
      * *canonicalization* (trim/lowercase): the row is assumed to already be in
-     * canonical form (it was produced by `create`/`refreshProfile` on a prior
+     * canonical form (it was produced by `register`/`logIn` on a prior
      * write). It does still run the constructor's blank-`sub`/`email` guard —
      * a corrupt or pre-ADR-0015 row is rejected rather than rehydrated into an
      * invalid aggregate (defense-in-depth, mirrors {@link RoleGrant.rehydrate}).
      *
      * Takes a single {@link UserAttributes} object rather than positional
-     * arguments (unlike {@link RoleGrant.rehydrate}'s 3 positional params) —
-     * `User` carries five attributes, past the point where callers can
+     * arguments (unlike {@link RoleGrant.rehydrate}'s positional params) —
+     * `User` carries six attributes, past the point where callers can
      * reliably track positional order.
      */
     static rehydrate(attributes: UserAttributes): User {
@@ -203,7 +217,8 @@ export class User {
     /**
      * Returns a copy of this user with the given fields overridden — `undefined`
      * in `patch` means "keep the existing value" — all others carried over
-     * unchanged.
+     * unchanged, including `version` (bumping it is the repository's job on a
+     * successful `update`, not a domain concern).
      */
     private copyWith(patch: {
         displayName?: UserAttributes['displayName'] | undefined;
@@ -216,6 +231,7 @@ export class User {
             email: patch.email ?? this.email,
             status: patch.status ?? this.status,
             externalSubject: this.externalSubject,
+            version: this.version,
         });
     }
 
@@ -235,25 +251,25 @@ export class User {
         return this.copyWith({ status: 'Active' });
     }
 
-    /**
-     * Asserts that this user may authenticate — throws {@link UserSuspendedError}
-     * when `Suspended`, no-op for `Active`. The single source of the suspension
-     * rule, so the application-layer `authenticate` flow (and any future caller)
-     * reuses one check instead of re-implementing it.
-     */
-    assertCanAuthenticate(): void {
-        if (this.status === 'Suspended') {
-            throw new UserSuspendedError(this);
-        }
+    /** Returns `true` when this user's account is `Active` — used by the `IdentityQuery` mapping. */
+    isActive(): boolean {
+        return this.status === 'Active';
     }
 
     /**
-     * Returns a copy of this user with refreshed `displayName` and `email`.
+     * Log this user in with the latest identity-provider profile facts: throws
+     * {@link UserSuspendedError} for a `Suspended` account, otherwise returns
+     * a copy with `displayName`/`email` refreshed from `profile`.
+     *
+     * This is the **only** entry point for authenticating an existing
+     * account — the suspension guard and the profile refresh are folded into
+     * one method (replacing the former public `assertCanAuthenticate` +
+     * `refreshProfile` pair) so a caller cannot refresh a profile without
+     * also passing the suspension check; the rule cannot be bypassed.
      *
      * The stable identity (id, external subject) and account status are preserved —
-     * refreshing a profile never changes account status (a `Suspended` user stays
-     * `Suspended`). {@link authenticate} guards against refreshing a suspended
-     * account before calling this.
+     * logging in never changes account status (a `Suspended` user is rejected, not
+     * silently reactivated).
      *
      * The incoming claims are canonicalized (ADR-0015): `email` is trimmed and
      * lowercased and `displayName` is trimmed. A **keep-existing guard** then
@@ -261,10 +277,13 @@ export class User {
      * whitespace-only), the existing stored value is preserved instead of being
      * overwritten — a transient provider omission must not lock a returning user
      * out or destroy a known-good value. The guard suppresses only a
-     * blank→overwrite; a refresh can still change a non-empty value to a different
+     * blank→overwrite; a login can still change a non-empty value to a different
      * non-empty value.
      */
-    refreshProfile(profile: UserProfileFacts): User {
+    logIn(profile: UserProfileFacts): User {
+        if (this.status === 'Suspended') {
+            throw new UserSuspendedError(this);
+        }
         const incomingDisplayName = normalizeDisplayName(profile.displayName);
         const incomingEmail = normalizeEmail(profile.email);
         return this.copyWith({
