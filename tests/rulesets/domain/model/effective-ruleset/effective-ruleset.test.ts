@@ -8,7 +8,7 @@ import {
     UnknownAwardTypeReferenceError,
     UnknownMinimumGradeReferenceError,
 } from '../../../../../src/rulesets/domain/model/effective-ruleset/effective-ruleset.js';
-import { RulesetLayer } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/ruleset-layer.js';
+import { RulesetLayerEdition } from '../../../../../src/rulesets/domain/model/ruleset-layer-edition/ruleset-layer-edition.js';
 import {
     GradeScale,
     Grade,
@@ -36,9 +36,9 @@ const RULESET_ID = asEffectiveRulesetId('ruleset-1');
 
 describe('EffectiveRuleset', () => {
     it('resolve composes an empty layer set into an empty snapshot', () => {
-        const layer = RulesetLayer.of({
-            id: asRulesetLayerId('test'),
-            parentLayerId: undefined,
+        const layer = RulesetLayerEdition.of({
+            layerId: asRulesetLayerId('test'),
+            effectiveFrom: LocalDate.of(2026, 1, 1),
             classDefinitions: [],
             gradeScales: [],
             awardTypes: [],
@@ -51,7 +51,9 @@ describe('EffectiveRuleset', () => {
         expect(ruleset).toBeInstanceOf(EffectiveRuleset);
         expect(ruleset.id).toBe(RULESET_ID);
         expect(ruleset.resolvedFor).toEqual(resolvedFor);
-        expect(ruleset.sourceLayerIds).toEqual([asRulesetLayerId('test')]);
+        expect(ruleset.sourceEditions).toEqual([
+            { layerId: asRulesetLayerId('test'), effectiveFrom: LocalDate.of(2026, 1, 1) },
+        ]);
         expect(ruleset.classDefinitions).toHaveLength(0);
     });
 
@@ -63,9 +65,9 @@ describe('EffectiveRuleset', () => {
             placeableThresholdId: asGradeId('excellent'),
             specialOutcomes: [],
         });
-        const layer = RulesetLayer.of({
-            id: asRulesetLayerId('test'),
-            parentLayerId: undefined,
+        const layer = RulesetLayerEdition.of({
+            layerId: asRulesetLayerId('test'),
+            effectiveFrom: LocalDate.of(2026, 1, 1),
             classDefinitions: [],
             gradeScales: [gradeScale],
             awardTypes: [],
@@ -80,13 +82,13 @@ describe('EffectiveRuleset', () => {
 
     it('is nominal — a structural object literal is not assignable to EffectiveRuleset', () => {
         // The private #brand field closes the structural-literal leak: a bare
-        // { id, resolvedFor, sourceLayerIds, ... } is not assignable to the
+        // { id, resolvedFor, sourceEditions, ... } is not assignable to the
         // class (mirrors RoleGrant/User/Entry).
         // @ts-expect-error — Property '#brand' is missing in the object literal.
         const notARuleset: EffectiveRuleset = {
             id: RULESET_ID,
             resolvedFor: LocalDate.of(2026, 1, 1),
-            sourceLayerIds: [],
+            sourceEditions: [],
             classDefinitions: [],
             gradeScales: [],
             awardTypes: [],
@@ -122,9 +124,9 @@ describe('EffectiveRuleset', () => {
                 gradeScaleId: asGradeScaleId('missing-scale'),
                 awardTypeIds: [],
             });
-            const layer = RulesetLayer.of({
-                id: asRulesetLayerId('test'),
-                parentLayerId: undefined,
+            const layer = RulesetLayerEdition.of({
+                layerId: asRulesetLayerId('test'),
+                effectiveFrom: LocalDate.of(2026, 1, 1),
                 classDefinitions: [classDef],
                 gradeScales: [],
                 awardTypes: [],
@@ -146,9 +148,9 @@ describe('EffectiveRuleset', () => {
                 gradeScaleId,
                 awardTypeIds: [asAwardTypeId('missing-award')],
             });
-            const layer = RulesetLayer.of({
-                id: asRulesetLayerId('test'),
-                parentLayerId: undefined,
+            const layer = RulesetLayerEdition.of({
+                layerId: asRulesetLayerId('test'),
+                effectiveFrom: LocalDate.of(2026, 1, 1),
                 classDefinitions: [classDef],
                 gradeScales: [gradeScale],
                 awardTypes: [],
@@ -176,9 +178,9 @@ describe('EffectiveRuleset', () => {
                 gradeScaleId,
                 awardTypeIds: [cacibId],
             });
-            const layer = RulesetLayer.of({
-                id: asRulesetLayerId('test'),
-                parentLayerId: undefined,
+            const layer = RulesetLayerEdition.of({
+                layerId: asRulesetLayerId('test'),
+                effectiveFrom: LocalDate.of(2026, 1, 1),
                 classDefinitions: [classDef],
                 gradeScales: [gradeScale],
                 awardTypes: [awardWithUnknownMinGrade],
@@ -200,9 +202,9 @@ describe('EffectiveRuleset', () => {
                 gradeScaleId,
                 awardTypeIds: [cacibId],
             });
-            const layer = RulesetLayer.of({
-                id: asRulesetLayerId('test'),
-                parentLayerId: undefined,
+            const layer = RulesetLayerEdition.of({
+                layerId: asRulesetLayerId('test'),
+                effectiveFrom: LocalDate.of(2026, 1, 1),
                 classDefinitions: [classDef],
                 gradeScales: [gradeScale],
                 awardTypes: [cacib],
@@ -226,9 +228,9 @@ describe('EffectiveRuleset', () => {
                 gradeScaleId,
                 awardTypeIds: [braceId],
             });
-            const layer = RulesetLayer.of({
-                id: asRulesetLayerId('test'),
-                parentLayerId: undefined,
+            const layer = RulesetLayerEdition.of({
+                layerId: asRulesetLayerId('test'),
+                effectiveFrom: LocalDate.of(2026, 1, 1),
                 classDefinitions: [classDef],
                 gradeScales: [gradeScale],
                 awardTypes: [brace],
@@ -258,9 +260,9 @@ describe('EffectiveRuleset', () => {
                     isDiscretionary: false,
                     fedBy: [ClassFeeder.of(asClassId('junior'))],
                 });
-                const layer = RulesetLayer.of({
-                    id: asRulesetLayerId('test'),
-                    parentLayerId: undefined,
+                const layer = RulesetLayerEdition.of({
+                    layerId: asRulesetLayerId('test'),
+                    effectiveFrom: LocalDate.of(2026, 1, 1),
                     classDefinitions: [classDef],
                     gradeScales: [gradeScale],
                     awardTypes: [bestJunior],
@@ -289,9 +291,9 @@ describe('EffectiveRuleset', () => {
                     isDiscretionary: false,
                     fedBy: [AwardFeeder.of(cacibId)],
                 });
-                const layer = RulesetLayer.of({
-                    id: asRulesetLayerId('test'),
-                    parentLayerId: undefined,
+                const layer = RulesetLayerEdition.of({
+                    layerId: asRulesetLayerId('test'),
+                    effectiveFrom: LocalDate.of(2026, 1, 1),
                     classDefinitions: [classDef],
                     gradeScales: [gradeScale],
                     awardTypes: [cacib, bob],
@@ -328,9 +330,9 @@ describe('EffectiveRuleset', () => {
                     isDiscretionary: false,
                     fedBy: [AwardFeeder.of(bobId)],
                 });
-                const layer = RulesetLayer.of({
-                    id: asRulesetLayerId('test'),
-                    parentLayerId: undefined,
+                const layer = RulesetLayerEdition.of({
+                    layerId: asRulesetLayerId('test'),
+                    effectiveFrom: LocalDate.of(2026, 1, 1),
                     classDefinitions: [classDef],
                     gradeScales: [gradeScale],
                     awardTypes: [cacib, bob, big],
@@ -354,9 +356,9 @@ describe('EffectiveRuleset', () => {
                     isDiscretionary: false,
                     fedBy: [AwardFeeder.of(asAwardTypeId('unknown-feeder'))],
                 });
-                const layer = RulesetLayer.of({
-                    id: asRulesetLayerId('test'),
-                    parentLayerId: undefined,
+                const layer = RulesetLayerEdition.of({
+                    layerId: asRulesetLayerId('test'),
+                    effectiveFrom: LocalDate.of(2026, 1, 1),
                     classDefinitions: [],
                     gradeScales: [],
                     awardTypes: [orphanBob],
@@ -396,9 +398,9 @@ describe('EffectiveRuleset', () => {
             worstEligiblePlacement: undefined,
             isDiscretionary: true,
         });
-        const layer = RulesetLayer.of({
-            id: asRulesetLayerId('test'),
-            parentLayerId: undefined,
+        const layer = RulesetLayerEdition.of({
+            layerId: asRulesetLayerId('test'),
+            effectiveFrom: LocalDate.of(2026, 1, 1),
             classDefinitions: [classDef],
             gradeScales: [gradeScale],
             awardTypes: [cacib],
@@ -436,9 +438,9 @@ describe('EffectiveRuleset', () => {
                 isDiscretionary: false,
                 fedBy: [AwardFeeder.of(asAwardTypeId('bob'))],
             });
-            const mixedLayer = RulesetLayer.of({
-                id: asRulesetLayerId('mixed'),
-                parentLayerId: undefined,
+            const mixedLayer = RulesetLayerEdition.of({
+                layerId: asRulesetLayerId('mixed'),
+                effectiveFrom: LocalDate.of(2026, 1, 1),
                 classDefinitions: [],
                 gradeScales: [],
                 awardTypes: [cacib, bob, big],

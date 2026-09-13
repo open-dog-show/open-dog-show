@@ -31,6 +31,11 @@ const PROGENY_MAX = 5;
  * `src/rulesets/index.ts` so the main export stays the abstraction surface
  * (the ports + data model); the composition root (`apps/api`) will wire it.
  * See ADR-0021.
+ *
+ * **Reviewer note (ADR-0001's 2026-09-11 amendment):** this policy takes no
+ * date and no {@link RulesetLayerEdition} — it never branches on either. A
+ * rule that differs between editions (e.g. group-size bounds) is edition
+ * data, not a parameter here.
  */
 export class FciCollectiveAwardPolicy implements CollectiveAwardPolicy {
     evaluate(results: CollectiveCompetitionResults): CollectiveAwardResult {

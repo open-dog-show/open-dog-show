@@ -13,8 +13,10 @@ import type { ClassDefinition } from './entities/class-definition.js';
 import type { GradeScale } from './entities/grade-scale.js';
 import type { AwardType, Feeder, HigherScopeAwardType } from './entities/award-type.js';
 import type { ShowType } from './entities/show-type.js';
-import type { RulesetLayer } from './entities/ruleset-layer.js';
-import type { RulesetLayerId } from './value-objects/domain-ids.js';
+import type {
+    RulesetLayerEdition,
+    RulesetLayerEditionReference,
+} from '../ruleset-layer-edition/ruleset-layer-edition.js';
 import { DomainError } from '../../../../Shared/domain/domain-error.js';
 
 /**
@@ -85,14 +87,14 @@ export class UnknownMinimumGradeReferenceError extends DomainError {
 
 /**
  * The resolved, immutable, identified snapshot of composed {@link
- * RulesetLayer}s that a Show is judged under. Pinned to the Show at setup so
- * results are immune to later Ruleset edits — the `id` is the pin; there is
- * no separate version field (ADR-0029). The domain core operates only on the
- * EffectiveRuleset.
+ * RulesetLayerEdition}s that a Show is judged under. Pinned to the Show at
+ * setup so results are immune to later Ruleset edits — the `id` is the pin;
+ * there is no separate version field (ADR-0029). The domain core operates
+ * only on the EffectiveRuleset.
  *
  * The aggregate root of the rulesets domain (ADR-0022): private constructor
  * plus the {@link EffectiveRuleset.resolve} factory — which composes an
- * ordered array of {@link RulesetLayer}s (last layer wins, wholesale
+ * ordered array of {@link RulesetLayerEdition}s (last edition wins, wholesale
  * replacement per item id) — is the only construction path; a private
  * `#brand` field makes the class nominal (mirrors `RoleGrant`). The snapshot
  * is immutable once resolved, so — unlike `RoleGrant`/`User`/`Entry` — it has
@@ -123,8 +125,12 @@ export class EffectiveRuleset {
     readonly id: EffectiveRulesetId;
     /** The calendar date these rules are in force for (the Show's date). */
     readonly resolvedFor: LocalDate;
-    /** Ordered list of source layer IDs — the last entry has the highest precedence. */
-    readonly sourceLayerIds: ReadonlyArray<RulesetLayerId>;
+    /**
+     * The {@link RulesetLayerEdition} references this snapshot was composed
+     * from, in layer order — the last entry has the highest precedence
+     * (ADR-0029: "the snapshot records which editions were used").
+     */
+    readonly sourceEditions: ReadonlyArray<RulesetLayerEditionReference>;
     readonly classDefinitions: ReadonlyArray<ClassDefinition>;
     readonly gradeScales: ReadonlyArray<GradeScale>;
     readonly awardTypes: ReadonlyArray<AwardType>;
@@ -133,7 +139,7 @@ export class EffectiveRuleset {
     private constructor(attributes: {
         readonly id: EffectiveRulesetId;
         readonly resolvedFor: LocalDate;
-        readonly sourceLayerIds: ReadonlyArray<RulesetLayerId>;
+        readonly sourceEditions: ReadonlyArray<RulesetLayerEditionReference>;
         readonly classDefinitions: ReadonlyArray<ClassDefinition>;
         readonly gradeScales: ReadonlyArray<GradeScale>;
         readonly awardTypes: ReadonlyArray<AwardType>;
@@ -141,7 +147,7 @@ export class EffectiveRuleset {
     }) {
         this.id = attributes.id;
         this.resolvedFor = attributes.resolvedFor;
-        this.sourceLayerIds = attributes.sourceLayerIds;
+        this.sourceEditions = attributes.sourceEditions;
         this.classDefinitions = attributes.classDefinitions;
         this.gradeScales = attributes.gradeScales;
         this.awardTypes = attributes.awardTypes;
@@ -149,33 +155,38 @@ export class EffectiveRuleset {
     }
 
     /**
-     * Composes an ordered array of {@link RulesetLayer}s into a single
+     * Composes an ordered array of {@link RulesetLayerEdition}s into a single
      * immutable, identified {@link EffectiveRuleset} snapshot, validating
      * every cross-reference in the result (see class docs).
      *
      * Merge rules:
      * - Items are identified by their `id` field.
-     * - The last layer in the array wins when two layers share an item ID
+     * - The last edition in the array wins when two editions share an item ID
      *   (wholesale replacement — no field-level merging).
-     * - Items not overridden by a later layer are preserved as-is.
+     * - Items not overridden by a later edition are preserved as-is.
      * - The returned snapshot detaches the collections from their inputs (new
      *   arrays); individual item references are preserved, not structurally cloned.
      *
      * @param id         The identity to pin this snapshot under (ADR-0029).
-     * @param layers     Ordered layers, base first (e.g. [fciLayer, srshLayer]).
+     * @param editions   Ordered editions, one per Ruleset layer, base first
+     *                   (e.g. [fciEdition, kmshEdition]) — normally each the
+     *                   layer's edition already selected as in force on
+     *                   `resolvedFor` by {@link resolveEffectiveRuleset}, though
+     *                   this factory itself does not verify that (a caller
+     *                   composing editions by another route is not rejected).
      * @param resolvedFor Calendar date these rules are in force for (the
      *                   Show's date), supplied by the caller to keep this
      *                   factory pure and deterministic in tests.
      */
     static resolve(
         id: EffectiveRulesetId,
-        layers: ReadonlyArray<RulesetLayer>,
+        editions: ReadonlyArray<RulesetLayerEdition>,
         resolvedFor: LocalDate,
     ): EffectiveRuleset {
-        const classDefinitions = mergeById(layers.flatMap((l) => [...l.classDefinitions]));
-        const gradeScales = mergeById(layers.flatMap((l) => [...l.gradeScales]));
-        const awardTypes = mergeById(layers.flatMap((l) => [...l.awardTypes]));
-        const showTypes = mergeById(layers.flatMap((l) => [...l.showTypes]));
+        const classDefinitions = mergeById(editions.flatMap((e) => [...e.classDefinitions]));
+        const gradeScales = mergeById(editions.flatMap((e) => [...e.gradeScales]));
+        const awardTypes = mergeById(editions.flatMap((e) => [...e.awardTypes]));
+        const showTypes = mergeById(editions.flatMap((e) => [...e.showTypes]));
 
         validateReferences(classDefinitions, gradeScales, awardTypes);
 
@@ -184,7 +195,10 @@ export class EffectiveRuleset {
             // LocalDate is an immutable value object — its reference is safe to
             // share, so the snapshot preserves it directly (no defensive copy).
             resolvedFor,
-            sourceLayerIds: layers.map((l) => l.id),
+            sourceEditions: editions.map((e) => ({
+                layerId: e.layerId,
+                effectiveFrom: e.effectiveFrom,
+            })),
             classDefinitions,
             gradeScales,
             awardTypes,

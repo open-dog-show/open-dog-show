@@ -22,7 +22,7 @@ export interface BreedAttributes {
  * rules only.
  *
  * Deferred (ADR-0001, amended 2026-08-28, #134): this `Breed` record is not
- * yet wired into `RulesetLayer` / `EffectiveRuleset` — no consumer reads the
+ * yet wired into `RulesetLayerEdition` / `EffectiveRuleset` — no consumer reads the
  * record today. The `BreedId` brand and this type definition stay as the
  * published contract; data instances land when a consumer (catalogue
  * ordering via `groupId`, breed-recognition gating via `recognitionStatus`)
@@ -63,7 +63,7 @@ export interface VarietyAttributes {
  * domain owns identity and rules only.
  *
  * Deferred (ADR-0001, amended 2026-08-28, #134): this `Variety` record is
- * not yet wired into `RulesetLayer` / `EffectiveRuleset`. The `VarietyId`
+ * not yet wired into `RulesetLayerEdition` / `EffectiveRuleset`. The `VarietyId`
  * brand (reused by `CollectiveCompetitionResults`) and this type definition
  * stay as the published contract; data instances land when a consumer
  * requires them.
@@ -102,7 +102,7 @@ export interface GroupAttributes {
  * identity and rules only.
  *
  * Deferred (ADR-0001, amended 2026-08-28, #134): this `Group` record is not
- * yet wired into `RulesetLayer` / `EffectiveRuleset`. The `GroupId` brand and
+ * yet wired into `RulesetLayerEdition` / `EffectiveRuleset`. The `GroupId` brand and
  * this type definition stay as the published contract; data instances (with
  * `ordinal` for catalogue ordering) land when a consumer requires them.
  *
