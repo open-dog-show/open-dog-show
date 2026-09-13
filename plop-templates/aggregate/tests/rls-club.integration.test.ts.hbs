@@ -8,6 +8,7 @@ import {
     asClubId,
     asPrincipalId,
     ClubTransactionScope,
+    ExhibitorTransactionScope,
     PgOutboxWriter,
 } from '../../../../../src/Shared/index.js';
 import { SystemClock } from '../../../../../src/Shared/infrastructure/system-clock.js';
@@ -22,7 +23,13 @@ const PRINCIPAL_A_ID = asPrincipalId('00000000-0000-4000-8000-000000000011');
 const PRINCIPAL_B_ID = asPrincipalId('00000000-0000-4000-8000-000000000012');
 const {{constantCase name}}_ID = as{{pascalCase name}}Id('00000000-0000-4000-8000-000000000021');
 
-/** Proves the ADR-0005 `club` RLS policy: visible only to the owning Club. */
+/**
+ * Proves the ADR-0005 `club` RLS policy: read-open, write-scoped. A
+ * club-owned row must be discoverable by any acting scope — a hybrid
+ * aggregate resolves its owning Club by reading a row exactly like this one,
+ * under whatever scope its own creator is acting under (ADR-0026) — while
+ * only the owning Club may create or modify it.
+ */
 describe('{{pascalCase name}} RLS isolation (club scope)', () => {
     const harness = new PostgresHarness();
     let unitOfWork: Pg{{pascalCase context}}UnitOfWork;
@@ -59,10 +66,32 @@ describe('{{pascalCase name}} RLS isolation (club scope)', () => {
         });
     });
 
-    it("club B cannot find club A's {{pascalCase name}}", async () => {
+    it("club B can also find club A's {{pascalCase name}} (read-open)", async () => {
         await unitOfWork.run(ClubTransactionScope.of(CLUB_B_ID, PRINCIPAL_B_ID), async (ctx) => {
             const found = await ctx.{{plural (camelCase name)}}.findById({{constantCase name}}_ID);
-            expect(found).toBeUndefined();
+            expect(found?.name).toBe('Club {{A (pascalCase name)}} {{pascalCase name}}');
         });
+    });
+
+    it('an exhibitor scope (no clubId at all) can also find it (read-open)', async () => {
+        await unitOfWork.run(ExhibitorTransactionScope.of(PRINCIPAL_B_ID), async (ctx) => {
+            const found = await ctx.{{plural (camelCase name)}}.findById({{constantCase name}}_ID);
+            expect(found?.name).toBe('Club {{A (pascalCase name)}} {{pascalCase name}}');
+        });
+    });
+
+    it("club B cannot create {{a (pascalCase name)}} {{pascalCase name}} attributed to club A (write-scoped)", async () => {
+        const forged{{pascalCase name}} = {{pascalCase name}}.create({
+            id: as{{pascalCase name}}Id('00000000-0000-4000-8000-000000000099'),
+            clubId: CLUB_A_ID,
+            createdBy: PRINCIPAL_A_ID,
+            name: 'Forged {{pascalCase name}}',
+        });
+
+        await expect(
+            unitOfWork.run(ClubTransactionScope.of(CLUB_B_ID, PRINCIPAL_B_ID), async (ctx) => {
+                await ctx.{{plural (camelCase name)}}.add(forged{{pascalCase name}});
+            }),
+        ).rejects.toThrow();
     });
 });

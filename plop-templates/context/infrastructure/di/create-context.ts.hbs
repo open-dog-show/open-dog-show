@@ -21,6 +21,7 @@ export interface {{pascalCase name}}ContextDependencies {
 
 /** The {{dashCase name}} context's use cases and event rehydration registry. */
 export interface {{pascalCase name}}Context {
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- populated by new:aggregate; empty only in a bare context skeleton
     readonly useCases: {
         // plop:usecases-type
     };
@@ -36,6 +37,7 @@ export function create{{pascalCase name}}Context(
     deps: {{pascalCase name}}ContextDependencies,
 ): {{pascalCase name}}Context {
     const writer = new PgOutboxWriter('{{snakeCase name}}');
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's Handler instances; unused only in a bare context skeleton
     const unitOfWork = new Pg{{pascalCase name}}UnitOfWork(
         deps.pool,
         writer,

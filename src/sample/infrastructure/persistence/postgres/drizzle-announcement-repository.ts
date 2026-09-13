@@ -28,7 +28,7 @@ export class DrizzleAnnouncementRepository implements AnnouncementRepository {
                 : Announcement.rehydrate({ id: asAnnouncementId(row.id), name: row.name });
         } catch (cause) {
             // E3: wrap the raw drizzle/pg exception at the boundary.
-            throw new AnnouncementPersistenceFailed('reading a announcement', cause);
+            throw new AnnouncementPersistenceFailed('reading an announcement', cause);
         }
     }
 
@@ -39,7 +39,7 @@ export class DrizzleAnnouncementRepository implements AnnouncementRepository {
                 name: announcement.name,
             });
         } catch (cause) {
-            throw new AnnouncementPersistenceFailed('adding a announcement', cause);
+            throw new AnnouncementPersistenceFailed('adding an announcement', cause);
         }
     }
 
@@ -50,7 +50,7 @@ export class DrizzleAnnouncementRepository implements AnnouncementRepository {
                 .set({ name: announcement.name })
                 .where(eq(announcementsTable.id, announcement.id));
         } catch (cause) {
-            throw new AnnouncementPersistenceFailed('updating a announcement', cause);
+            throw new AnnouncementPersistenceFailed('updating an announcement', cause);
         }
     }
 }

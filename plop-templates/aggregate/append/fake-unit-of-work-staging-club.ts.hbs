@@ -1,0 +1,9 @@
+const staged{{pascalCase name}}s: {{pascalCase name}}[] = this.{{plural (camelCase name)}}.map(
+    ({{camelCase name}}) =>
+        {{pascalCase name}}.rehydrate({
+            id: {{camelCase name}}.id,
+            clubId: {{camelCase name}}.clubId,
+            createdBy: {{camelCase name}}.createdBy,
+            name: {{camelCase name}}.name,
+        }),
+);

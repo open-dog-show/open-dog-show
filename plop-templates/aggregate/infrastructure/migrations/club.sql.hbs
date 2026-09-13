@@ -2,7 +2,13 @@
 -- SPDX-License-Identifier: AGPL-3.0-only
 
 -- {{pascalCase name}} table — club scope (ADR-0005 template: club).
--- Visible only to the owning Club.
+-- Read-open, write-scoped: any scope may discover a club-owned row (a hybrid
+-- child aggregate must be able to resolve this row's owning Club when created
+-- under a different acting scope, e.g. exhibitor — ADR-0026), but only the
+-- owning Club may create/modify/remove it. CREATE POLICY's FOR clause takes
+-- exactly one command, and INSERT supports only WITH CHECK (there is no
+-- pre-existing row for USING to filter), so the write predicate needs one
+-- policy per mutating command rather than one shared ALL-style policy.
 
 CREATE TABLE IF NOT EXISTS {{snakeCase context}}.{{plural (snakeCase name)}} (
   id       UUID NOT NULL PRIMARY KEY,
@@ -14,8 +20,21 @@ CREATE TABLE IF NOT EXISTS {{snakeCase context}}.{{plural (snakeCase name)}} (
 ALTER TABLE {{snakeCase context}}.{{plural (snakeCase name)}} ENABLE ROW LEVEL SECURITY;
 ALTER TABLE {{snakeCase context}}.{{plural (snakeCase name)}} FORCE ROW LEVEL SECURITY;
 
-CREATE POLICY {{plural (snakeCase name)}}_club ON {{snakeCase context}}.{{plural (snakeCase name)}}
-  AS PERMISSIVE FOR ALL TO app_user
+CREATE POLICY {{plural (snakeCase name)}}_read ON {{snakeCase context}}.{{plural (snakeCase name)}}
+  AS PERMISSIVE FOR SELECT TO app_user
+  USING (true);
+
+CREATE POLICY {{plural (snakeCase name)}}_insert ON {{snakeCase context}}.{{plural (snakeCase name)}}
+  AS PERMISSIVE FOR INSERT TO app_user
+  WITH CHECK (club_id = nullif(current_setting('app.club_id', true), '')::uuid);
+
+CREATE POLICY {{plural (snakeCase name)}}_update ON {{snakeCase context}}.{{plural (snakeCase name)}}
+  AS PERMISSIVE FOR UPDATE TO app_user
+  USING (club_id = nullif(current_setting('app.club_id', true), '')::uuid)
+  WITH CHECK (club_id = nullif(current_setting('app.club_id', true), '')::uuid);
+
+CREATE POLICY {{plural (snakeCase name)}}_delete ON {{snakeCase context}}.{{plural (snakeCase name)}}
+  AS PERMISSIVE FOR DELETE TO app_user
   USING (club_id = nullif(current_setting('app.club_id', true), '')::uuid);
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON {{snakeCase context}}.{{plural (snakeCase name)}} TO app_user;

@@ -31,7 +31,7 @@ export class DrizzleItemRepository implements ItemRepository {
                   });
         } catch (cause) {
             // E3: wrap the raw drizzle/pg exception at the boundary.
-            throw new ItemPersistenceFailed('reading a item', cause);
+            throw new ItemPersistenceFailed('reading an item', cause);
         }
     }
 
@@ -44,7 +44,7 @@ export class DrizzleItemRepository implements ItemRepository {
                 name: item.name,
             });
         } catch (cause) {
-            throw new ItemPersistenceFailed('adding a item', cause);
+            throw new ItemPersistenceFailed('adding an item', cause);
         }
     }
 
@@ -55,7 +55,7 @@ export class DrizzleItemRepository implements ItemRepository {
                 .set({ name: item.name })
                 .where(eq(itemsTable.id, item.id));
         } catch (cause) {
-            throw new ItemPersistenceFailed('updating a item', cause);
+            throw new ItemPersistenceFailed('updating an item', cause);
         }
     }
 }

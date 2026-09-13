@@ -16,13 +16,13 @@ import type {
     SampleUnitOfWorkContext,
 } from '../../../application/ports/unit-of-work.js';
 // plop:imports
-import type { Announcement } from '../../../domain/model/announcement/announcement.js';
+import { Announcement } from '../../../domain/model/announcement/announcement.js';
 
-import type { Ticket } from '../../../domain/model/ticket/ticket.js';
+import { Ticket } from '../../../domain/model/ticket/ticket.js';
 
-import type { Note } from '../../../domain/model/note/note.js';
+import { Note } from '../../../domain/model/note/note.js';
 
-import type { Item } from '../../../domain/model/item/item.js';
+import { Item } from '../../../domain/model/item/item.js';
 
 /**
  * In-memory {@link SampleUnitOfWork} for unit-testing
@@ -63,13 +63,36 @@ export class FakeSampleUnitOfWork implements SampleUnitOfWork {
         };
 
         // plop:staging-init
-        const stagedAnnouncements: Announcement[] = [...this.announcements];
+        const stagedAnnouncements: Announcement[] = this.announcements.map((announcement) =>
+            Announcement.rehydrate({ id: announcement.id, name: announcement.name }),
+        );
 
-        const stagedTickets: Ticket[] = [...this.tickets];
+        const stagedTickets: Ticket[] = this.tickets.map((ticket) =>
+            Ticket.rehydrate({
+                id: ticket.id,
+                clubId: ticket.clubId,
+                createdBy: ticket.createdBy,
+                itemId: ticket.itemId,
+                name: ticket.name,
+            }),
+        );
 
-        const stagedNotes: Note[] = [...this.notes];
+        const stagedNotes: Note[] = this.notes.map((note) =>
+            Note.rehydrate({
+                id: note.id,
+                createdBy: note.createdBy,
+                name: note.name,
+            }),
+        );
 
-        const stagedItems: Item[] = [...this.items];
+        const stagedItems: Item[] = this.items.map((item) =>
+            Item.rehydrate({
+                id: item.id,
+                clubId: item.clubId,
+                createdBy: item.createdBy,
+                name: item.name,
+            }),
+        );
 
         const ctx: SampleUnitOfWorkContext = {
             // plop:repositories
@@ -77,6 +100,9 @@ export class FakeSampleUnitOfWork implements SampleUnitOfWork {
                 findById: async (id) =>
                     stagedAnnouncements.find((announcement) => announcement.id === id),
                 add: async (announcement) => {
+                    if (stagedAnnouncements.some((existing) => existing.id === announcement.id)) {
+                        throw new Error('Duplicate Announcement id: ' + announcement.id);
+                    }
                     stagedAnnouncements.push(announcement);
                     record(...announcement.pullEvents());
                 },
@@ -94,6 +120,9 @@ export class FakeSampleUnitOfWork implements SampleUnitOfWork {
             tickets: {
                 findById: async (id) => stagedTickets.find((ticket) => ticket.id === id),
                 add: async (ticket) => {
+                    if (stagedTickets.some((existing) => existing.id === ticket.id)) {
+                        throw new Error('Duplicate Ticket id: ' + ticket.id);
+                    }
                     stagedTickets.push(ticket);
                     record(...ticket.pullEvents());
                 },
@@ -109,6 +138,9 @@ export class FakeSampleUnitOfWork implements SampleUnitOfWork {
             notes: {
                 findById: async (id) => stagedNotes.find((note) => note.id === id),
                 add: async (note) => {
+                    if (stagedNotes.some((existing) => existing.id === note.id)) {
+                        throw new Error('Duplicate Note id: ' + note.id);
+                    }
                     stagedNotes.push(note);
                     record(...note.pullEvents());
                 },
@@ -124,6 +156,9 @@ export class FakeSampleUnitOfWork implements SampleUnitOfWork {
             items: {
                 findById: async (id) => stagedItems.find((item) => item.id === id),
                 add: async (item) => {
+                    if (stagedItems.some((existing) => existing.id === item.id)) {
+                        throw new Error('Duplicate Item id: ' + item.id);
+                    }
                     stagedItems.push(item);
                     record(...item.pullEvents());
                 },

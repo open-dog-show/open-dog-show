@@ -35,6 +35,90 @@ function computeMigrationSeq(answers) {
     return `next migration sequence for '${answers.context}': ${answers.migrationSeq}`;
 }
 
+// Exact (trimmed) text of every `eslint-disable-next-line` comment new:context
+// stamps into a bare skeleton to keep it lint-clean before any aggregate
+// exists (empty interface/object types, unused imports/locals). Once real
+// content lands next to one of these, the underlying rule no longer fires and
+// the directive itself becomes an "unused eslint-disable directive" warning —
+// so every new:aggregate run strips any of these lines still present,
+// idempotently (a no-op once a prior aggregate already stripped them).
+const SKELETON_DISABLE_COMMENTS = [
+    '// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- populated by new:aggregate; empty only in a bare context skeleton',
+    '// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by each Agg.Id below, appended by new:aggregate; unused only in a bare context skeleton',
+    "// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's Handler instances; unused only in a bare context skeleton",
+    "// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's registrations; unused only in a bare context skeleton",
+    "// eslint-disable-next-line @typescript-eslint/no-unused-vars -- called by new:aggregate's repositories; unused only in a bare context skeleton",
+    "// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's repository instances; unused only in a bare context skeleton",
+    "// eslint-disable-next-line @typescript-eslint/no-unused-vars -- uuid/text are used by new:aggregate's table definitions; unused only in a bare context skeleton",
+];
+
+function stripSkeletonDisableComments(answers) {
+    const files = [
+        'application/ports/unit-of-work.ts',
+        'domain/shared/domain-ids.ts',
+        `infrastructure/di/create-${answers.context}-context.ts`,
+        `infrastructure/messaging/${answers.context}-event-registry.ts`,
+        `infrastructure/persistence/inmemory/fake-${answers.context}-unit-of-work.ts`,
+        'infrastructure/persistence/postgres/pg-unit-of-work.ts',
+        'infrastructure/persistence/postgres/schema.ts',
+    ];
+    let stripped = 0;
+    for (const relPath of files) {
+        const fullPath = path.join(process.cwd(), 'src', answers.context, relPath);
+        if (!fs.existsSync(fullPath)) continue;
+        const lines = fs.readFileSync(fullPath, 'utf8').split('\n');
+        const kept = lines.filter((line) => !SKELETON_DISABLE_COMMENTS.includes(line.trim()));
+        if (kept.length !== lines.length) {
+            stripped += lines.length - kept.length;
+            fs.writeFileSync(fullPath, kept.join('\n'), 'utf8');
+        }
+    }
+    return `stripped ${stripped} bare-skeleton eslint-disable comment(s) now that real content exists`;
+}
+
+/**
+ * Validates that `parent` names an aggregate already generated in `context`,
+ * and that it was generated with `--scope club` — the only scope a hybrid
+ * aggregate may reference (ADR-0026). Finds the parent's migration by its
+ * `new:aggregate`-assigned filename (`NNNN_create_<parent>s_table.sql`) and
+ * checks it for the club-scope policy marker (`_read ON`, unique to the club
+ * RLS template's read-open/write-scoped policy split) rather than the
+ * `_hybrid`/`_exhibitor` markers or platform's policy-free table.
+ *
+ * @returns an error message string when invalid, or `true` when valid.
+ */
+function validateHybridParent(context, parent) {
+    const domainFile = path.join(
+        process.cwd(),
+        'src',
+        context,
+        'domain/model',
+        parent,
+        `${parent}.ts`,
+    );
+    if (!fs.existsSync(domainFile)) {
+        return `No aggregate named '${parent}' in context '${context}' — generate it first (e.g. --scope club)`;
+    }
+
+    const migrationsDir = path.join(
+        process.cwd(),
+        'src',
+        context,
+        'infrastructure/persistence/postgres/migrations',
+    );
+    const tableFileSuffix = `create_${parent.replaceAll('-', '_')}s_table.sql`;
+    const migrationFile = fs.readdirSync(migrationsDir).find((f) => f.endsWith(tableFileSuffix));
+    if (migrationFile === undefined) {
+        return `Could not find '${parent}'s migration in '${context}' — is it generated correctly?`;
+    }
+
+    const sql = fs.readFileSync(path.join(migrationsDir, migrationFile), 'utf8');
+    if (!sql.includes('_read ON')) {
+        return `'${parent}' is not a club-scoped aggregate — a hybrid aggregate's parent must be`;
+    }
+    return true;
+}
+
 /** @param {import('plop').NodePlopAPI} plop */
 export default function (plop) {
     plop.setHelper('eventContext', (value) => String(value).replaceAll('-', '').toLowerCase());
@@ -174,7 +258,12 @@ export default function (plop) {
                 // matching the smoke-tested non-interactive CI usage) — plop
                 // refuses to bypass any prompt that carries a `when` function.
                 // Only required/validated when scope is actually 'hybrid'.
-                validate: (value, answers) => answers?.scope !== 'hybrid' || kebabValidator(value),
+                validate: (value, answers) => {
+                    if (answers?.scope !== 'hybrid') return true;
+                    const kebabResult = kebabValidator(value);
+                    if (kebabResult !== true) return kebabResult;
+                    return validateHybridParent(answers.context, value);
+                },
             },
         ],
         actions(data) {
@@ -302,7 +391,7 @@ export default function (plop) {
                     unique: false,
                     path: 'src/{{dashCase context}}/infrastructure/persistence/inmemory/fake-{{dashCase context}}-unit-of-work.ts',
                     pattern: '// plop:staging-init',
-                    templateFile: `${aggDir}/append/fake-unit-of-work-staging.ts.hbs`,
+                    templateFile: `${aggDir}/append/fake-unit-of-work-staging-${scope}.ts.hbs`,
                 },
                 {
                     type: 'append',
@@ -397,6 +486,7 @@ export default function (plop) {
                     templateFile: `${aggDir}/tests/rls-${scope}.integration.test.ts.hbs`,
                 },
 
+                stripSkeletonDisableComments,
                 formatGeneratedFiles,
             ];
 

@@ -16,6 +16,8 @@ BEGIN
 END
 $$;
 
+CREATE SCHEMA IF NOT EXISTS {{snakeCase name}};
+
 GRANT USAGE ON SCHEMA {{snakeCase name}} TO app_user;
 
 -- =============================================================================

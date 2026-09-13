@@ -128,4 +128,6 @@ jobs:
               run: pnpm regen:sample
 
             - name: Fail on any drift between the generators' output and the committed sample
-              run: git diff --exit-code -- src/sample tests/sample
+              run: |
+                  git add --intent-to-add -- src/sample tests/sample
+                  git diff --exit-code -- src/sample tests/sample

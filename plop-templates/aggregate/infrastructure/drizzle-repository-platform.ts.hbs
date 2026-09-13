@@ -28,7 +28,7 @@ export class Drizzle{{pascalCase name}}Repository implements {{pascalCase name}}
                 : {{pascalCase name}}.rehydrate({ id: as{{pascalCase name}}Id(row.id), name: row.name });
         } catch (cause) {
             // E3: wrap the raw drizzle/pg exception at the boundary.
-            throw new {{pascalCase name}}PersistenceFailed('reading a {{dashCase name}}', cause);
+            throw new {{pascalCase name}}PersistenceFailed('reading {{a (dashCase name)}} {{dashCase name}}', cause);
         }
     }
 
@@ -39,7 +39,7 @@ export class Drizzle{{pascalCase name}}Repository implements {{pascalCase name}}
                 name: {{camelCase name}}.name,
             });
         } catch (cause) {
-            throw new {{pascalCase name}}PersistenceFailed('adding a {{dashCase name}}', cause);
+            throw new {{pascalCase name}}PersistenceFailed('adding {{a (dashCase name)}} {{dashCase name}}', cause);
         }
     }
 
@@ -50,7 +50,7 @@ export class Drizzle{{pascalCase name}}Repository implements {{pascalCase name}}
                 .set({ name: {{camelCase name}}.name })
                 .where(eq({{plural (camelCase name)}}Table.id, {{camelCase name}}.id));
         } catch (cause) {
-            throw new {{pascalCase name}}PersistenceFailed('updating a {{dashCase name}}', cause);
+            throw new {{pascalCase name}}PersistenceFailed('updating {{a (dashCase name)}} {{dashCase name}}', cause);
         }
     }
 }

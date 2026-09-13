@@ -16,6 +16,7 @@ import { RandomEventIdGenerator } from '../../../../../src/Shared/infrastructure
 import { PgSampleUnitOfWork } from '../../../../../src/sample/infrastructure/persistence/postgres/pg-unit-of-work.js';
 import { Item } from '../../../../../src/sample/domain/model/item/item.js';
 import { Ticket } from '../../../../../src/sample/domain/model/ticket/ticket.js';
+import { CreateTicketHandler } from '../../../../../src/sample/application/create-ticket/create-ticket.js';
 import { asTicketId, asItemId } from '../../../../../src/sample/domain/shared/domain-ids.js';
 
 const CLUB_A_ID = asClubId('00000000-0000-4000-8000-000000000001');
@@ -111,5 +112,20 @@ describe('Ticket RLS isolation (hybrid scope)', () => {
                 expect(found).toBeUndefined();
             },
         );
+    });
+
+    it('CreateTicketHandler resolves the Item owner under a real exhibitor-scoped connection', async () => {
+        const handler = new CreateTicketHandler(unitOfWork);
+
+        const result = await handler.execute(
+            {
+                id: '00000000-0000-4000-8000-000000000051',
+                itemId: ITEM_ID,
+                name: 'Handler-created Ticket',
+            },
+            ExhibitorTransactionScope.of(EXHIBITOR_A_ID),
+        );
+
+        expect(result.ok).toBe(true);
     });
 });

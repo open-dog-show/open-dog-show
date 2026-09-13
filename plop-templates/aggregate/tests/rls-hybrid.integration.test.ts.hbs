@@ -16,6 +16,7 @@ import { RandomEventIdGenerator } from '../../../../../src/Shared/infrastructure
 import { Pg{{pascalCase context}}UnitOfWork } from '../../../../../src/{{dashCase context}}/infrastructure/persistence/postgres/pg-unit-of-work.js';
 import { {{pascalCase parent}} } from '../../../../../src/{{dashCase context}}/domain/model/{{dashCase parent}}/{{dashCase parent}}.js';
 import { {{pascalCase name}} } from '../../../../../src/{{dashCase context}}/domain/model/{{dashCase name}}/{{dashCase name}}.js';
+import { Create{{pascalCase name}}Handler } from '../../../../../src/{{dashCase context}}/application/create-{{dashCase name}}/create-{{dashCase name}}.js';
 import {
     as{{pascalCase name}}Id,
     as{{pascalCase parent}}Id,
@@ -105,5 +106,20 @@ describe('{{pascalCase name}} RLS isolation (hybrid scope)', () => {
             const found = await ctx.{{plural (camelCase name)}}.findById({{constantCase name}}_ID);
             expect(found).toBeUndefined();
         });
+    });
+
+    it('Create{{pascalCase name}}Handler resolves the {{pascalCase parent}} owner under a real exhibitor-scoped connection', async () => {
+        const handler = new Create{{pascalCase name}}Handler(unitOfWork);
+
+        const result = await handler.execute(
+            {
+                id: '00000000-0000-4000-8000-000000000051',
+                {{camelCase parent}}Id: {{constantCase parent}}_ID,
+                name: 'Handler-created {{pascalCase name}}',
+            },
+            ExhibitorTransactionScope.of(EXHIBITOR_A_ID),
+        );
+
+        expect(result.ok).toBe(true);
     });
 });

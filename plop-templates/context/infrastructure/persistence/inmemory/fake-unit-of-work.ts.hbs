@@ -44,6 +44,7 @@ export class Fake{{pascalCase name}}UnitOfWork implements {{pascalCase name}}Uni
         body: (ctx: {{pascalCase name}}UnitOfWorkContext) => Promise<T>,
     ): Promise<T> {
         const pendingFacts: DomainEventFact[] = [];
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- called by new:aggregate's repositories; unused only in a bare context skeleton
         const record = (...facts: readonly DomainEventFact[]): void => {
             pendingFacts.push(...facts);
         };
