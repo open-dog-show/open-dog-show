@@ -2,33 +2,41 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { DomainError, type ClubId } from '../../../../Shared/index.js';
-import type { UserId } from '../../shared/domain-ids.js';
 import { RoleScope } from './value-objects/role-scope.js';
 
 export type DomainRole = 'ShowSecretary' | 'Judge' | 'PlatformAdministrator';
 
 /**
- * A revocable record that a User holds a named {@link DomainRole} within a
- * stated scope: Club-scoped (`ShowSecretary`) or platform-global (`Judge` /
- * `PlatformAdministrator`). Created/revoked only by a Platform Administrator.
+ * A named {@link DomainRole} paired with the {@link RoleScope} it applies in —
+ * Club-scoped (`ShowSecretary`) or platform-global (`Judge` /
+ * `PlatformAdministrator`).
  *
- * Modelled as a class aggregate (ADR-0022/0024): the role↔scope correlation is
- * enforced by **per-role factories** (the wrong pairing is uncallable from
+ * Modelled as a **value object** (ADR-0026/#189): unlike its predecessor, it
+ * carries no `userId` — a `RoleGrant` is intended to be constructed only via
+ * `UserRoleGrants`'s grant methods and to live only inside the aggregate it
+ * belongs to (itself identified by `UserId`), so repeating the id on every
+ * entry was redundant state the aggregate could drift out of sync with. That
+ * intent is not structurally enforced — the per-role factories stay public
+ * static methods so `UserRoleGrants.rehydrate`/tests can construct a
+ * `RoleGrant` directly — it is a naming/usage convention, not a compile-time
+ * guarantee. The role↔scope correlation, by contrast, *is* enforced by
+ * **per-role factories** (the wrong pairing is uncallable from
  * domain code — there is no scope parameter where the role determines the
  * scope) plus a **constructor guard** that throws {@link InvalidRoleScopeError}
  * on a wrong pair — defence-in-depth for the {@link RoleGrant.rehydrate}
  * storage-load path. A private `#brand` field makes the class **nominal** so a
- * bare `{ userId, role, scope }` object literal (the TS structural-literal leak
+ * bare `{ role, scope }` object literal (the TS structural-literal leak
  * a `private constructor` cannot block on its own) is not assignable to
  * `RoleGrant` — the type is closed against unvalidated construction (mirrors
  * `LocalDate`). The compile-time "impossible states" guarantee of the
  * superseded discriminated-union aggregate (ADR-0012) is traded for runtime
  * validation, pinned by a test.
  *
- * The class also owns its collection behaviours as static methods
- * ({@link RoleGrant.grant}/{@link RoleGrant.revoke}/{@link RoleGrant.has}/
- * {@link RoleGrant.assertOwnedBy}) so the aggregate is not anemic — no
- * external-function module operates on `RoleGrant[]` (ADR-0024).
+ * Granting, revoking, and duplicate/lookup checks are owned by the
+ * `UserRoleGrants` aggregate root, not by this value object (ADR-0026: no
+ * IAM domain error holds an aggregate reference, and a bare
+ * `RoleGrant[]` no longer carries the collection behaviours a prior revision
+ * hung off static methods here).
  */
 export class RoleGrant {
     // Nominal brand: a bare object literal lacks this private field, so it is
@@ -36,31 +44,28 @@ export class RoleGrant {
     // eslint-disable-next-line no-unused-private-class-members -- intentional nominal brand; exists for compile-time type pinning, not runtime use.
     readonly #brand = true;
 
-    readonly userId: UserId;
-
     readonly role: DomainRole;
 
     readonly scope: RoleScope;
 
-    private constructor(userId: UserId, role: DomainRole, scope: RoleScope) {
+    private constructor(role: DomainRole, scope: RoleScope) {
         if (!isPairingValid(role, scope)) {
             throw new InvalidRoleScopeError(role, scope);
         }
-        this.userId = userId;
         this.role = role;
         this.scope = scope;
     }
 
-    static showSecretary(userId: UserId, clubId: ClubId): RoleGrant {
-        return new RoleGrant(userId, 'ShowSecretary', RoleScope.club(clubId));
+    static showSecretary(clubId: ClubId): RoleGrant {
+        return new RoleGrant('ShowSecretary', RoleScope.club(clubId));
     }
 
-    static judge(userId: UserId): RoleGrant {
-        return new RoleGrant(userId, 'Judge', RoleScope.platform());
+    static judge(): RoleGrant {
+        return new RoleGrant('Judge', RoleScope.platform());
     }
 
-    static platformAdministrator(userId: UserId): RoleGrant {
-        return new RoleGrant(userId, 'PlatformAdministrator', RoleScope.platform());
+    static platformAdministrator(): RoleGrant {
+        return new RoleGrant('PlatformAdministrator', RoleScope.platform());
     }
 
     /**
@@ -68,63 +73,13 @@ export class RoleGrant {
      * as the per-role factories so a corrupt row is rejected rather than
      * rehydrated into an invalid aggregate (V2).
      */
-    static rehydrate(userId: UserId, role: DomainRole, scope: RoleScope): RoleGrant {
-        return new RoleGrant(userId, role, scope);
+    static rehydrate(role: DomainRole, scope: RoleScope): RoleGrant {
+        return new RoleGrant(role, scope);
     }
 
-    /**
-     * Returns a new collection with `newGrant` appended.
-     * Throws {@link DuplicateRoleGrantError} when the same userId + role + scope already exists.
-     */
-    static grant(all: readonly RoleGrant[], newGrant: RoleGrant): readonly RoleGrant[] {
-        if (all.some((g) => RoleGrant.grantsMatch(g, newGrant))) {
-            throw new DuplicateRoleGrantError(newGrant);
-        }
-        return [...all, newGrant];
-    }
-
-    /**
-     * Returns a new collection with the matching grant removed.
-     * No-op when no matching grant exists — the desired state (grant absent) is already met.
-     */
-    static revoke(all: readonly RoleGrant[], target: RoleGrant): readonly RoleGrant[] {
-        return all.filter((g) => !RoleGrant.grantsMatch(g, target));
-    }
-
-    /**
-     * Resolution helper for downstream ACL adapters.
-     * Returns `true` when `all` contains an entry for `userId` with the given role and scope.
-     *
-     * Note: The Exhibitor capability is NOT a role grant. Any Active User is implicitly
-     * an Exhibitor; ACL adapters check `user.status === 'Active'` instead of `has`.
-     */
-    static has(all: readonly RoleGrant[], userId: UserId, grantKey: RoleGrantKey): boolean {
-        return all.some(
-            (g) =>
-                g.userId === userId && g.role === grantKey.role && g.scope.equals(grantKey.scope),
-        );
-    }
-
-    /**
-     * Reusable domain-level check for the `RoleGrantRepository.saveAll` owner-mismatch
-     * invariant. Throws {@link RoleGrantOwnerMismatchError} when any grant in
-     * `all` belongs to a user other than `userId`.
-     *
-     * This is the shared, repository-agnostic way to honour the `saveAll`
-     * "throws on owner mismatch" contract, so adapters reuse one check instead of
-     * re-implementing it. The interface cannot force the call and the domain suite
-     * cannot detect an adapter that omits it — each `saveAll` implementation
-     * remains responsible for invoking this (or an equivalent) check to satisfy
-     * the contract.
-     */
-    static assertOwnedBy(userId: UserId, all: readonly RoleGrant[]): void {
-        for (const grant of all) {
-            if (grant.userId !== userId) throw new RoleGrantOwnerMismatchError(userId, grant);
-        }
-    }
-
-    private static grantsMatch(a: RoleGrant, b: RoleGrant): boolean {
-        return a.userId === b.userId && a.role === b.role && a.scope.equals(b.scope);
+    /** Value equality: same role and an equal scope. */
+    equals(other: RoleGrant): boolean {
+        return this.role === other.role && this.scope.equals(other.scope);
     }
 }
 
@@ -162,33 +117,4 @@ export class InvalidRoleScopeError extends DomainError {
 function isPairingValid(role: DomainRole, scope: RoleScope): boolean {
     if (role === 'ShowSecretary') return scope.kind === 'club' && scope.clubId !== undefined;
     return scope.kind === 'platform' && scope.clubId === undefined;
-}
-
-/** Role+scope lookup key for {@link RoleGrant.has}. Flat (no compile-time role↔scope pairing); the pairing is enforced on the RoleGrant aggregate (ADR-0024). */
-export type RoleGrantKey = { readonly role: DomainRole; readonly scope: RoleScope };
-
-export class DuplicateRoleGrantError extends DomainError {
-    readonly grant: RoleGrant;
-
-    constructor(grant: RoleGrant) {
-        super(`User ${grant.userId} already holds role ${grant.role} in the given scope`, {
-            userId: grant.userId,
-            role: grant.role,
-        });
-        this.grant = grant;
-    }
-}
-
-export class RoleGrantOwnerMismatchError extends DomainError {
-    readonly userId: UserId;
-    readonly grant: RoleGrant;
-
-    constructor(userId: UserId, grant: RoleGrant) {
-        super(`Grant for user ${grant.userId} passed to saveAll for user ${userId}`, {
-            userId,
-            grantUserId: grant.userId,
-        });
-        this.userId = userId;
-        this.grant = grant;
-    }
 }
