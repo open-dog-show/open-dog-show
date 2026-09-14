@@ -7,10 +7,10 @@ import type { CollectiveCompetitionKind } from '../../../service/collective-awar
 /** Attributes for {@link ShowType.of}. */
 export interface ShowTypeAttributes {
     readonly id: ShowTypeId;
-    readonly availableAwardTypeIds: ReadonlyArray<AwardTypeId>;
+    readonly availableAwardTypeIds: readonly AwardTypeId[];
     /** Collective competitions (Brace/Couple, Breeders' Group, Progeny Group)
      *  offered at this show type. Empty when none are available. */
-    readonly availableCollectiveCompetitions: ReadonlyArray<CollectiveCompetitionKind>;
+    readonly availableCollectiveCompetitions: readonly CollectiveCompetitionKind[];
 }
 
 /**
@@ -23,8 +23,8 @@ export interface ShowTypeAttributes {
  */
 export class ShowType {
     readonly id: ShowTypeId;
-    readonly availableAwardTypeIds: ReadonlyArray<AwardTypeId>;
-    readonly availableCollectiveCompetitions: ReadonlyArray<CollectiveCompetitionKind>;
+    readonly availableAwardTypeIds: readonly AwardTypeId[];
+    readonly availableCollectiveCompetitions: readonly CollectiveCompetitionKind[];
 
     private constructor(attributes: ShowTypeAttributes) {
         this.id = attributes.id;

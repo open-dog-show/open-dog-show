@@ -20,12 +20,12 @@ describe('{{dashCase name}} context skeleton — outbox plumbing', () => {
 
     beforeAll(async () => {
         await bootstrap{{pascalCase name}}Schema(harness);
-        unitOfWork = new Pg{{pascalCase name}}UnitOfWork(
-            harness.appUserPool,
-            new PgOutboxWriter('{{snakeCase name}}'),
-            new SystemClock(),
-            new RandomEventIdGenerator(),
-        );
+        unitOfWork = new Pg{{pascalCase name}}UnitOfWork({
+            pool: harness.appUserPool,
+            writer: new PgOutboxWriter('{{snakeCase name}}'),
+            clock: new SystemClock(),
+            eventIdGenerator: new RandomEventIdGenerator(),
+        });
     }, 120_000);
 
     afterAll(async () => {
@@ -34,7 +34,7 @@ describe('{{dashCase name}} context skeleton — outbox plumbing', () => {
 
     it('commits an empty unit of work with no rows written to the outbox', async () => {
         await expect(
-            unitOfWork.run(PlatformTransactionScope.of(), async (ctx) => ctx),
+            unitOfWork.run(PlatformTransactionScope.of(), (ctx) => Promise.resolve(ctx)),
         ).resolves.toBeDefined();
 
         const { rows } = await harness.superPool.query<{ count: string }>(

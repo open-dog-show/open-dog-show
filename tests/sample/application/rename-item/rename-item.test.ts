@@ -43,7 +43,10 @@ describe('RenameItemHandler', () => {
             SCOPE,
         );
 
-        expect(result).toEqual({ ok: false, error: expect.any(ItemNotFoundError) });
+        expect(result).toEqual({
+            ok: false,
+            error: expect.any(ItemNotFoundError) as ItemNotFoundError,
+        });
     });
 
     it('returns InvalidItemNameError for a blank name', async () => {
@@ -58,6 +61,9 @@ describe('RenameItemHandler', () => {
             SCOPE,
         );
 
-        expect(result).toEqual({ ok: false, error: expect.any(InvalidItemNameError) });
+        expect(result).toEqual({
+            ok: false,
+            error: expect.any(InvalidItemNameError) as InvalidItemNameError,
+        });
     });
 });

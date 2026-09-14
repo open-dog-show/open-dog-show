@@ -48,19 +48,19 @@ export class {{pascalCase name}} extends AggregateRoot {
         return this.#name;
     }
 
-    private constructor(
-        id: {{pascalCase name}}Id,
-        clubId: ClubId,
-        createdBy: PrincipalId,
-        {{camelCase parent}}Id: {{pascalCase parent}}Id,
-        name: string,
-    ) {
+    private constructor(input: {
+        readonly id: {{pascalCase name}}Id;
+        readonly clubId: ClubId;
+        readonly createdBy: PrincipalId;
+        readonly {{camelCase parent}}Id: {{pascalCase parent}}Id;
+        readonly name: string;
+    }) {
         super();
-        this.id = id;
-        this.clubId = clubId;
-        this.createdBy = createdBy;
-        this.{{camelCase parent}}Id = {{camelCase parent}}Id;
-        this.#name = name;
+        this.id = input.id;
+        this.clubId = input.clubId;
+        this.createdBy = input.createdBy;
+        this.{{camelCase parent}}Id = input.{{camelCase parent}}Id;
+        this.#name = input.name;
     }
 
     /**
@@ -77,13 +77,7 @@ export class {{pascalCase name}} extends AggregateRoot {
         readonly name: string;
     }): {{pascalCase name}} {
         assert{{pascalCase name}}Name(input.name);
-        const {{camelCase name}} = new {{pascalCase name}}(
-            input.id,
-            input.clubId,
-            input.createdBy,
-            input.{{camelCase parent}}Id,
-            input.name,
-        );
+        const {{camelCase name}} = new {{pascalCase name}}(input);
         {{camelCase name}}.record(
             {{pascalCase name}}Created.create(
                 asAggregateId({{camelCase name}}.id),
@@ -107,13 +101,7 @@ export class {{pascalCase name}} extends AggregateRoot {
         readonly {{camelCase parent}}Id: {{pascalCase parent}}Id;
         readonly name: string;
     }): {{pascalCase name}} {
-        return new {{pascalCase name}}(
-            input.id,
-            input.clubId,
-            input.createdBy,
-            input.{{camelCase parent}}Id,
-            input.name,
-        );
+        return new {{pascalCase name}}(input);
     }
 
     /** Renames this {{pascalCase name}}, recording `{{pascalCase name}}Renamed` scoped to the owning Club. */

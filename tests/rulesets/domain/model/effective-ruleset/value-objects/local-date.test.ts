@@ -48,18 +48,18 @@ describe('LocalDate', () => {
 
     describe('of — invalid construction', () => {
         it.each([
-            ['month 0', 2026, 0, 1],
-            ['month 13', 2026, 13, 1],
-        ])('rejects %s', (_label, year, month, day) => {
+            ['month 0', { year: 2026, month: 0, day: 1 }],
+            ['month 13', { year: 2026, month: 13, day: 1 }],
+        ] as const)('rejects %s', (_label, { year, month, day }) => {
             expect(() => LocalDate.of(year, month, day)).toThrow(InvalidLocalDateError);
         });
 
         it.each([
-            ['day 0', 2026, 1, 0],
-            ['day 32 in a 31-day month', 2026, 1, 32],
-            ['day 31 in a 30-day month', 2026, 4, 31],
-            ['day 99', 2026, 6, 99],
-        ])('rejects %s', (_label, year, month, day) => {
+            ['day 0', { year: 2026, month: 1, day: 0 }],
+            ['day 32 in a 31-day month', { year: 2026, month: 1, day: 32 }],
+            ['day 31 in a 30-day month', { year: 2026, month: 4, day: 31 }],
+            ['day 99', { year: 2026, month: 6, day: 99 }],
+        ] as const)('rejects %s', (_label, { year, month, day }) => {
             expect(() => LocalDate.of(year, month, day)).toThrow(InvalidLocalDateError);
         });
 
@@ -74,13 +74,13 @@ describe('LocalDate', () => {
         });
 
         it.each([
-            ['non-integer year', 2026.5, 1, 1],
-            ['non-integer month', 2026, 1.5, 1],
-            ['non-integer day', 2026, 1, 1.5],
-            ['NaN year', Number.NaN, 1, 1],
-            ['NaN month', 2026, Number.NaN, 1],
-            ['NaN day', 2026, 1, Number.NaN],
-        ])('rejects %s', (_label, year, month, day) => {
+            ['non-integer year', { year: 2026.5, month: 1, day: 1 }],
+            ['non-integer month', { year: 2026, month: 1.5, day: 1 }],
+            ['non-integer day', { year: 2026, month: 1, day: 1.5 }],
+            ['NaN year', { year: Number.NaN, month: 1, day: 1 }],
+            ['NaN month', { year: 2026, month: Number.NaN, day: 1 }],
+            ['NaN day', { year: 2026, month: 1, day: Number.NaN }],
+        ] as const)('rejects %s', (_label, { year, month, day }) => {
             expect(() => LocalDate.of(year, month, day)).toThrow(InvalidLocalDateError);
         });
     });

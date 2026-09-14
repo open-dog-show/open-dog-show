@@ -62,7 +62,7 @@ describe('Create{{pascalCase name}}Handler', () => {
             EXHIBITOR_SCOPE,
         );
 
-        expect(result).toEqual({ ok: false, error: expect.any({{pascalCase parent}}NotFoundError) });
+        expect(result).toEqual({ ok: false, error: expect.any({{pascalCase parent}}NotFoundError) as {{pascalCase parent}}NotFoundError });
         expect(unitOfWork.recordedEvents).toHaveLength(0);
     });
 
@@ -79,6 +79,6 @@ describe('Create{{pascalCase name}}Handler', () => {
             EXHIBITOR_SCOPE,
         );
 
-        expect(result).toEqual({ ok: false, error: expect.any(Invalid{{pascalCase name}}NameError) });
+        expect(result).toEqual({ ok: false, error: expect.any(Invalid{{pascalCase name}}NameError) as Invalid{{pascalCase name}}NameError });
     });
 });

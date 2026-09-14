@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, it, expect } from 'vitest';
-import { PlatformTransactionScope, type TransactionScope } from '../../../../src/Shared/index.js';
+import { PlatformTransactionScope } from '../../../../src/Shared/index.js';
 import {
     asUserId,
     asEmailAddress,
@@ -26,6 +26,7 @@ import { FakeIamUnitOfWork } from '../../../../src/iam/infrastructure/persistenc
 import { FakeIdentityProvider } from '../../../../src/iam/infrastructure/persistence/inmemory/fake-identity-provider.js';
 import { FakeUserIdGenerator } from '../../../../src/iam/infrastructure/persistence/inmemory/fake-user-id-generator.js';
 import type { Result } from '../../../../src/Shared/index.js';
+import { findOrFail } from '../../../test-kit/index.js';
 
 const ALICE_TOKEN = 'token-alice';
 const ALICE_CLAIMS = { sub: 'sub|alice', displayName: 'Alice', email: 'alice@example.com' };
@@ -175,23 +176,20 @@ describe('AuthenticateHandler', () => {
         // account, `add` reports a concurrent winner, and re-reading finds it
         // already suspended.
         const racedUnitOfWork: IamUnitOfWork = {
-            run: async <T>(
-                _scope: TransactionScope,
-                body: (ctx: IamUnitOfWorkContext) => Promise<T>,
-            ) => {
+            run: (_scope, body) => {
                 const ctx: IamUnitOfWorkContext = {
                     users: {
-                        findById: async () => undefined,
-                        findByExternalSubject: async () => suspendedWinner,
-                        add: async () => {
+                        findById: () => Promise.resolve(undefined),
+                        findByExternalSubject: () => Promise.resolve(suspendedWinner),
+                        add: () => {
                             throw new DuplicateExternalSubjectError('sub|bob');
                         },
-                        update: async () => {},
+                        update: () => Promise.resolve(),
                     },
                     userRoleGrants: {
-                        findByUser: async (userId) => UserRoleGrants.empty(userId),
-                        add: async () => {},
-                        update: async () => {},
+                        findByUser: (userId) => Promise.resolve(UserRoleGrants.empty(userId)),
+                        add: () => Promise.resolve(),
+                        update: () => Promise.resolve(),
                     },
                 };
                 return body(ctx);
@@ -234,25 +232,23 @@ describe('AuthenticateHandler', () => {
         });
         let updatedWith: User | undefined;
         const racedUnitOfWork: IamUnitOfWork = {
-            run: async <T>(
-                _scope: TransactionScope,
-                body: (ctx: IamUnitOfWorkContext) => Promise<T>,
-            ) => {
+            run: (_scope, body) => {
                 const ctx: IamUnitOfWorkContext = {
                     users: {
-                        findById: async () => undefined,
-                        findByExternalSubject: async () => activeWinner,
-                        add: async () => {
+                        findById: () => Promise.resolve(undefined),
+                        findByExternalSubject: () => Promise.resolve(activeWinner),
+                        add: () => {
                             throw new DuplicateExternalSubjectError('sub|bob');
                         },
-                        update: async (user) => {
+                        update: (user) => {
                             updatedWith = user;
+                            return Promise.resolve();
                         },
                     },
                     userRoleGrants: {
-                        findByUser: async (userId) => UserRoleGrants.empty(userId),
-                        add: async () => {},
-                        update: async () => {},
+                        findByUser: (userId) => Promise.resolve(UserRoleGrants.empty(userId)),
+                        add: () => Promise.resolve(),
+                        update: () => Promise.resolve(),
                     },
                 };
                 return body(ctx);
@@ -345,8 +341,8 @@ describe('AuthenticateHandler', () => {
         await h.execute({ token: ALICE_TOKEN });
 
         await uow.run(PlatformTransactionScope.of(), async (ctx) => {
-            const user = await ctx.users.findByExternalSubject('sub|alice');
-            await ctx.users.update(user!.suspend());
+            const user = findOrFail(await ctx.users.findByExternalSubject('sub|alice'), 'Alice');
+            await ctx.users.update(user.suspend());
         });
 
         // A raced IamUnitOfWork whose `findByExternalSubject` returns a
@@ -354,11 +350,14 @@ describe('AuthenticateHandler', () => {
         // `update` call collides with the version already bumped above.
         const staleUnitOfWork: IamUnitOfWork = {
             run: (scope, body) =>
-                uow.run(scope, async (ctx) => {
+                uow.run(scope, (ctx) => {
                     const stale = User.register(asUserId('user-1'), 'sub|alice', ALICE_CLAIMS);
                     return body({
                         ...ctx,
-                        users: { ...ctx.users, findByExternalSubject: async () => stale },
+                        users: {
+                            ...ctx.users,
+                            findByExternalSubject: () => Promise.resolve(stale),
+                        },
                     });
                 }),
         };

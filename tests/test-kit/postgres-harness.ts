@@ -4,7 +4,7 @@
 import pg from 'pg';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 
-const { Pool } = pg;
+const { Pool: pgPool } = pg;
 
 /**
  * Manages a throwaway PostgreSQL container for integration tests.
@@ -27,6 +27,10 @@ const { Pool } = pg;
  *   await harness.seed(async (c) => {...}); // superuser fixture write
  *   await harness.stop();             // in afterAll — ends both pools + container
  */
+function normalizeRejectionReason(reason: unknown): Error {
+    return reason instanceof Error ? reason : new Error(String(reason));
+}
+
 export class PostgresHarness {
     private container: StartedPostgreSqlContainer | undefined;
     private superPoolCache: pg.Pool | undefined;
@@ -44,9 +48,7 @@ export class PostgresHarness {
      * superuser assertions and fixture writes (via `seed()`).
      */
     get superPool(): pg.Pool {
-        if (this.superPoolCache === undefined) {
-            this.superPoolCache = new Pool({ connectionString: this.connectionUrl });
-        }
+        this.superPoolCache ??= new pgPool({ connectionString: this.connectionUrl });
         return this.superPoolCache;
     }
 
@@ -56,11 +58,9 @@ export class PostgresHarness {
      * first query, so accessing this before migrations have run is safe.
      */
     get appUserPool(): pg.Pool {
-        if (this.appUserPoolCache === undefined) {
-            this.appUserPoolCache = new Pool({
-                connectionString: this.appUserConnectionUrl(),
-            });
-        }
+        this.appUserPoolCache ??= new pgPool({
+            connectionString: this.appUserConnectionUrl(),
+        });
         return this.appUserPoolCache;
     }
 
@@ -99,11 +99,10 @@ export class PostgresHarness {
             (r): r is PromiseRejectedResult => r.status === 'rejected',
         );
         if (firstRejection !== undefined) {
-            const reason = firstRejection.reason;
             // `PromiseRejectedResult.reason` is `any`; rethrowing it unstructured
             // loses the `Error` shape an outer handler assumes — normalise a
             // non-Error rejection into one so the boundary always sees an Error.
-            throw reason instanceof Error ? reason : new Error(String(reason));
+            throw normalizeRejectionReason(firstRejection.reason);
         }
     }
 

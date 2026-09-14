@@ -64,6 +64,8 @@ describe('Note', () => {
             name: 'Old name',
         });
 
-        expect(() => note.rename('')).toThrow(InvalidNoteNameError);
+        expect(() => {
+            note.rename('');
+        }).toThrow(InvalidNoteNameError);
     });
 });

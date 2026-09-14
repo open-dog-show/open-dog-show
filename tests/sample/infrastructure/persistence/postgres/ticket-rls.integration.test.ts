@@ -40,12 +40,12 @@ describe('Ticket RLS isolation (hybrid scope)', () => {
 
     beforeAll(async () => {
         await bootstrapSampleSchema(harness);
-        unitOfWork = new PgSampleUnitOfWork(
-            harness.appUserPool,
-            new PgOutboxWriter('sample'),
-            new SystemClock(),
-            new RandomEventIdGenerator(),
-        );
+        unitOfWork = new PgSampleUnitOfWork({
+            pool: harness.appUserPool,
+            writer: new PgOutboxWriter('sample'),
+            clock: new SystemClock(),
+            eventIdGenerator: new RandomEventIdGenerator(),
+        });
 
         await unitOfWork.run(
             ClubTransactionScope.of(CLUB_A_ID, CLUB_A_PRINCIPAL_ID),

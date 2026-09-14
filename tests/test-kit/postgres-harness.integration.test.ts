@@ -7,11 +7,11 @@ import { fileURLToPath } from 'node:url';
 import { PostgresHarness } from './postgres-harness.js';
 import { runMigrations } from './migration-runner.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const moduleDir = dirname(fileURLToPath(import.meta.url));
 
 const fixtureContext = {
     name: 'sample_context',
-    migrationsDir: resolve(__dirname, 'fixtures/sample-context/migrations'),
+    migrationsDir: resolve(moduleDir, 'fixtures/sample-context/migrations'),
 };
 
 describe('Postgres harness + migration runner', () => {
@@ -114,7 +114,7 @@ describe('Postgres harness + migration runner', () => {
 
     it('seed() returns the client to the pool even when the callback throws', async () => {
         await expect(
-            harness.seed(async () => {
+            harness.seed(() => {
                 throw new Error('boom');
             }),
         ).rejects.toThrow('boom');

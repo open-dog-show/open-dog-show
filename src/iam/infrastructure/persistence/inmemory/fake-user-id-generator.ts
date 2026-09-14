@@ -18,6 +18,6 @@ export class FakeUserIdGenerator implements UserIdGenerator {
 
     generate(): UserId {
         this.counter += 1;
-        return asUserId(`${this.prefix}-${this.counter}`);
+        return asUserId(`${this.prefix}-${String(this.counter)}`);
     }
 }

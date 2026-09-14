@@ -86,32 +86,8 @@ export class AuthenticateHandler {
     ): Promise<Result<AuthenticateResponse, AuthenticateError>> {
         const claims = await this.identityProvider.resolve(command.token);
         try {
-            return await this.unitOfWork.run<Result<AuthenticateResponse, AuthenticateError>>(
-                PlatformTransactionScope.of(),
-                async (ctx) => {
-                    const existing = await ctx.users.findByExternalSubject(claims.sub);
-                    if (existing !== undefined) {
-                        return this.logInAndRespond(ctx, existing, claims);
-                    }
-
-                    const candidate = User.register(
-                        this.userIdGenerator.generate(),
-                        claims.sub,
-                        claims,
-                    );
-                    try {
-                        await ctx.users.add(candidate);
-                        return { ok: true, value: toResponse(candidate) };
-                    } catch (error) {
-                        if (!(error instanceof DuplicateExternalSubjectError)) throw error;
-                        // First-login race: a concurrent request already won the insert
-                        // for this sub. Re-read the winner and continue through the
-                        // normal returning-login path exactly once — no further retry.
-                        const winner = await ctx.users.findByExternalSubject(claims.sub);
-                        if (winner === undefined) throw error;
-                        return this.logInAndRespond(ctx, winner, claims);
-                    }
-                },
+            return await this.unitOfWork.run(PlatformTransactionScope.of(), (ctx) =>
+                this.registerOrLogIn(ctx, claims),
             );
         } catch (error) {
             if (
@@ -121,6 +97,35 @@ export class AuthenticateHandler {
                 return { ok: false, error };
             }
             throw error;
+        }
+    }
+
+    /**
+     * First login (unknown `sub`): registers a new user. Returning login
+     * (known `sub`): logs the existing user in. See the class doc for the
+     * first-login-race handling.
+     */
+    private async registerOrLogIn(
+        ctx: IamUnitOfWorkContext,
+        claims: ProviderClaims,
+    ): Promise<Result<AuthenticateResponse, AuthenticateError>> {
+        const existing = await ctx.users.findByExternalSubject(claims.sub);
+        if (existing !== undefined) {
+            return this.logInAndRespond(ctx, existing, claims);
+        }
+
+        const candidate = User.register(this.userIdGenerator.generate(), claims.sub, claims);
+        try {
+            await ctx.users.add(candidate);
+            return { ok: true, value: toResponse(candidate) };
+        } catch (error) {
+            if (!(error instanceof DuplicateExternalSubjectError)) throw error;
+            // First-login race: a concurrent request already won the insert
+            // for this sub. Re-read the winner and continue through the
+            // normal returning-login path exactly once — no further retry.
+            const winner = await ctx.users.findByExternalSubject(claims.sub);
+            if (winner === undefined) throw error;
+            return this.logInAndRespond(ctx, winner, claims);
         }
     }
 

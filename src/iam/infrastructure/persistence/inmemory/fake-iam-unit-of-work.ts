@@ -22,6 +22,40 @@ import { ConcurrentModificationError } from '../../../domain/shared/concurrent-m
 import type { UserId } from '../../../domain/shared/domain-ids.js';
 
 /**
+ * Tracks writes to one committed `Map` so a thrown `body` can roll back
+ * exactly the keys this attempt touched, restoring each to its value from
+ * immediately before the attempt — see {@link FakeIamUnitOfWork}'s class doc
+ * for why a whole-collection snapshot is wrong here. `rollback` is itself a
+ * compare-and-restore: a key is only restored when its current committed
+ * value is still exactly the instance this attempt itself last wrote there
+ * (reference equality), so a later, already-committed attempt that built on
+ * top of it is left alone.
+ */
+class RollbackTrackedMap<K, V> {
+    private readonly prior = new Map<K, V | undefined>();
+    private readonly written = new Map<K, V>();
+
+    constructor(private readonly committed: Map<K, V>) {}
+
+    remember(id: K): void {
+        if (!this.prior.has(id)) this.prior.set(id, this.committed.get(id));
+    }
+
+    write(id: K, value: V): void {
+        this.committed.set(id, value);
+        this.written.set(id, value);
+    }
+
+    rollback(): void {
+        for (const [id, prior] of this.prior) {
+            if (this.committed.get(id) !== this.written.get(id)) continue;
+            if (prior === undefined) this.committed.delete(id);
+            else this.committed.set(id, prior);
+        }
+    }
+}
+
+/**
  * In-memory {@link IamUnitOfWork} for unit-testing IAM use cases without
  * Docker (ADR-0014). No Postgres implementation exists yet (#189).
  *
@@ -60,6 +94,124 @@ export class FakeIamUnitOfWork implements IamUnitOfWork {
         private readonly eventIdGenerator: EventIdGenerator = new RandomEventIdGenerator(),
     ) {}
 
+    private findUserByExternalSubject(subject: string): Promise<User | undefined> {
+        for (const user of this.users.values()) {
+            if (user.externalSubject === subject) return Promise.resolve(user);
+        }
+        return Promise.resolve(undefined);
+    }
+
+    private addUser(users: RollbackTrackedMap<UserId, User>, user: User): Promise<void> {
+        for (const existing of this.users.values()) {
+            if (existing.externalSubject === user.externalSubject) {
+                throw new DuplicateExternalSubjectError(user.externalSubject);
+            }
+        }
+        users.remember(user.id);
+        users.write(user.id, user);
+        return Promise.resolve();
+    }
+
+    private updateUser(users: RollbackTrackedMap<UserId, User>, user: User): Promise<void> {
+        const stored = this.users.get(user.id);
+        if (stored?.version !== user.version) {
+            throw new ConcurrentModificationError('User', user.id, user.version);
+        }
+        users.remember(user.id);
+        users.write(
+            user.id,
+            User.rehydrate({
+                id: user.id,
+                displayName: user.displayName,
+                email: user.email,
+                status: user.status,
+                externalSubject: user.externalSubject,
+                version: user.version + 1,
+            }),
+        );
+        return Promise.resolve();
+    }
+
+    private buildUsersPort(users: RollbackTrackedMap<UserId, User>): IamUnitOfWorkContext['users'] {
+        return {
+            findById: (id) => Promise.resolve(this.users.get(id)),
+            findByExternalSubject: (subject) => this.findUserByExternalSubject(subject),
+            add: (user) => this.addUser(users, user),
+            update: (user) => this.updateUser(users, user),
+        };
+    }
+
+    // Returns a fresh copy, never the stored instance itself: unlike `User`
+    // (immutable — every mutator returns a new instance), `UserRoleGrants`
+    // mutates its own `#grants` array in place (`grant`/`revoke`), so handing
+    // out the live reference would let one reader's in-progress mutation leak
+    // into another concurrent reader's copy of "the version they loaded"
+    // before either has written anything back.
+    private findRoleGrantsByUser(userId: UserId): Promise<UserRoleGrants> {
+        const stored = this.roleGrants.get(userId);
+        return Promise.resolve(
+            stored === undefined
+                ? UserRoleGrants.empty(userId)
+                : UserRoleGrants.rehydrate({
+                      userId: stored.userId,
+                      version: stored.version,
+                      grants: stored.grants,
+                  }),
+        );
+    }
+
+    private addRoleGrants(
+        tracker: RollbackTrackedMap<UserId, UserRoleGrants>,
+        record: (...facts: readonly DomainEventFact[]) => void,
+        grants: UserRoleGrants,
+    ): Promise<void> {
+        if (this.roleGrants.has(grants.userId)) {
+            throw new ConcurrentModificationError('UserRoleGrants', grants.userId, grants.version);
+        }
+        tracker.remember(grants.userId);
+        const stored = UserRoleGrants.rehydrate({
+            userId: grants.userId,
+            version: 1,
+            grants: grants.grants,
+        });
+        tracker.write(grants.userId, stored);
+        record(...grants.pullEvents());
+        return Promise.resolve();
+    }
+
+    private updateRoleGrants(
+        tracker: RollbackTrackedMap<UserId, UserRoleGrants>,
+        record: (...facts: readonly DomainEventFact[]) => void,
+        grants: UserRoleGrants,
+    ): Promise<void> {
+        const current = this.roleGrants.get(grants.userId);
+        if (current?.version !== grants.version) {
+            throw new ConcurrentModificationError('UserRoleGrants', grants.userId, grants.version);
+        }
+        tracker.remember(grants.userId);
+        tracker.write(
+            grants.userId,
+            UserRoleGrants.rehydrate({
+                userId: grants.userId,
+                version: current.version + 1,
+                grants: grants.grants,
+            }),
+        );
+        record(...grants.pullEvents());
+        return Promise.resolve();
+    }
+
+    private buildUserRoleGrantsPort(
+        roleGrants: RollbackTrackedMap<UserId, UserRoleGrants>,
+        record: (...facts: readonly DomainEventFact[]) => void,
+    ): IamUnitOfWorkContext['userRoleGrants'] {
+        return {
+            findByUser: (userId) => this.findRoleGrantsByUser(userId),
+            add: (grants) => this.addRoleGrants(roleGrants, record, grants),
+            update: (grants) => this.updateRoleGrants(roleGrants, record, grants),
+        };
+    }
+
     async run<T>(
         _scope: TransactionScope,
         body: (ctx: IamUnitOfWorkContext) => Promise<T>,
@@ -69,111 +221,11 @@ export class FakeIamUnitOfWork implements IamUnitOfWork {
             pendingFacts.push(...facts);
         };
 
-        // Remembers each key's value from just before this attempt first
-        // touched it, so a thrown body can roll back precisely — see the
-        // class doc for why a whole-collection snapshot is wrong here.
-        const priorUsers = new Map<UserId, User | undefined>();
-        const rememberUser = (id: UserId): void => {
-            if (!priorUsers.has(id)) priorUsers.set(id, this.users.get(id));
-        };
-        const priorRoleGrants = new Map<UserId, UserRoleGrants | undefined>();
-        const rememberRoleGrants = (id: UserId): void => {
-            if (!priorRoleGrants.has(id)) priorRoleGrants.set(id, this.roleGrants.get(id));
-        };
-
-        // Records what *this* attempt itself last wrote per key (the exact
-        // instance stored into the committed map), so a rollback can tell
-        // "still my write" from "someone else already committed on top of
-        // it" — see the class doc.
-        const writtenUsers = new Map<UserId, User>();
-        const writtenRoleGrants = new Map<UserId, UserRoleGrants>();
-
+        const users = new RollbackTrackedMap(this.users);
+        const roleGrants = new RollbackTrackedMap(this.roleGrants);
         const ctx: IamUnitOfWorkContext = {
-            users: {
-                findById: async (id) => this.users.get(id),
-                findByExternalSubject: async (subject) => {
-                    for (const user of this.users.values()) {
-                        if (user.externalSubject === subject) return user;
-                    }
-                    return undefined;
-                },
-                add: async (user) => {
-                    for (const existing of this.users.values()) {
-                        if (existing.externalSubject === user.externalSubject) {
-                            throw new DuplicateExternalSubjectError(user.externalSubject);
-                        }
-                    }
-                    rememberUser(user.id);
-                    this.users.set(user.id, user);
-                    writtenUsers.set(user.id, user);
-                },
-                update: async (user) => {
-                    const stored = this.users.get(user.id);
-                    if (stored === undefined || stored.version !== user.version) {
-                        throw new ConcurrentModificationError('User', user.id, user.version);
-                    }
-                    rememberUser(user.id);
-                    const bumped = User.rehydrate({ ...user, version: user.version + 1 });
-                    this.users.set(user.id, bumped);
-                    writtenUsers.set(user.id, bumped);
-                },
-            },
-            userRoleGrants: {
-                // Returns a fresh copy, never the stored instance itself:
-                // unlike `User` (immutable — every mutator returns a new
-                // instance), `UserRoleGrants` mutates its own `#grants` array
-                // in place (`grant`/`revoke`), so handing out the live
-                // reference would let one reader's in-progress mutation leak
-                // into another concurrent reader's copy of "the version they
-                // loaded" before either has written anything back.
-                findByUser: async (userId) => {
-                    const stored = this.roleGrants.get(userId);
-                    return stored === undefined
-                        ? UserRoleGrants.empty(userId)
-                        : UserRoleGrants.rehydrate({
-                              userId: stored.userId,
-                              version: stored.version,
-                              grants: stored.grants,
-                          });
-                },
-                add: async (roleGrants) => {
-                    if (this.roleGrants.has(roleGrants.userId)) {
-                        throw new ConcurrentModificationError(
-                            'UserRoleGrants',
-                            roleGrants.userId,
-                            roleGrants.version,
-                        );
-                    }
-                    rememberRoleGrants(roleGrants.userId);
-                    const stored = UserRoleGrants.rehydrate({
-                        userId: roleGrants.userId,
-                        version: 1,
-                        grants: roleGrants.grants,
-                    });
-                    this.roleGrants.set(roleGrants.userId, stored);
-                    writtenRoleGrants.set(roleGrants.userId, stored);
-                    record(...roleGrants.pullEvents());
-                },
-                update: async (roleGrants) => {
-                    const current = this.roleGrants.get(roleGrants.userId);
-                    if (current === undefined || current.version !== roleGrants.version) {
-                        throw new ConcurrentModificationError(
-                            'UserRoleGrants',
-                            roleGrants.userId,
-                            roleGrants.version,
-                        );
-                    }
-                    rememberRoleGrants(roleGrants.userId);
-                    const bumped = UserRoleGrants.rehydrate({
-                        userId: roleGrants.userId,
-                        version: current.version + 1,
-                        grants: roleGrants.grants,
-                    });
-                    this.roleGrants.set(roleGrants.userId, bumped);
-                    writtenRoleGrants.set(roleGrants.userId, bumped);
-                    record(...roleGrants.pullEvents());
-                },
-            },
+            users: this.buildUsersPort(users),
+            userRoleGrants: this.buildUserRoleGrantsPort(roleGrants, record),
         };
 
         try {
@@ -185,19 +237,8 @@ export class FakeIamUnitOfWork implements IamUnitOfWork {
             }
             return result;
         } catch (error) {
-            for (const [id, prior] of priorUsers) {
-                // Only restore if the row is still exactly what this attempt
-                // wrote — otherwise a later, already-committed attempt built
-                // on top of it, and undoing here would erase that commit.
-                if (this.users.get(id) !== writtenUsers.get(id)) continue;
-                if (prior === undefined) this.users.delete(id);
-                else this.users.set(id, prior);
-            }
-            for (const [id, prior] of priorRoleGrants) {
-                if (this.roleGrants.get(id) !== writtenRoleGrants.get(id)) continue;
-                if (prior === undefined) this.roleGrants.delete(id);
-                else this.roleGrants.set(id, prior);
-            }
+            users.rollback();
+            roleGrants.rollback();
             throw error;
         }
     }

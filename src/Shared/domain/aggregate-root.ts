@@ -26,7 +26,7 @@ export abstract class AggregateRoot {
      * internal buffer — a second call returns an empty array until more
      * facts are recorded.
      */
-    pullEvents(): ReadonlyArray<DomainEventFact> {
+    pullEvents(): readonly DomainEventFact[] {
         return this.#events.splice(0, this.#events.length);
     }
 }

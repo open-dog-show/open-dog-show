@@ -48,19 +48,19 @@ export class Ticket extends AggregateRoot {
         return this.#name;
     }
 
-    private constructor(
-        id: TicketId,
-        clubId: ClubId,
-        createdBy: PrincipalId,
-        itemId: ItemId,
-        name: string,
-    ) {
+    private constructor(input: {
+        readonly id: TicketId;
+        readonly clubId: ClubId;
+        readonly createdBy: PrincipalId;
+        readonly itemId: ItemId;
+        readonly name: string;
+    }) {
         super();
-        this.id = id;
-        this.clubId = clubId;
-        this.createdBy = createdBy;
-        this.itemId = itemId;
-        this.#name = name;
+        this.id = input.id;
+        this.clubId = input.clubId;
+        this.createdBy = input.createdBy;
+        this.itemId = input.itemId;
+        this.#name = input.name;
     }
 
     /**
@@ -77,13 +77,7 @@ export class Ticket extends AggregateRoot {
         readonly name: string;
     }): Ticket {
         assertTicketName(input.name);
-        const ticket = new Ticket(
-            input.id,
-            input.clubId,
-            input.createdBy,
-            input.itemId,
-            input.name,
-        );
+        const ticket = new Ticket(input);
         ticket.record(
             TicketCreated.create(asAggregateId(ticket.id), ClubEventScope.of(ticket.clubId), {
                 name: ticket.name,
@@ -105,7 +99,7 @@ export class Ticket extends AggregateRoot {
         readonly itemId: ItemId;
         readonly name: string;
     }): Ticket {
-        return new Ticket(input.id, input.clubId, input.createdBy, input.itemId, input.name);
+        return new Ticket(input);
     }
 
     /** Renames this Ticket, recording `TicketRenamed` scoped to the owning Club. */

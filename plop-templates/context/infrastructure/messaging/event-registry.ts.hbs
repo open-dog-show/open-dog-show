@@ -3,10 +3,35 @@
 
 import {
     DomainEventRehydrationRegistry,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's registrations; unused only in a bare context skeleton
     assertPayloadHasStringField,
+    type AggregateId,
+    type DomainEventFact,
+    type EventScope,
+    type EventType,
 } from '../../../Shared/index.js';
 // plop:imports
+
+/**
+ * Registers one `name`-payload event type: validates the fact's `payload` has
+ * a string `name` field, then delegates to the concrete event class's
+ * `rehydrate`. Every generated event shares this exact shape, so this is the
+ * single place that shape is checked, instead of repeated per event type.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's registrations; unused only in a bare context skeleton
+function registerNamedEvent(
+    registry: DomainEventRehydrationRegistry,
+    type: EventType,
+    rehydrate: (fields: {
+        readonly scope: EventScope;
+        readonly aggregateId: AggregateId;
+        readonly payload: Record<'name', string>;
+    }) => DomainEventFact,
+): void {
+    registry.register(type, ({ scope, aggregateId, payload }) => {
+        assertPayloadHasStringField(payload, 'name');
+        return rehydrate({ scope, aggregateId, payload });
+    });
+}
 
 /**
  * Builds the {{dashCase name}} context's event-type → class rehydration

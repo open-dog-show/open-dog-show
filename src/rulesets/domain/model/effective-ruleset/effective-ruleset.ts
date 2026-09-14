@@ -67,13 +67,13 @@ export class UnknownAwardTypeReferenceError extends DomainError {
  */
 export class UnknownMinimumGradeReferenceError extends DomainError {
     readonly awardTypeId: AwardTypeId;
-    readonly gradeScaleIds: ReadonlyArray<GradeScaleId>;
+    readonly gradeScaleIds: readonly GradeScaleId[];
     readonly minimumGradeId: GradeId;
 
     constructor(
         awardTypeId: AwardTypeId,
         minimumGradeId: GradeId,
-        gradeScaleIds: ReadonlyArray<GradeScaleId>,
+        gradeScaleIds: readonly GradeScaleId[],
     ) {
         super(
             `Award type '${awardTypeId}' minimum grade '${minimumGradeId}' does not resolve on any grade scale it is used with (checked: ${gradeScaleIds.join(', ')})`,
@@ -130,20 +130,20 @@ export class EffectiveRuleset {
      * from, in layer order — the last entry has the highest precedence
      * (ADR-0029: "the snapshot records which editions were used").
      */
-    readonly sourceEditions: ReadonlyArray<RulesetLayerEditionReference>;
-    readonly classDefinitions: ReadonlyArray<ClassDefinition>;
-    readonly gradeScales: ReadonlyArray<GradeScale>;
-    readonly awardTypes: ReadonlyArray<AwardType>;
-    readonly showTypes: ReadonlyArray<ShowType>;
+    readonly sourceEditions: readonly RulesetLayerEditionReference[];
+    readonly classDefinitions: readonly ClassDefinition[];
+    readonly gradeScales: readonly GradeScale[];
+    readonly awardTypes: readonly AwardType[];
+    readonly showTypes: readonly ShowType[];
 
     private constructor(attributes: {
         readonly id: EffectiveRulesetId;
         readonly resolvedFor: LocalDate;
-        readonly sourceEditions: ReadonlyArray<RulesetLayerEditionReference>;
-        readonly classDefinitions: ReadonlyArray<ClassDefinition>;
-        readonly gradeScales: ReadonlyArray<GradeScale>;
-        readonly awardTypes: ReadonlyArray<AwardType>;
-        readonly showTypes: ReadonlyArray<ShowType>;
+        readonly sourceEditions: readonly RulesetLayerEditionReference[];
+        readonly classDefinitions: readonly ClassDefinition[];
+        readonly gradeScales: readonly GradeScale[];
+        readonly awardTypes: readonly AwardType[];
+        readonly showTypes: readonly ShowType[];
     }) {
         this.id = attributes.id;
         this.resolvedFor = attributes.resolvedFor;
@@ -180,7 +180,7 @@ export class EffectiveRuleset {
      */
     static resolve(
         id: EffectiveRulesetId,
-        editions: ReadonlyArray<RulesetLayerEdition>,
+        editions: readonly RulesetLayerEdition[],
         resolvedFor: LocalDate,
     ): EffectiveRuleset {
         const classDefinitions = mergeById(editions.flatMap((e) => [...e.classDefinitions]));
@@ -227,9 +227,7 @@ export class EffectiveRuleset {
      * that the FCI policy previously re-implemented inline in both
      * `higherScopeEligible` and `requireNonDiscretionaryAwards`.
      */
-    higherScopeAwardTypes(
-        scopeKind: 'breed' | 'group' | 'show',
-    ): ReadonlyArray<HigherScopeAwardType> {
+    higherScopeAwardTypes(scopeKind: 'breed' | 'group' | 'show'): readonly HigherScopeAwardType[] {
         return this.awardTypes.filter((at): at is HigherScopeAwardType => at.scope === scopeKind);
     }
 }
@@ -239,7 +237,7 @@ export class EffectiveRuleset {
  * Each item reference is preserved (shallow copy of the collection, not a
  * structural deep clone of each item).
  */
-function mergeById<T extends { readonly id: string }>(items: ReadonlyArray<T>): ReadonlyArray<T> {
+function mergeById<T extends { readonly id: string }>(items: readonly T[]): readonly T[] {
     const map = new Map<string, T>();
     for (const item of items) {
         map.set(item.id, item);
@@ -256,9 +254,9 @@ function mergeById<T extends { readonly id: string }>(items: ReadonlyArray<T>): 
  * feeder graph.
  */
 function validateReferences(
-    classDefinitions: ReadonlyArray<ClassDefinition>,
-    gradeScales: ReadonlyArray<GradeScale>,
-    awardTypes: ReadonlyArray<AwardType>,
+    classDefinitions: readonly ClassDefinition[],
+    gradeScales: readonly GradeScale[],
+    awardTypes: readonly AwardType[],
 ): void {
     const scaleById = new Map(gradeScales.map((gs) => [gs.id, gs]));
     const awardById = new Map(awardTypes.map((at) => [at.id, at]));
@@ -266,7 +264,7 @@ function validateReferences(
     for (const classDef of classDefinitions) {
         const scale = resolveClassGradeScale(classDef, scaleById);
         for (const awardTypeId of classDef.awardTypeIds) {
-            validateAwardTypeReference(classDef, awardTypeId, scale, awardById);
+            validateAwardTypeReference({ classDef, awardTypeId, scale, awardById });
         }
     }
 
@@ -291,12 +289,13 @@ function resolveClassGradeScale(
  * type carries a `minimumGradeId` — it resolves on `scale` ({@link
  * UnknownMinimumGradeReferenceError}).
  */
-function validateAwardTypeReference(
-    classDef: ClassDefinition,
-    awardTypeId: AwardTypeId,
-    scale: GradeScale,
-    awardById: ReadonlyMap<AwardTypeId, AwardType>,
-): void {
+function validateAwardTypeReference(params: {
+    readonly classDef: ClassDefinition;
+    readonly awardTypeId: AwardTypeId;
+    readonly scale: GradeScale;
+    readonly awardById: ReadonlyMap<AwardTypeId, AwardType>;
+}): void {
+    const { classDef, awardTypeId, scale, awardById } = params;
     const awardType = awardById.get(awardTypeId);
     if (awardType === undefined) {
         throw new UnknownAwardTypeReferenceError(classDef.id, awardTypeId);
@@ -321,11 +320,10 @@ function isHigherScopeAwardType(awardType: AwardType): awardType is HigherScopeA
  * `HigherScopeAwardType.fedBy` referencing an unknown award type is not
  * itself validated here (out of scope for this pass).
  */
-function validateHigherScopeMinimumGrades(
-    classDefinitions: ReadonlyArray<ClassDefinition>,
-    scaleById: ReadonlyMap<GradeScaleId, GradeScale>,
-    awardById: ReadonlyMap<AwardTypeId, AwardType>,
-): void {
+/** Groups `classDefinitions` by each of their `awardTypeIds` — see {@link validateHigherScopeMinimumGrades}. */
+function groupClassesByAwardTypeId(
+    classDefinitions: readonly ClassDefinition[],
+): Map<AwardTypeId, ClassDefinition[]> {
     const classesByAwardTypeId = new Map<AwardTypeId, ClassDefinition[]>();
     for (const classDef of classDefinitions) {
         for (const awardTypeId of classDef.awardTypeIds) {
@@ -337,27 +335,42 @@ function validateHigherScopeMinimumGrades(
             }
         }
     }
-    const classById = new Map(classDefinitions.map((c) => [c.id, c]));
+    return classesByAwardTypeId;
+}
+
+/** Validates one higher-scope award type — see {@link validateHigherScopeMinimumGrades}. */
+function validateOneHigherScopeMinimumGrade(
+    awardType: HigherScopeAwardType,
+    lookups: FeederGraphLookups,
+    scaleById: ReadonlyMap<GradeScaleId, GradeScale>,
+): void {
+    const reachableScaleIds = reachableGradeScaleIds(awardType, lookups, new Set());
+    if (reachableScaleIds.size === 0) return;
+
+    const resolves = [...reachableScaleIds].some(
+        (scaleId) => scaleById.get(scaleId)?.grade(awardType.minimumGradeId) !== undefined,
+    );
+    if (!resolves) {
+        throw new UnknownMinimumGradeReferenceError(awardType.id, awardType.minimumGradeId, [
+            ...reachableScaleIds,
+        ]);
+    }
+}
+
+function validateHigherScopeMinimumGrades(
+    classDefinitions: readonly ClassDefinition[],
+    scaleById: ReadonlyMap<GradeScaleId, GradeScale>,
+    awardById: ReadonlyMap<AwardTypeId, AwardType>,
+): void {
+    const lookups: FeederGraphLookups = {
+        classesByAwardTypeId: groupClassesByAwardTypeId(classDefinitions),
+        classById: new Map(classDefinitions.map((c) => [c.id, c])),
+        awardById,
+    };
 
     for (const awardType of awardById.values()) {
-        if (!isHigherScopeAwardType(awardType)) continue;
-
-        const reachableScaleIds = reachableGradeScaleIds(
-            awardType,
-            classesByAwardTypeId,
-            classById,
-            awardById,
-            new Set(),
-        );
-        if (reachableScaleIds.size === 0) continue;
-
-        const resolves = [...reachableScaleIds].some(
-            (scaleId) => scaleById.get(scaleId)?.grade(awardType.minimumGradeId) !== undefined,
-        );
-        if (!resolves) {
-            throw new UnknownMinimumGradeReferenceError(awardType.id, awardType.minimumGradeId, [
-                ...reachableScaleIds,
-            ]);
+        if (isHigherScopeAwardType(awardType)) {
+            validateOneHigherScopeMinimumGrade(awardType, lookups, scaleById);
         }
     }
 }
@@ -370,11 +383,16 @@ function validateHigherScopeMinimumGrades(
  * when it in turn is itself higher-scope, recurses into its own `fedBy`.
  * `visiting` guards against a cycle in the feeder graph.
  */
+/** Shared read-only lookups threaded through the `fedBy` feeder-graph traversal. */
+interface FeederGraphLookups {
+    readonly classesByAwardTypeId: ReadonlyMap<AwardTypeId, readonly ClassDefinition[]>;
+    readonly classById: ReadonlyMap<ClassId, ClassDefinition>;
+    readonly awardById: ReadonlyMap<AwardTypeId, AwardType>;
+}
+
 function reachableGradeScaleIds(
     award: HigherScopeAwardType,
-    classesByAwardTypeId: ReadonlyMap<AwardTypeId, ReadonlyArray<ClassDefinition>>,
-    classById: ReadonlyMap<ClassId, ClassDefinition>,
-    awardById: ReadonlyMap<AwardTypeId, AwardType>,
+    lookups: FeederGraphLookups,
     visiting: Set<AwardTypeId>,
 ): Set<GradeScaleId> {
     const scaleIds = new Set<GradeScaleId>();
@@ -382,46 +400,30 @@ function reachableGradeScaleIds(
     visiting.add(award.id);
 
     for (const feeder of award.fedBy) {
-        addReachableGradeScaleIds(
-            feeder,
-            classesByAwardTypeId,
-            classById,
-            awardById,
-            visiting,
-            scaleIds,
-        );
+        addReachableGradeScaleIds(feeder, lookups, { visiting, scaleIds });
     }
     return scaleIds;
 }
 
-/** One `fedBy` entry's contribution to `scaleIds` — see {@link reachableGradeScaleIds}. */
+/** One `fedBy` entry's contribution to `state.scaleIds` — see {@link reachableGradeScaleIds}. */
 function addReachableGradeScaleIds(
     feeder: Feeder,
-    classesByAwardTypeId: ReadonlyMap<AwardTypeId, ReadonlyArray<ClassDefinition>>,
-    classById: ReadonlyMap<ClassId, ClassDefinition>,
-    awardById: ReadonlyMap<AwardTypeId, AwardType>,
-    visiting: Set<AwardTypeId>,
-    scaleIds: Set<GradeScaleId>,
+    lookups: FeederGraphLookups,
+    state: { readonly visiting: Set<AwardTypeId>; readonly scaleIds: Set<GradeScaleId> },
 ): void {
     if (feeder.kind === 'class') {
-        const classDef = classById.get(feeder.classId);
-        if (classDef !== undefined) scaleIds.add(classDef.gradeScaleId);
+        const classDef = lookups.classById.get(feeder.classId);
+        if (classDef !== undefined) state.scaleIds.add(classDef.gradeScaleId);
         return;
     }
 
-    for (const classDef of classesByAwardTypeId.get(feeder.awardTypeId) ?? []) {
-        scaleIds.add(classDef.gradeScaleId);
+    for (const classDef of lookups.classesByAwardTypeId.get(feeder.awardTypeId) ?? []) {
+        state.scaleIds.add(classDef.gradeScaleId);
     }
-    const fedAward = awardById.get(feeder.awardTypeId);
+    const fedAward = lookups.awardById.get(feeder.awardTypeId);
     if (fedAward !== undefined && isHigherScopeAwardType(fedAward)) {
-        for (const id of reachableGradeScaleIds(
-            fedAward,
-            classesByAwardTypeId,
-            classById,
-            awardById,
-            visiting,
-        )) {
-            scaleIds.add(id);
+        for (const id of reachableGradeScaleIds(fedAward, lookups, state.visiting)) {
+            state.scaleIds.add(id);
         }
     }
 }

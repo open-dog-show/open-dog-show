@@ -6,7 +6,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { quoteSchemaIdent } from '../../src/Shared/index.js';
 
-const { Client } = pg;
+const { Client: pgClient } = pg;
 
 /** Describes one bounded-context's migration folder. */
 export interface MigrationContext {
@@ -39,7 +39,7 @@ export async function runMigrations(
     connectionUrl: string,
     contexts: MigrationContext[],
 ): Promise<void> {
-    const client = new Client({ connectionString: connectionUrl });
+    const client = new pgClient({ connectionString: connectionUrl });
     await client.connect();
 
     try {
@@ -99,6 +99,38 @@ async function bootstrapRole(client: pg.Client): Promise<void> {
   `);
 }
 
+/** Best-effort `ROLLBACK` — a failure here must not mask the original error. */
+async function rollbackBestEffort(client: pg.Client): Promise<void> {
+    try {
+        await client.query('ROLLBACK');
+    } catch {
+        // connection may already be broken — surface the original error
+    }
+}
+
+// Applies and records one migration file atomically: a failure mid-file rolls
+// back both the DDL and the _migrations row, so the next run retries the
+// whole file rather than leaving a half-applied migration.
+async function applyOneMigration(
+    client: pg.Client,
+    context: MigrationContext,
+    filename: string,
+): Promise<void> {
+    const sql = await readFile(join(context.migrationsDir, filename), 'utf8');
+    try {
+        await client.query('BEGIN');
+        await client.query(sql);
+        await client.query(
+            `INSERT INTO ${quoteSchemaIdent(context.name)}._migrations (filename) VALUES ($1)`,
+            [filename],
+        );
+        await client.query('COMMIT');
+    } catch (err) {
+        await rollbackBestEffort(client);
+        throw err;
+    }
+}
+
 async function applyContext(client: pg.Client, context: MigrationContext): Promise<void> {
     const { name, migrationsDir } = context;
 
@@ -129,27 +161,7 @@ async function applyContext(client: pg.Client, context: MigrationContext): Promi
 
             if (alreadyApplied.rows.length > 0) continue;
 
-            const sql = await readFile(join(migrationsDir, filename), 'utf8');
-
-            // Apply the migration and record it atomically: a failure mid-file
-            // rolls back both the DDL and the _migrations row, so the next run
-            // retries the whole file rather than leaving a half-applied migration.
-            try {
-                await client.query('BEGIN');
-                await client.query(sql);
-                await client.query(
-                    `INSERT INTO ${quoteSchemaIdent(name)}._migrations (filename) VALUES ($1)`,
-                    [filename],
-                );
-                await client.query('COMMIT');
-            } catch (err) {
-                try {
-                    await client.query('ROLLBACK');
-                } catch {
-                    // connection may already be broken — surface the original error
-                }
-                throw err;
-            }
+            await applyOneMigration(client, context, filename);
         }
     } catch (err) {
         // Best-effort reset — a reset failure here must not mask the original

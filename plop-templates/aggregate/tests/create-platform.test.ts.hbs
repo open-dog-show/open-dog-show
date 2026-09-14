@@ -36,7 +36,7 @@ describe('Create{{pascalCase name}}Handler', () => {
             SCOPE,
         );
 
-        expect(result).toEqual({ ok: false, error: expect.any(Invalid{{pascalCase name}}NameError) });
+        expect(result).toEqual({ ok: false, error: expect.any(Invalid{{pascalCase name}}NameError) as Invalid{{pascalCase name}}NameError });
         expect(unitOfWork.recordedEvents).toHaveLength(0);
     });
 });

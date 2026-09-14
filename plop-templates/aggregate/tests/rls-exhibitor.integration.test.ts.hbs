@@ -26,12 +26,12 @@ describe('{{pascalCase name}} RLS isolation (exhibitor scope)', () => {
 
     beforeAll(async () => {
         await bootstrap{{pascalCase context}}Schema(harness);
-        unitOfWork = new Pg{{pascalCase context}}UnitOfWork(
-            harness.appUserPool,
-            new PgOutboxWriter('{{snakeCase context}}'),
-            new SystemClock(),
-            new RandomEventIdGenerator(),
-        );
+        unitOfWork = new Pg{{pascalCase context}}UnitOfWork({
+            pool: harness.appUserPool,
+            writer: new PgOutboxWriter('{{snakeCase context}}'),
+            clock: new SystemClock(),
+            eventIdGenerator: new RandomEventIdGenerator(),
+        });
 
         await unitOfWork.run(ExhibitorTransactionScope.of(PRINCIPAL_A_ID), async (ctx) => {
             await ctx.{{plural (camelCase name)}}.add(

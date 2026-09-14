@@ -35,7 +35,7 @@ import {
 } from '../../../../../../src/rulesets/infrastructure/persistence/bundled/fci/index.js';
 import { asClassId } from '../../../../../../src/rulesets/domain/shared/domain-ids.js';
 import { LocalDate } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
-import { CertificateKind } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/certificate-kind.js';
+import { CERTIFICATE_KIND } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/certificate-kind.js';
 import { findOrFail } from '../../../../../test-kit/index.js';
 import type {
     IndividualAwardType,
@@ -181,7 +181,7 @@ describe.each([
         );
         expect(cls.fromAgeMonths).toBeUndefined();
         expect(cls.lessThanAgeMonths).toBe(6);
-        expect(cls.requiredCertificates).toContain(CertificateKind.VaccinationCertificate);
+        expect(cls.requiredCertificates).toContain(CERTIFICATE_KIND.VaccinationCertificate);
         expect(cls.gradeScaleId).toBe(FCI_PUPPY_GRADE_SCALE_ID);
         expect(cls.awardTypeIds).toHaveLength(0);
     });
@@ -260,22 +260,27 @@ describe.each([
     });
 
     it('CACIB is per-sex, discretionary, Excellent-1st', () => {
-        const at = edition.awardTypes.find(
-            (a): a is IndividualAwardType => a.id === FCI_AWARD_CACIB && a.scope !== 'collective',
+        const at = findOrFail(
+            edition.awardTypes.find(
+                (a): a is IndividualAwardType =>
+                    a.id === FCI_AWARD_CACIB && a.scope !== 'collective',
+            ),
+            `award type '${FCI_AWARD_CACIB}'`,
         );
-        expect(at).toBeDefined();
-        expect(at!.scope).toBe('per-sex');
-        expect(at!.isDiscretionary).toBe(true);
-        expect(at!.worstEligiblePlacement).toBe(1);
+        expect(at.scope).toBe('per-sex');
+        expect(at.isDiscretionary).toBe(true);
+        expect(at.worstEligiblePlacement).toBe(1);
     });
 
     it('Reserve CACIB is per-sex, discretionary, no placement requirement', () => {
-        const at = edition.awardTypes.find(
-            (a): a is IndividualAwardType =>
-                a.id === FCI_AWARD_RES_CACIB && a.scope !== 'collective',
+        const at = findOrFail(
+            edition.awardTypes.find(
+                (a): a is IndividualAwardType =>
+                    a.id === FCI_AWARD_RES_CACIB && a.scope !== 'collective',
+            ),
+            `award type '${FCI_AWARD_RES_CACIB}'`,
         );
-        expect(at).toBeDefined();
-        expect(at!.worstEligiblePlacement).toBeUndefined();
+        expect(at.worstEligiblePlacement).toBeUndefined();
     });
 
     it('BOB is breed scope, BIG is group scope, BIS is show scope', () => {
@@ -286,16 +291,22 @@ describe.each([
     });
 
     it('Best Puppy / Best Minor Puppy require Very Promising, not Excellent', () => {
-        const bestPuppy = edition.awardTypes.find(
-            (a): a is IndividualAwardType =>
-                a.id === FCI_AWARD_BEST_PUPPY && a.scope !== 'collective',
+        const bestPuppy = findOrFail(
+            edition.awardTypes.find(
+                (a): a is IndividualAwardType =>
+                    a.id === FCI_AWARD_BEST_PUPPY && a.scope !== 'collective',
+            ),
+            `award type '${FCI_AWARD_BEST_PUPPY}'`,
         );
-        const bestMinorPuppy = edition.awardTypes.find(
-            (a): a is IndividualAwardType =>
-                a.id === FCI_AWARD_BEST_MINOR_PUPPY && a.scope !== 'collective',
+        const bestMinorPuppy = findOrFail(
+            edition.awardTypes.find(
+                (a): a is IndividualAwardType =>
+                    a.id === FCI_AWARD_BEST_MINOR_PUPPY && a.scope !== 'collective',
+            ),
+            `award type '${FCI_AWARD_BEST_MINOR_PUPPY}'`,
         );
-        expect(bestPuppy!.minimumGradeId).toBe(FCI_GRADE_VERY_PROMISING);
-        expect(bestMinorPuppy!.minimumGradeId).toBe(FCI_GRADE_VERY_PROMISING);
+        expect(bestPuppy.minimumGradeId).toBe(FCI_GRADE_VERY_PROMISING);
+        expect(bestMinorPuppy.minimumGradeId).toBe(FCI_GRADE_VERY_PROMISING);
     });
 
     it('Best Brace / Breeders’ Group / Progeny Group are collective scope', () => {

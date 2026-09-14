@@ -6,11 +6,11 @@
  * **owner-asserted** data — recorded by the Owner; the platform stores but
  * does not verify or confirm issuance.
  */
-export const CertificateKind = {
+export const CERTIFICATE_KIND = {
     ChampionCertificate: 'champion-certificate',
     WorkingCertificate: 'working-certificate',
     VaccinationCertificate: 'vaccination-certificate',
 } as const;
 
-/** Union type of all valid {@link CertificateKind} values. */
-export type CertificateKind = (typeof CertificateKind)[keyof typeof CertificateKind];
+/** Union type of all valid {@link CERTIFICATE_KIND} values. */
+export type CertificateKind = (typeof CERTIFICATE_KIND)[keyof typeof CERTIFICATE_KIND];

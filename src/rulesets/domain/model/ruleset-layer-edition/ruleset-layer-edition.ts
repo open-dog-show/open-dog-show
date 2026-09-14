@@ -13,10 +13,10 @@ export interface RulesetLayerEditionAttributes {
     readonly layerId: RulesetLayerId;
     /** The calendar date from which this edition's content is in force (ADR-0029). */
     readonly effectiveFrom: LocalDate;
-    readonly classDefinitions: ReadonlyArray<ClassDefinition>;
-    readonly gradeScales: ReadonlyArray<GradeScale>;
-    readonly awardTypes: ReadonlyArray<AwardType>;
-    readonly showTypes: ReadonlyArray<ShowType>;
+    readonly classDefinitions: readonly ClassDefinition[];
+    readonly gradeScales: readonly GradeScale[];
+    readonly awardTypes: readonly AwardType[];
+    readonly showTypes: readonly ShowType[];
 }
 
 /**
@@ -48,10 +48,10 @@ export class RulesetLayerEdition {
 
     readonly layerId: RulesetLayerId;
     readonly effectiveFrom: LocalDate;
-    readonly classDefinitions: ReadonlyArray<ClassDefinition>;
-    readonly gradeScales: ReadonlyArray<GradeScale>;
-    readonly awardTypes: ReadonlyArray<AwardType>;
-    readonly showTypes: ReadonlyArray<ShowType>;
+    readonly classDefinitions: readonly ClassDefinition[];
+    readonly gradeScales: readonly GradeScale[];
+    readonly awardTypes: readonly AwardType[];
+    readonly showTypes: readonly ShowType[];
 
     private constructor(attributes: RulesetLayerEditionAttributes) {
         this.layerId = attributes.layerId;
@@ -75,7 +75,7 @@ export class RulesetLayerEdition {
      * on-or-before" comparison is written once rather than per adapter.
      */
     static latestInForce(
-        editions: ReadonlyArray<RulesetLayerEdition>,
+        editions: readonly RulesetLayerEdition[],
         layerId: RulesetLayerId,
         date: LocalDate,
     ): RulesetLayerEdition | undefined {

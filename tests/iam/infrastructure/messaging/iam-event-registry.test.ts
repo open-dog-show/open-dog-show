@@ -17,18 +17,33 @@ import {
     RoleRevoked,
 } from '../../../../src/iam/domain/model/user-role-grants/events/role-revoked.js';
 import { buildIamEventRehydrationRegistry } from '../../../../src/iam/infrastructure/messaging/iam-event-registry.js';
+import type {
+    DomainEventRehydrationRegistry,
+    DomainEventRehydrator,
+} from '../../../../src/Shared/infrastructure/messaging/domain-event-codec.js';
+import type { EventType } from '../../../../src/Shared/index.js';
 
 const AGGREGATE_ID = asAggregateId('user-alice');
 const CLUB_A = asClubId('club-a');
 const SCOPE = PlatformEventScope.of();
 
+function requireRehydrator(
+    registry: DomainEventRehydrationRegistry,
+    type: EventType,
+): DomainEventRehydrator {
+    const rehydrator = registry.rehydratorFor(type);
+    if (rehydrator === undefined) {
+        throw new Error(`No rehydrator registered for '${type}'`);
+    }
+    return rehydrator;
+}
+
 describe('buildIamEventRehydrationRegistry', () => {
     it('registers a rehydrator for iam.RoleGranted that reconstructs a RoleGranted instance', () => {
         const registry = buildIamEventRehydrationRegistry();
-        const rehydrator = registry.rehydratorFor(ROLE_GRANTED_TYPE);
-        expect(rehydrator).toBeDefined();
+        const rehydrator = requireRehydrator(registry, ROLE_GRANTED_TYPE);
 
-        const fact = rehydrator!({
+        const fact = rehydrator({
             type: ROLE_GRANTED_TYPE,
             scope: SCOPE,
             aggregateId: AGGREGATE_ID,
@@ -41,9 +56,9 @@ describe('buildIamEventRehydrationRegistry', () => {
 
     it('registers a rehydrator for iam.RoleRevoked that reconstructs a RoleRevoked instance', () => {
         const registry = buildIamEventRehydrationRegistry();
-        const rehydrator = registry.rehydratorFor(ROLE_REVOKED_TYPE);
+        const rehydrator = requireRehydrator(registry, ROLE_REVOKED_TYPE);
 
-        const fact = rehydrator!({
+        const fact = rehydrator({
             type: ROLE_REVOKED_TYPE,
             scope: SCOPE,
             aggregateId: AGGREGATE_ID,
@@ -56,7 +71,7 @@ describe('buildIamEventRehydrationRegistry', () => {
 
     it('accepts a payload with no clubId key at all (platform-scoped role, JSON round-trip)', () => {
         const registry = buildIamEventRehydrationRegistry();
-        const rehydrator = registry.rehydratorFor(ROLE_GRANTED_TYPE)!;
+        const rehydrator = requireRehydrator(registry, ROLE_GRANTED_TYPE);
 
         const fact = rehydrator({
             type: ROLE_GRANTED_TYPE,
@@ -70,7 +85,7 @@ describe('buildIamEventRehydrationRegistry', () => {
 
     it('rejects a payload with an unknown role', () => {
         const registry = buildIamEventRehydrationRegistry();
-        const rehydrator = registry.rehydratorFor(ROLE_GRANTED_TYPE)!;
+        const rehydrator = requireRehydrator(registry, ROLE_GRANTED_TYPE);
 
         expect(() =>
             rehydrator({
@@ -84,7 +99,7 @@ describe('buildIamEventRehydrationRegistry', () => {
 
     it('rejects a payload whose clubId is not a string', () => {
         const registry = buildIamEventRehydrationRegistry();
-        const rehydrator = registry.rehydratorFor(ROLE_GRANTED_TYPE)!;
+        const rehydrator = requireRehydrator(registry, ROLE_GRANTED_TYPE);
 
         expect(() =>
             rehydrator({
@@ -98,7 +113,7 @@ describe('buildIamEventRehydrationRegistry', () => {
 
     it('rejects a null or non-object payload', () => {
         const registry = buildIamEventRehydrationRegistry();
-        const rehydrator = registry.rehydratorFor(ROLE_GRANTED_TYPE)!;
+        const rehydrator = requireRehydrator(registry, ROLE_GRANTED_TYPE);
 
         expect(() =>
             rehydrator({

@@ -37,7 +37,10 @@ describe('CreateNoteHandler', () => {
             SCOPE,
         );
 
-        expect(result).toEqual({ ok: false, error: expect.any(InvalidNoteNameError) });
+        expect(result).toEqual({
+            ok: false,
+            error: expect.any(InvalidNoteNameError) as InvalidNoteNameError,
+        });
         expect(unitOfWork.recordedEvents).toHaveLength(0);
     });
 });

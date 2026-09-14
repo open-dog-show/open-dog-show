@@ -24,7 +24,7 @@ export class ConcurrentModificationError extends Error {
 
     constructor(aggregate: 'User' | 'UserRoleGrants', id: string, expectedVersion: number) {
         super(
-            `${aggregate} '${id}' was modified concurrently (expected version ${expectedVersion})`,
+            `${aggregate} '${id}' was modified concurrently (expected version ${String(expectedVersion)})`,
         );
         this.name = 'ConcurrentModificationError';
         this.aggregate = aggregate;

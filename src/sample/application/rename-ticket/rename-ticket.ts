@@ -4,7 +4,7 @@
 import type { Result, TransactionScope } from '../../../Shared/index.js';
 import { asTicketId } from '../../domain/shared/domain-ids.js';
 import { TicketNotFoundError, InvalidTicketNameError } from '../../domain/model/ticket/ticket.js';
-import type { SampleUnitOfWork } from '../ports/unit-of-work.js';
+import type { SampleUnitOfWork, SampleUnitOfWorkContext } from '../ports/unit-of-work.js';
 
 /** Inputs to {@link RenameTicketHandler.execute}. */
 export interface RenameTicketCommand {
@@ -37,23 +37,28 @@ export class RenameTicketHandler {
         scope: TransactionScope,
     ): Promise<Result<RenameTicketResponse, TicketNotFoundError | InvalidTicketNameError>> {
         try {
-            return await this.unitOfWork.run<
-                Result<RenameTicketResponse, TicketNotFoundError | InvalidTicketNameError>
-            >(scope, async (ctx) => {
-                const id = asTicketId(command.id);
-                const ticket = await ctx.tickets.findById(id);
-                if (ticket === undefined) {
-                    throw new TicketNotFoundError(id);
-                }
-                ticket.rename(command.name);
-                await ctx.tickets.update(ticket);
-                return { ok: true, value: { id: ticket.id, name: ticket.name } };
-            });
+            return await this.unitOfWork.run(scope, (ctx) =>
+                this.renameInTransaction(ctx, command),
+            );
         } catch (error) {
             if (error instanceof TicketNotFoundError || error instanceof InvalidTicketNameError) {
                 return { ok: false, error };
             }
             throw error;
         }
+    }
+
+    private async renameInTransaction(
+        ctx: SampleUnitOfWorkContext,
+        command: RenameTicketCommand,
+    ): Promise<Result<RenameTicketResponse, TicketNotFoundError | InvalidTicketNameError>> {
+        const id = asTicketId(command.id);
+        const ticket = await ctx.tickets.findById(id);
+        if (ticket === undefined) {
+            throw new TicketNotFoundError(id);
+        }
+        ticket.rename(command.name);
+        await ctx.tickets.update(ticket);
+        return { ok: true, value: { id: ticket.id, name: ticket.name } };
     }
 }

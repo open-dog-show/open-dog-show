@@ -6,7 +6,9 @@ import type { EntryRef } from '../collective-award-policy/entry-ref.js';
 import type {
     Feeder,
     HigherScopeAwardType,
+    IndividualAwardType,
 } from '../../model/effective-ruleset/entities/award-type.js';
+import type { ClassDefinition } from '../../model/effective-ruleset/entities/class-definition.js';
 import type { EffectiveRuleset } from '../../model/effective-ruleset/effective-ruleset.js';
 import type {
     AwardPolicy,
@@ -33,7 +35,7 @@ const BOB_AND_BOS_PROPOSAL_COUNT = 2;
  * carry feeder-keyed candidate `streams`.  Aliased so every higher-scope
  * helper shares one readable parameter type.
  */
-type StreamedScope = Extract<JudgingScopeResults, { streams: ReadonlyArray<CandidateStream> }>;
+type StreamedScope = Extract<JudgingScopeResults, { streams: readonly CandidateStream[] }>;
 
 /**
  * In-memory FCI implementation of {@link AwardPolicy}.
@@ -76,11 +78,18 @@ type StreamedScope = Extract<JudgingScopeResults, { streams: ReadonlyArray<Candi
  * differs between editions is edition data (a field on `AwardType`), resolved
  * upstream by `resolveEffectiveRuleset` before this policy ever runs.
  */
+/** Resolved inputs for one per-sex assignment — see {@link FciAwardPolicy.resolvePerSexAssignmentContext}. */
+interface PerSexAssignmentContext {
+    readonly awardType: IndividualAwardType;
+    readonly classDef: ClassDefinition;
+    readonly placement: ClassPlacement;
+}
+
 export class FciAwardPolicy implements AwardPolicy {
     eligibleAwardTypes(
         scope: JudgingScopeResults,
         ruleset: EffectiveRuleset,
-    ): ReadonlyArray<AwardTypeId> {
+    ): readonly AwardTypeId[] {
         switch (scope.kind) {
             case 'per-sex':
                 return this.perSexEligible(scope.placements, ruleset);
@@ -93,7 +102,7 @@ export class FciAwardPolicy implements AwardPolicy {
 
     validateAwardChoices(
         scope: JudgingScopeResults,
-        proposed: ReadonlyArray<ProposedAwardAssignment>,
+        proposed: readonly ProposedAwardAssignment[],
         ruleset: EffectiveRuleset,
     ): AwardValidationResult {
         switch (scope.kind) {
@@ -111,9 +120,9 @@ export class FciAwardPolicy implements AwardPolicy {
     // -----------------------------------------------------------------------
 
     private perSexEligible(
-        placements: ReadonlyArray<ClassPlacement>,
+        placements: readonly ClassPlacement[],
         ruleset: EffectiveRuleset,
-    ): ReadonlyArray<AwardTypeId> {
+    ): readonly AwardTypeId[] {
         const eligible = new Set<AwardTypeId>();
 
         for (const placement of placements) {
@@ -124,7 +133,7 @@ export class FciAwardPolicy implements AwardPolicy {
                 const awardType = ruleset.awardType(awardTypeId);
                 if (awardType === undefined || awardType.scope === 'collective') continue;
 
-                if (meetsAwardRequirements(placement, awardType, classDef, ruleset).meets) {
+                if (meetsAwardRequirements({ placement, awardType, classDef, ruleset }).meets) {
                     eligible.add(awardTypeId);
                 }
             }
@@ -134,8 +143,8 @@ export class FciAwardPolicy implements AwardPolicy {
     }
 
     private validatePerSex(
-        placements: ReadonlyArray<ClassPlacement>,
-        proposed: ReadonlyArray<ProposedAwardAssignment>,
+        placements: readonly ClassPlacement[],
+        proposed: readonly ProposedAwardAssignment[],
         ruleset: EffectiveRuleset,
     ): AwardValidationResult {
         for (const assignment of proposed) {
@@ -151,11 +160,10 @@ export class FciAwardPolicy implements AwardPolicy {
      * type, and the dog's grade/placement satisfy the award's requirements.
      * Returns `{ valid: true }` when the assignment passes every check.
      */
-    private validateOnePerSexAssignment(
+    private resolvePerSexAwardType(
         assignment: ProposedAwardAssignment,
-        placements: ReadonlyArray<ClassPlacement>,
         ruleset: EffectiveRuleset,
-    ): AwardValidationResult {
+    ): AwardValidationResult | IndividualAwardType {
         const awardType = ruleset.awardType(assignment.awardTypeId);
         if (awardType === undefined) {
             return { valid: false, reason: `Unknown award type '${assignment.awardTypeId}'` };
@@ -166,6 +174,16 @@ export class FciAwardPolicy implements AwardPolicy {
                 reason: `Collective award type '${awardType.id}' cannot be proposed in a per-sex scope`,
             };
         }
+        return awardType;
+    }
+
+    private resolvePerSexAssignmentContext(
+        assignment: ProposedAwardAssignment,
+        placements: readonly ClassPlacement[],
+        ruleset: EffectiveRuleset,
+    ): AwardValidationResult | PerSexAssignmentContext {
+        const awardType = this.resolvePerSexAwardType(assignment, ruleset);
+        if ('valid' in awardType) return awardType;
 
         const placement = placements.find((p) => p.entryRef === assignment.entryRef);
         if (placement === undefined) {
@@ -186,8 +204,19 @@ export class FciAwardPolicy implements AwardPolicy {
                 reason: `Award type '${awardType.id}' is not available for dogs in class '${classDef.id}'`,
             };
         }
+        return { awardType, classDef, placement };
+    }
 
-        const requirement = meetsAwardRequirements(placement, awardType, classDef, ruleset);
+    private validateOnePerSexAssignment(
+        assignment: ProposedAwardAssignment,
+        placements: readonly ClassPlacement[],
+        ruleset: EffectiveRuleset,
+    ): AwardValidationResult {
+        const context = this.resolvePerSexAssignmentContext(assignment, placements, ruleset);
+        if ('valid' in context) return context;
+
+        const { awardType, classDef, placement } = context;
+        const requirement = meetsAwardRequirements({ placement, awardType, classDef, ruleset });
         if (!requirement.meets) {
             return { valid: false, reason: requirement.reason };
         }
@@ -201,7 +230,7 @@ export class FciAwardPolicy implements AwardPolicy {
     private higherScopeEligible(
         scope: StreamedScope,
         ruleset: EffectiveRuleset,
-    ): ReadonlyArray<AwardTypeId> {
+    ): readonly AwardTypeId[] {
         const eligible = new Set<AwardTypeId>();
         for (const individual of ruleset.higherScopeAwardTypes(scope.kind)) {
             if (this.awardIsEligible(individual, scope, ruleset)) {
@@ -213,7 +242,7 @@ export class FciAwardPolicy implements AwardPolicy {
 
     private validateHigherScope(
         scope: StreamedScope,
-        proposed: ReadonlyArray<ProposedAwardAssignment>,
+        proposed: readonly ProposedAwardAssignment[],
         ruleset: EffectiveRuleset,
     ): AwardValidationResult {
         for (const assignment of proposed) {
@@ -241,11 +270,11 @@ export class FciAwardPolicy implements AwardPolicy {
      * meets the award's minimum.  Returns `{ valid: true }` when the
      * assignment passes every check.
      */
-    private validateOneHigherScopeAssignment(
+    private resolveHigherScopeAwardType(
         scope: StreamedScope,
         assignment: ProposedAwardAssignment,
         ruleset: EffectiveRuleset,
-    ): AwardValidationResult {
+    ): AwardValidationResult | HigherScopeAwardType {
         const awardType = ruleset.awardType(assignment.awardTypeId);
         if (awardType === undefined) {
             return { valid: false, reason: `Unknown award type '${assignment.awardTypeId}'` };
@@ -262,9 +291,19 @@ export class FciAwardPolicy implements AwardPolicy {
                 reason: `Award type '${awardType.id}' (scope ${awardType.scope}) cannot be proposed in a ${scope.kind} scope`,
             };
         }
+        return awardType;
+    }
+
+    private validateOneHigherScopeAssignment(
+        scope: StreamedScope,
+        assignment: ProposedAwardAssignment,
+        ruleset: EffectiveRuleset,
+    ): AwardValidationResult {
+        const individual = this.resolveHigherScopeAwardType(scope, assignment, ruleset);
+        if ('valid' in individual) return individual;
+
         // HigherScopeAwardType's constructor already guarantees a non-empty
         // fedBy (EmptyFeederListError) — no re-check needed here.
-        const individual = awardType;
         const candidate = this.feederCandidates(individual.fedBy, scope.streams).find(
             (c) => c.entryRef === assignment.entryRef,
         );
@@ -292,7 +331,7 @@ export class FciAwardPolicy implements AwardPolicy {
      */
     private validateBreedScopeInvariants(
         scope: StreamedScope,
-        proposed: ReadonlyArray<ProposedAwardAssignment>,
+        proposed: readonly ProposedAwardAssignment[],
         ruleset: EffectiveRuleset,
     ): AwardValidationResult | undefined {
         if (scope.kind !== 'breed') return undefined;
@@ -301,7 +340,7 @@ export class FciAwardPolicy implements AwardPolicy {
             scope.streams.find((s) => s.candidates.some((c) => c.entryRef === entryRef))?.sex;
         const breedProposals = proposed.filter((p) => {
             const at = ruleset.awardType(p.awardTypeId);
-            return at !== undefined && at.scope === 'breed';
+            return at?.scope === 'breed';
         });
         const refs = breedProposals.map((p) => p.entryRef);
         if (new Set(refs).size !== refs.length) {
@@ -329,7 +368,7 @@ export class FciAwardPolicy implements AwardPolicy {
      */
     private requireNonDiscretionaryAwards(
         scope: StreamedScope,
-        proposed: ReadonlyArray<ProposedAwardAssignment>,
+        proposed: readonly ProposedAwardAssignment[],
         ruleset: EffectiveRuleset,
     ): AwardValidationResult | undefined {
         const proposedIds = new Set(proposed.map((p) => p.awardTypeId));
@@ -387,9 +426,9 @@ export class FciAwardPolicy implements AwardPolicy {
     }
     /** Streams whose feeder key matches any of `fedBy` (key-only; sex is aggregated separately). */
     private matchedStreams(
-        fedBy: ReadonlyArray<Feeder>,
-        streams: ReadonlyArray<CandidateStream>,
-    ): ReadonlyArray<CandidateStream> {
+        fedBy: readonly Feeder[],
+        streams: readonly CandidateStream[],
+    ): readonly CandidateStream[] {
         return streams.filter((s) => fedBy.some((f) => this.feederMatchesStream(f, s)));
     }
 
@@ -405,9 +444,9 @@ export class FciAwardPolicy implements AwardPolicy {
 
     /** All candidates supplied by the streams matching `fedBy`. */
     private feederCandidates(
-        fedBy: ReadonlyArray<Feeder>,
-        streams: ReadonlyArray<CandidateStream>,
-    ): ReadonlyArray<StreamCandidate> {
+        fedBy: readonly Feeder[],
+        streams: readonly CandidateStream[],
+    ): readonly StreamCandidate[] {
         return this.matchedStreams(fedBy, streams).flatMap((s) => [...s.candidates]);
     }
 
@@ -422,6 +461,6 @@ export class FciAwardPolicy implements AwardPolicy {
         ruleset: EffectiveRuleset,
     ): boolean {
         const pair = resolveGradePairOnSharedScale(candidateGradeId, minimumGradeId, ruleset);
-        return pair !== undefined && pair.candidate.isAtLeast(pair.minimum);
+        return pair?.candidate.isAtLeast(pair.minimum) ?? false;
     }
 }

@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
  * back to an interactive prompt for any it runs out of values for, which
  * would hang a non-interactive CI run.
  */
-const SAMPLE_AGGREGATES: ReadonlyArray<readonly [name: string, scope: string, parent: string]> = [
+const SAMPLE_AGGREGATES: readonly (readonly [name: string, scope: string, parent: string])[] = [
     ['item', 'club', ''],
     ['note', 'exhibitor', ''],
     ['ticket', 'hybrid', 'item'],

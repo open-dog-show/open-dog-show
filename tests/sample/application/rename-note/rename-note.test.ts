@@ -42,7 +42,10 @@ describe('RenameNoteHandler', () => {
             SCOPE,
         );
 
-        expect(result).toEqual({ ok: false, error: expect.any(NoteNotFoundError) });
+        expect(result).toEqual({
+            ok: false,
+            error: expect.any(NoteNotFoundError) as NoteNotFoundError,
+        });
     });
 
     it('returns InvalidNoteNameError for a blank name', async () => {
@@ -57,6 +60,9 @@ describe('RenameNoteHandler', () => {
             SCOPE,
         );
 
-        expect(result).toEqual({ ok: false, error: expect.any(InvalidNoteNameError) });
+        expect(result).toEqual({
+            ok: false,
+            error: expect.any(InvalidNoteNameError) as InvalidNoteNameError,
+        });
     });
 });

@@ -18,7 +18,7 @@ import type { IamUnitOfWork } from '../ports/unit-of-work.js';
 export interface IdentitySnapshot {
     readonly userId: string;
     readonly active: boolean;
-    readonly roleGrants: ReadonlyArray<{ readonly role: DomainRole; readonly clubId?: string }>;
+    readonly roleGrants: readonly { readonly role: DomainRole; readonly clubId?: string }[];
 }
 
 /**

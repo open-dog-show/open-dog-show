@@ -56,7 +56,12 @@ export interface SampleContext {
  */
 export function createSampleContext(deps: SampleContextDependencies): SampleContext {
     const writer = new PgOutboxWriter('sample');
-    const unitOfWork = new PgSampleUnitOfWork(deps.pool, writer, deps.clock, deps.eventIdGenerator);
+    const unitOfWork = new PgSampleUnitOfWork({
+        pool: deps.pool,
+        writer,
+        clock: deps.clock,
+        eventIdGenerator: deps.eventIdGenerator,
+    });
 
     return {
         useCases: {

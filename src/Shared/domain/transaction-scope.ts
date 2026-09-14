@@ -56,6 +56,7 @@ export class ExhibitorTransactionScope {
 export class PlatformTransactionScope {
     readonly kind = 'platform' as const;
 
+    // eslint-disable-next-line @typescript-eslint/no-empty-function -- private nominal constructor (ADR-0023); `of()` is the only way to construct this singleton-shaped variant.
     private constructor() {}
 
     static of(): PlatformTransactionScope {
@@ -63,6 +64,9 @@ export class PlatformTransactionScope {
     }
 
     equals(other: PlatformTransactionScope): boolean {
+        // Mirrors the other variants' equals(other) shape; always true since
+        // PlatformTransactionScope carries no data beyond `kind`.
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- always true by construction (no fields beyond `kind`), kept for shape parity with the other variants
         return this.kind === other.kind;
     }
 }

@@ -105,12 +105,10 @@ function makeShowType(id: string): ShowType {
  * against the same selection logic every real adapter uses, rather than
  * reimplementing it.
  */
-function fakeRepository(
-    editions: ReadonlyArray<RulesetLayerEdition>,
-): RulesetLayerEditionRepository {
+function fakeRepository(editions: readonly RulesetLayerEdition[]): RulesetLayerEditionRepository {
     return {
-        async inForce(layerId: RulesetLayerId, date: LocalDate) {
-            return RulesetLayerEdition.latestInForce(editions, layerId, date);
+        inForce(layerId: RulesetLayerId, date: LocalDate) {
+            return Promise.resolve(RulesetLayerEdition.latestInForce(editions, layerId, date));
         },
     };
 }
@@ -125,12 +123,12 @@ describe('resolveEffectiveRuleset', () => {
             const classDef = makeClass('c-1');
             const edition = makeEdition('fci', { classDefinitions: [classDef] });
 
-            const result = await resolveEffectiveRuleset(
-                RULESET_ID,
-                [asRulesetLayerId('fci')],
-                fakeRepository([edition]),
-                TEST_DATE,
-            );
+            const result = await resolveEffectiveRuleset({
+                id: RULESET_ID,
+                orderedLayerIds: [asRulesetLayerId('fci')],
+                editionRepository: fakeRepository([edition]),
+                showDate: TEST_DATE,
+            });
 
             expect(result.classDefinitions).toHaveLength(1);
             expect(result.classDefinitions[0]).toEqual(classDef);
@@ -142,12 +140,12 @@ describe('resolveEffectiveRuleset', () => {
             const base = makeEdition('fci', { classDefinitions: [makeClass('c-1')] });
             const national = makeEdition('srsh', { classDefinitions: [makeClass('c-2')] });
 
-            const result = await resolveEffectiveRuleset(
-                RULESET_ID,
-                [asRulesetLayerId('fci'), asRulesetLayerId('srsh')],
-                fakeRepository([base, national]),
-                TEST_DATE,
-            );
+            const result = await resolveEffectiveRuleset({
+                id: RULESET_ID,
+                orderedLayerIds: [asRulesetLayerId('fci'), asRulesetLayerId('srsh')],
+                editionRepository: fakeRepository([base, national]),
+                showDate: TEST_DATE,
+            });
 
             const ids = result.classDefinitions.map((c) => c.id);
             expect(ids).toContain(asClassId('c-1'));
@@ -161,12 +159,12 @@ describe('resolveEffectiveRuleset', () => {
             const base = makeEdition('fci', { classDefinitions: [makeClass('c-1', 9)] });
             const national = makeEdition('srsh', { classDefinitions: [makeClass('c-1', 3)] });
 
-            const result = await resolveEffectiveRuleset(
-                RULESET_ID,
-                [asRulesetLayerId('fci'), asRulesetLayerId('srsh')],
-                fakeRepository([base, national]),
-                TEST_DATE,
-            );
+            const result = await resolveEffectiveRuleset({
+                id: RULESET_ID,
+                orderedLayerIds: [asRulesetLayerId('fci'), asRulesetLayerId('srsh')],
+                editionRepository: fakeRepository([base, national]),
+                showDate: TEST_DATE,
+            });
 
             expect(result.classDefinitions).toHaveLength(1);
             expect(result.classDefinitions[0]?.fromAgeMonths).toBe(3);
@@ -179,12 +177,16 @@ describe('resolveEffectiveRuleset', () => {
             const layer2 = makeEdition('l2', { classDefinitions: [makeClass('c-1', 15)] });
             const layer3 = makeEdition('l3', { classDefinitions: [makeClass('c-1', 18)] });
 
-            const result = await resolveEffectiveRuleset(
-                RULESET_ID,
-                [asRulesetLayerId('l1'), asRulesetLayerId('l2'), asRulesetLayerId('l3')],
-                fakeRepository([layer1, layer2, layer3]),
-                TEST_DATE,
-            );
+            const result = await resolveEffectiveRuleset({
+                id: RULESET_ID,
+                orderedLayerIds: [
+                    asRulesetLayerId('l1'),
+                    asRulesetLayerId('l2'),
+                    asRulesetLayerId('l3'),
+                ],
+                editionRepository: fakeRepository([layer1, layer2, layer3]),
+                showDate: TEST_DATE,
+            });
 
             expect(result.classDefinitions).toHaveLength(1);
             expect(result.classDefinitions[0]?.fromAgeMonths).toBe(18);
@@ -193,23 +195,23 @@ describe('resolveEffectiveRuleset', () => {
 
     describe('metadata', () => {
         it('carries an id matching the supplied EffectiveRulesetId', async () => {
-            const result = await resolveEffectiveRuleset(
-                RULESET_ID,
-                [asRulesetLayerId('fci')],
-                fakeRepository([makeEdition('fci')]),
-                TEST_DATE,
-            );
+            const result = await resolveEffectiveRuleset({
+                id: RULESET_ID,
+                orderedLayerIds: [asRulesetLayerId('fci')],
+                editionRepository: fakeRepository([makeEdition('fci')]),
+                showDate: TEST_DATE,
+            });
 
             expect(result.id).toBe(RULESET_ID);
         });
 
         it('carries resolvedFor matching the supplied date', async () => {
-            const result = await resolveEffectiveRuleset(
-                RULESET_ID,
-                [asRulesetLayerId('fci')],
-                fakeRepository([makeEdition('fci')]),
-                TEST_DATE,
-            );
+            const result = await resolveEffectiveRuleset({
+                id: RULESET_ID,
+                orderedLayerIds: [asRulesetLayerId('fci')],
+                editionRepository: fakeRepository([makeEdition('fci')]),
+                showDate: TEST_DATE,
+            });
 
             expect(result.resolvedFor).toEqual(TEST_DATE);
         });
@@ -218,12 +220,12 @@ describe('resolveEffectiveRuleset', () => {
             const l1 = makeEdition('layer-a', { effectiveFrom: LocalDate.of(2020, 1, 1) });
             const l2 = makeEdition('layer-b', { effectiveFrom: LocalDate.of(2021, 6, 1) });
 
-            const result = await resolveEffectiveRuleset(
-                RULESET_ID,
-                [asRulesetLayerId('layer-a'), asRulesetLayerId('layer-b')],
-                fakeRepository([l1, l2]),
-                TEST_DATE,
-            );
+            const result = await resolveEffectiveRuleset({
+                id: RULESET_ID,
+                orderedLayerIds: [asRulesetLayerId('layer-a'), asRulesetLayerId('layer-b')],
+                editionRepository: fakeRepository([l1, l2]),
+                showDate: TEST_DATE,
+            });
 
             expect(result.sourceEditions).toEqual([
                 { layerId: asRulesetLayerId('layer-a'), effectiveFrom: LocalDate.of(2020, 1, 1) },
@@ -237,12 +239,12 @@ describe('resolveEffectiveRuleset', () => {
             const mutableDefs: ClassDefinition[] = [makeClass('c-1')];
             const edition = makeEdition('fci', { classDefinitions: mutableDefs });
 
-            const result = await resolveEffectiveRuleset(
-                RULESET_ID,
-                [asRulesetLayerId('fci')],
-                fakeRepository([edition]),
-                TEST_DATE,
-            );
+            const result = await resolveEffectiveRuleset({
+                id: RULESET_ID,
+                orderedLayerIds: [asRulesetLayerId('fci')],
+                editionRepository: fakeRepository([edition]),
+                showDate: TEST_DATE,
+            });
 
             // Mutate after resolution
             mutableDefs.push(makeClass('c-extra'));
@@ -264,12 +266,12 @@ describe('resolveEffectiveRuleset', () => {
                 showTypes: [makeShowType('st-1')],
             });
 
-            const result = await resolveEffectiveRuleset(
-                RULESET_ID,
-                [asRulesetLayerId('fci'), asRulesetLayerId('srsh')],
-                fakeRepository([base, national]),
-                TEST_DATE,
-            );
+            const result = await resolveEffectiveRuleset({
+                id: RULESET_ID,
+                orderedLayerIds: [asRulesetLayerId('fci'), asRulesetLayerId('srsh')],
+                editionRepository: fakeRepository([base, national]),
+                showDate: TEST_DATE,
+            });
 
             expect(result.gradeScales).toHaveLength(1);
             expect(result.awardTypes).toHaveLength(1);
@@ -298,18 +300,18 @@ describe('resolveEffectiveRuleset', () => {
         const repository = fakeRepository([early, later]);
 
         it('resolves two different EffectiveRulesets for show dates either side of the edition boundary', async () => {
-            const before = await resolveEffectiveRuleset(
-                RULESET_ID,
-                [layerId],
-                repository,
-                LocalDate.of(2026, 12, 31),
-            );
-            const after = await resolveEffectiveRuleset(
-                RULESET_ID,
-                [layerId],
-                repository,
-                LocalDate.of(2027, 1, 1),
-            );
+            const before = await resolveEffectiveRuleset({
+                id: RULESET_ID,
+                orderedLayerIds: [layerId],
+                editionRepository: repository,
+                showDate: LocalDate.of(2026, 12, 31),
+            });
+            const after = await resolveEffectiveRuleset({
+                id: RULESET_ID,
+                orderedLayerIds: [layerId],
+                editionRepository: repository,
+                showDate: LocalDate.of(2027, 1, 1),
+            });
 
             expect(before.classDefinitions).toHaveLength(1);
             expect(before.classDefinitions.map((c) => c.id)).not.toContain(
@@ -322,12 +324,12 @@ describe('resolveEffectiveRuleset', () => {
         });
 
         it('records the selected edition in sourceEditions', async () => {
-            const after = await resolveEffectiveRuleset(
-                RULESET_ID,
-                [layerId],
-                repository,
-                LocalDate.of(2027, 6, 1),
-            );
+            const after = await resolveEffectiveRuleset({
+                id: RULESET_ID,
+                orderedLayerIds: [layerId],
+                editionRepository: repository,
+                showDate: LocalDate.of(2027, 6, 1),
+            });
 
             expect(after.sourceEditions).toEqual([
                 { layerId, effectiveFrom: LocalDate.of(2027, 1, 1) },
@@ -336,12 +338,12 @@ describe('resolveEffectiveRuleset', () => {
 
         it('throws NoEditionInForceError when no edition of a layer is in force yet on the show date', async () => {
             await expect(
-                resolveEffectiveRuleset(
-                    RULESET_ID,
-                    [layerId],
-                    repository,
-                    LocalDate.of(2025, 12, 31),
-                ),
+                resolveEffectiveRuleset({
+                    id: RULESET_ID,
+                    orderedLayerIds: [layerId],
+                    editionRepository: repository,
+                    showDate: LocalDate.of(2025, 12, 31),
+                }),
             ).rejects.toThrow(NoEditionInForceError);
         });
     });

@@ -4,6 +4,10 @@
 import {
     DomainEventRehydrationRegistry,
     assertPayloadHasStringField,
+    type AggregateId,
+    type DomainEventFact,
+    type EventScope,
+    type EventType,
 } from '../../../Shared/index.js';
 // plop:imports
 import {
@@ -31,6 +35,27 @@ import { ITEM_CREATED_TYPE, ItemCreated } from '../../domain/model/item/events/i
 import { ITEM_RENAMED_TYPE, ItemRenamed } from '../../domain/model/item/events/item-renamed.js';
 
 /**
+ * Registers one `name`-payload event type: validates the fact's `payload` has
+ * a string `name` field, then delegates to the concrete event class's
+ * `rehydrate`. Every generated event shares this exact shape, so this is the
+ * single place that shape is checked, instead of repeated per event type.
+ */
+function registerNamedEvent(
+    registry: DomainEventRehydrationRegistry,
+    type: EventType,
+    rehydrate: (fields: {
+        readonly scope: EventScope;
+        readonly aggregateId: AggregateId;
+        readonly payload: Record<'name', string>;
+    }) => DomainEventFact,
+): void {
+    registry.register(type, ({ scope, aggregateId, payload }) => {
+        assertPayloadHasStringField(payload, 'name');
+        return rehydrate({ scope, aggregateId, payload });
+    });
+}
+
+/**
  * Builds the sample context's event-type → class rehydration
  * registry (ADR-0022 class events).
  *
@@ -51,41 +76,21 @@ import { ITEM_RENAMED_TYPE, ItemRenamed } from '../../domain/model/item/events/i
 export function buildSampleEventRehydrationRegistry(): DomainEventRehydrationRegistry {
     const registry = new DomainEventRehydrationRegistry();
     // plop:registrations
-    registry.register(ANNOUNCEMENT_CREATED_TYPE, ({ scope, aggregateId, payload }) => {
-        assertPayloadHasStringField(payload, 'name');
-        return AnnouncementCreated.rehydrate({ scope, aggregateId, payload });
-    });
-    registry.register(ANNOUNCEMENT_RENAMED_TYPE, ({ scope, aggregateId, payload }) => {
-        assertPayloadHasStringField(payload, 'name');
-        return AnnouncementRenamed.rehydrate({ scope, aggregateId, payload });
-    });
+    registerNamedEvent(registry, ANNOUNCEMENT_CREATED_TYPE, (f) =>
+        AnnouncementCreated.rehydrate(f),
+    );
+    registerNamedEvent(registry, ANNOUNCEMENT_RENAMED_TYPE, (f) =>
+        AnnouncementRenamed.rehydrate(f),
+    );
 
-    registry.register(TICKET_CREATED_TYPE, ({ scope, aggregateId, payload }) => {
-        assertPayloadHasStringField(payload, 'name');
-        return TicketCreated.rehydrate({ scope, aggregateId, payload });
-    });
-    registry.register(TICKET_RENAMED_TYPE, ({ scope, aggregateId, payload }) => {
-        assertPayloadHasStringField(payload, 'name');
-        return TicketRenamed.rehydrate({ scope, aggregateId, payload });
-    });
+    registerNamedEvent(registry, TICKET_CREATED_TYPE, (f) => TicketCreated.rehydrate(f));
+    registerNamedEvent(registry, TICKET_RENAMED_TYPE, (f) => TicketRenamed.rehydrate(f));
 
-    registry.register(NOTE_CREATED_TYPE, ({ scope, aggregateId, payload }) => {
-        assertPayloadHasStringField(payload, 'name');
-        return NoteCreated.rehydrate({ scope, aggregateId, payload });
-    });
-    registry.register(NOTE_RENAMED_TYPE, ({ scope, aggregateId, payload }) => {
-        assertPayloadHasStringField(payload, 'name');
-        return NoteRenamed.rehydrate({ scope, aggregateId, payload });
-    });
+    registerNamedEvent(registry, NOTE_CREATED_TYPE, (f) => NoteCreated.rehydrate(f));
+    registerNamedEvent(registry, NOTE_RENAMED_TYPE, (f) => NoteRenamed.rehydrate(f));
 
-    registry.register(ITEM_CREATED_TYPE, ({ scope, aggregateId, payload }) => {
-        assertPayloadHasStringField(payload, 'name');
-        return ItemCreated.rehydrate({ scope, aggregateId, payload });
-    });
-    registry.register(ITEM_RENAMED_TYPE, ({ scope, aggregateId, payload }) => {
-        assertPayloadHasStringField(payload, 'name');
-        return ItemRenamed.rehydrate({ scope, aggregateId, payload });
-    });
+    registerNamedEvent(registry, ITEM_CREATED_TYPE, (f) => ItemCreated.rehydrate(f));
+    registerNamedEvent(registry, ITEM_RENAMED_TYPE, (f) => ItemRenamed.rehydrate(f));
 
     return registry;
 }

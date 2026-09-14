@@ -5,6 +5,7 @@ import type pg from 'pg';
 import {
     withOutboxTransaction,
     type Clock,
+    type DomainEventFact,
     type EventIdGenerator,
     type PgOutboxWriter,
     type TransactionScope,
@@ -22,6 +23,35 @@ import type {
     SampleUnitOfWork,
     SampleUnitOfWorkContext,
 } from '../../../application/ports/unit-of-work.js';
+
+interface CrudRepositoryPort<Id, T> {
+    findById(id: Id): Promise<T | undefined>;
+    add(entity: T): Promise<void>;
+    update(entity: T): Promise<void>;
+}
+
+/**
+ * Wraps a repository's `add`/`update` so each pulls and forwards the
+ * aggregate's recorded facts to `record` (ADR-0027) — the single place this
+ * context translates "saved" into "events queued for the outbox", shared by
+ * every aggregate's port instead of repeated per aggregate.
+ */
+function wrapRepositoryPort<Id, T extends { pullEvents(): readonly DomainEventFact[] }>(
+    repository: CrudRepositoryPort<Id, T>,
+    record: (...facts: readonly DomainEventFact[]) => void,
+): CrudRepositoryPort<Id, T> {
+    return {
+        findById: (id) => repository.findById(id),
+        add: async (entity) => {
+            await repository.add(entity);
+            record(...entity.pullEvents());
+        },
+        update: async (entity) => {
+            await repository.update(entity);
+            record(...entity.pullEvents());
+        },
+    };
+}
 
 /**
  * PostgreSQL implementation of the sample-context
@@ -41,91 +71,53 @@ import type {
  * event envelopes; injected into use-case classes.
  */
 export class PgSampleUnitOfWork implements SampleUnitOfWork {
+    private readonly deps: {
+        readonly pool: pg.Pool;
+        readonly writer: PgOutboxWriter;
+        readonly clock: Clock;
+        readonly eventIdGenerator: EventIdGenerator;
+    };
+
     /**
-     * @param pool - The PostgreSQL connection pool (app role, RLS-enforced).
-     * @param writer - The schema-scoped outbox writer for this context.
-     * @param clock - Stamps `occurredAt` on events pulled from a saved aggregate.
-     * @param eventIdGenerator - Stamps `eventId` on events pulled from a saved aggregate.
+     * @param deps.pool - The PostgreSQL connection pool (app role, RLS-enforced).
+     * @param deps.writer - The schema-scoped outbox writer for this context.
+     * @param deps.clock - Stamps `occurredAt` on events pulled from a saved aggregate.
+     * @param deps.eventIdGenerator - Stamps `eventId` on events pulled from a saved aggregate.
      */
-    constructor(
-        private readonly pool: pg.Pool,
-        private readonly writer: PgOutboxWriter,
-        private readonly clock: Clock,
-        private readonly eventIdGenerator: EventIdGenerator,
-    ) {}
+    constructor(deps: {
+        readonly pool: pg.Pool;
+        readonly writer: PgOutboxWriter;
+        readonly clock: Clock;
+        readonly eventIdGenerator: EventIdGenerator;
+    }) {
+        this.deps = deps;
+    }
 
     async run<T>(
         scope: TransactionScope,
         body: (ctx: SampleUnitOfWorkContext) => Promise<T>,
     ): Promise<T> {
-        return withOutboxTransaction(
-            this.pool,
-            scope,
-            this.writer,
-            this.clock,
-            this.eventIdGenerator,
-            async (client, record) => {
-                // plop:repository-instances
-                const announcementRepository = new DrizzleAnnouncementRepository(client);
+        return withOutboxTransaction({ ...this.deps, scope }, async (client, record) => {
+            // plop:repository-instances
+            const announcementRepository = new DrizzleAnnouncementRepository(client);
 
-                const ticketRepository = new DrizzleTicketRepository(client);
+            const ticketRepository = new DrizzleTicketRepository(client);
 
-                const noteRepository = new DrizzleNoteRepository(client);
+            const noteRepository = new DrizzleNoteRepository(client);
 
-                const itemRepository = new DrizzleItemRepository(client);
+            const itemRepository = new DrizzleItemRepository(client);
 
-                const ctx: SampleUnitOfWorkContext = {
-                    // plop:repositories
-                    announcements: {
-                        findById: (id) => announcementRepository.findById(id),
-                        add: async (announcement) => {
-                            await announcementRepository.add(announcement);
-                            record(...announcement.pullEvents());
-                        },
-                        update: async (announcement) => {
-                            await announcementRepository.update(announcement);
-                            record(...announcement.pullEvents());
-                        },
-                    },
+            const ctx: SampleUnitOfWorkContext = {
+                // plop:repositories
+                announcements: wrapRepositoryPort(announcementRepository, record),
 
-                    tickets: {
-                        findById: (id) => ticketRepository.findById(id),
-                        add: async (ticket) => {
-                            await ticketRepository.add(ticket);
-                            record(...ticket.pullEvents());
-                        },
-                        update: async (ticket) => {
-                            await ticketRepository.update(ticket);
-                            record(...ticket.pullEvents());
-                        },
-                    },
+                tickets: wrapRepositoryPort(ticketRepository, record),
 
-                    notes: {
-                        findById: (id) => noteRepository.findById(id),
-                        add: async (note) => {
-                            await noteRepository.add(note);
-                            record(...note.pullEvents());
-                        },
-                        update: async (note) => {
-                            await noteRepository.update(note);
-                            record(...note.pullEvents());
-                        },
-                    },
+                notes: wrapRepositoryPort(noteRepository, record),
 
-                    items: {
-                        findById: (id) => itemRepository.findById(id),
-                        add: async (item) => {
-                            await itemRepository.add(item);
-                            record(...item.pullEvents());
-                        },
-                        update: async (item) => {
-                            await itemRepository.update(item);
-                            record(...item.pullEvents());
-                        },
-                    },
-                };
-                return body(ctx);
-            },
-        );
+                items: wrapRepositoryPort(itemRepository, record),
+            };
+            return body(ctx);
+        });
     }
 }

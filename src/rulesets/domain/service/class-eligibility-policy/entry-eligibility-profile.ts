@@ -7,7 +7,7 @@ import type { LocalDate } from '../../model/effective-ruleset/value-objects/loca
 /** Attributes for {@link EntryEligibilityProfile.of}. */
 export interface EntryEligibilityProfileAttributes {
     readonly dateOfBirth: LocalDate;
-    readonly heldCertificates: ReadonlyArray<CertificateKind>;
+    readonly heldCertificates: readonly CertificateKind[];
     readonly handlerIsBreederOfDog: boolean;
 }
 
@@ -27,7 +27,7 @@ export interface EntryEligibilityProfileAttributes {
 export class EntryEligibilityProfile {
     readonly dateOfBirth: LocalDate;
 
-    readonly heldCertificates: ReadonlyArray<CertificateKind>;
+    readonly heldCertificates: readonly CertificateKind[];
 
     readonly handlerIsBreederOfDog: boolean;
 

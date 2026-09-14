@@ -41,7 +41,10 @@ describe('RenameAnnouncementHandler', () => {
             SCOPE,
         );
 
-        expect(result).toEqual({ ok: false, error: expect.any(AnnouncementNotFoundError) });
+        expect(result).toEqual({
+            ok: false,
+            error: expect.any(AnnouncementNotFoundError) as AnnouncementNotFoundError,
+        });
     });
 
     it('returns InvalidAnnouncementNameError for a blank name', async () => {
@@ -56,6 +59,9 @@ describe('RenameAnnouncementHandler', () => {
             SCOPE,
         );
 
-        expect(result).toEqual({ ok: false, error: expect.any(InvalidAnnouncementNameError) });
+        expect(result).toEqual({
+            ok: false,
+            error: expect.any(InvalidAnnouncementNameError) as InvalidAnnouncementNameError,
+        });
     });
 });

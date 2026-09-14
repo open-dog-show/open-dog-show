@@ -5,6 +5,7 @@ import type pg from 'pg';
 import {
     withOutboxTransaction,
     type Clock,
+    type DomainEventFact,
     type EventIdGenerator,
     type PgOutboxWriter,
     type TransactionScope,
@@ -14,6 +15,36 @@ import type {
     {{pascalCase name}}UnitOfWork,
     {{pascalCase name}}UnitOfWorkContext,
 } from '../../../application/ports/unit-of-work.js';
+
+interface CrudRepositoryPort<Id, T> {
+    findById(id: Id): Promise<T | undefined>;
+    add(entity: T): Promise<void>;
+    update(entity: T): Promise<void>;
+}
+
+/**
+ * Wraps a repository's `add`/`update` so each pulls and forwards the
+ * aggregate's recorded facts to `record` (ADR-0027) — the single place this
+ * context translates "saved" into "events queued for the outbox", shared by
+ * every aggregate's port instead of repeated per aggregate.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's ctx-field wiring; unused only in a bare context skeleton
+function wrapRepositoryPort<Id, T extends { pullEvents(): readonly DomainEventFact[] }>(
+    repository: CrudRepositoryPort<Id, T>,
+    record: (...facts: readonly DomainEventFact[]) => void,
+): CrudRepositoryPort<Id, T> {
+    return {
+        findById: (id) => repository.findById(id),
+        add: async (entity) => {
+            await repository.add(entity);
+            record(...entity.pullEvents());
+        },
+        update: async (entity) => {
+            await repository.update(entity);
+            record(...entity.pullEvents());
+        },
+    };
+}
 
 /**
  * PostgreSQL implementation of the {{dashCase name}}-context
@@ -33,29 +64,34 @@ import type {
  * event envelopes; injected into use-case classes.
  */
 export class Pg{{pascalCase name}}UnitOfWork implements {{pascalCase name}}UnitOfWork {
+    private readonly deps: {
+        readonly pool: pg.Pool;
+        readonly writer: PgOutboxWriter;
+        readonly clock: Clock;
+        readonly eventIdGenerator: EventIdGenerator;
+    };
+
     /**
-     * @param pool - The PostgreSQL connection pool (app role, RLS-enforced).
-     * @param writer - The schema-scoped outbox writer for this context.
-     * @param clock - Stamps `occurredAt` on events pulled from a saved aggregate.
-     * @param eventIdGenerator - Stamps `eventId` on events pulled from a saved aggregate.
+     * @param deps.pool - The PostgreSQL connection pool (app role, RLS-enforced).
+     * @param deps.writer - The schema-scoped outbox writer for this context.
+     * @param deps.clock - Stamps `occurredAt` on events pulled from a saved aggregate.
+     * @param deps.eventIdGenerator - Stamps `eventId` on events pulled from a saved aggregate.
      */
-    constructor(
-        private readonly pool: pg.Pool,
-        private readonly writer: PgOutboxWriter,
-        private readonly clock: Clock,
-        private readonly eventIdGenerator: EventIdGenerator,
-    ) {}
+    constructor(deps: {
+        readonly pool: pg.Pool;
+        readonly writer: PgOutboxWriter;
+        readonly clock: Clock;
+        readonly eventIdGenerator: EventIdGenerator;
+    }) {
+        this.deps = deps;
+    }
 
     async run<T>(
         scope: TransactionScope,
         body: (ctx: {{pascalCase name}}UnitOfWorkContext) => Promise<T>,
     ): Promise<T> {
         return withOutboxTransaction(
-            this.pool,
-            scope,
-            this.writer,
-            this.clock,
-            this.eventIdGenerator,
+            { ...this.deps, scope },
             // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's repository instances; unused only in a bare context skeleton
             async (client, record) => {
                 // plop:repository-instances

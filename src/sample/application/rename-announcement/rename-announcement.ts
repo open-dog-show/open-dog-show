@@ -7,7 +7,7 @@ import {
     AnnouncementNotFoundError,
     InvalidAnnouncementNameError,
 } from '../../domain/model/announcement/announcement.js';
-import type { SampleUnitOfWork } from '../ports/unit-of-work.js';
+import type { SampleUnitOfWork, SampleUnitOfWorkContext } from '../ports/unit-of-work.js';
 
 /** Inputs to {@link RenameAnnouncementHandler.execute}. */
 export interface RenameAnnouncementCommand {
@@ -42,21 +42,9 @@ export class RenameAnnouncementHandler {
         Result<RenameAnnouncementResponse, AnnouncementNotFoundError | InvalidAnnouncementNameError>
     > {
         try {
-            return await this.unitOfWork.run<
-                Result<
-                    RenameAnnouncementResponse,
-                    AnnouncementNotFoundError | InvalidAnnouncementNameError
-                >
-            >(scope, async (ctx) => {
-                const id = asAnnouncementId(command.id);
-                const announcement = await ctx.announcements.findById(id);
-                if (announcement === undefined) {
-                    throw new AnnouncementNotFoundError(id);
-                }
-                announcement.rename(command.name);
-                await ctx.announcements.update(announcement);
-                return { ok: true, value: { id: announcement.id, name: announcement.name } };
-            });
+            return await this.unitOfWork.run(scope, (ctx) =>
+                this.renameInTransaction(ctx, command),
+            );
         } catch (error) {
             if (
                 error instanceof AnnouncementNotFoundError ||
@@ -66,5 +54,21 @@ export class RenameAnnouncementHandler {
             }
             throw error;
         }
+    }
+
+    private async renameInTransaction(
+        ctx: SampleUnitOfWorkContext,
+        command: RenameAnnouncementCommand,
+    ): Promise<
+        Result<RenameAnnouncementResponse, AnnouncementNotFoundError | InvalidAnnouncementNameError>
+    > {
+        const id = asAnnouncementId(command.id);
+        const announcement = await ctx.announcements.findById(id);
+        if (announcement === undefined) {
+            throw new AnnouncementNotFoundError(id);
+        }
+        announcement.rename(command.name);
+        await ctx.announcements.update(announcement);
+        return { ok: true, value: { id: announcement.id, name: announcement.name } };
     }
 }

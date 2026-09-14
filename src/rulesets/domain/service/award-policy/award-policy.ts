@@ -39,7 +39,7 @@ export interface AwardPolicy {
     eligibleAwardTypes(
         scope: JudgingScopeResults,
         ruleset: EffectiveRuleset,
-    ): ReadonlyArray<AwardTypeId>;
+    ): readonly AwardTypeId[];
 
     /**
      * Validates the judge's proposed award assignments against the scope
@@ -51,7 +51,7 @@ export interface AwardPolicy {
      */
     validateAwardChoices(
         scope: JudgingScopeResults,
-        proposed: ReadonlyArray<ProposedAwardAssignment>,
+        proposed: readonly ProposedAwardAssignment[],
         ruleset: EffectiveRuleset,
     ): AwardValidationResult;
 }

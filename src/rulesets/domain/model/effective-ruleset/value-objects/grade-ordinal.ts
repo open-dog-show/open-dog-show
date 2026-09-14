@@ -18,7 +18,7 @@ export class InvalidGradeOrdinalError extends DomainError {
 
     constructor(ordinal: number) {
         super(
-            `Grade ordinal must be an integer >= 0 (0 is the best grade on the scale); received ${ordinal}`,
+            `Grade ordinal must be an integer >= 0 (0 is the best grade on the scale); received ${String(ordinal)}`,
             { ordinal },
         );
         this.ordinal = ordinal;

@@ -9,6 +9,7 @@ import { DuplicateExternalSubjectError } from '../../../../../src/iam/domain/mod
 import { UserRoleGrants } from '../../../../../src/iam/domain/model/user-role-grants/user-role-grants.js';
 import { ConcurrentModificationError } from '../../../../../src/iam/domain/shared/concurrent-modification-error.js';
 import { FakeIamUnitOfWork } from '../../../../../src/iam/infrastructure/persistence/inmemory/fake-iam-unit-of-work.js';
+import { findOrFail } from '../../../../test-kit/index.js';
 
 const SCOPE = PlatformTransactionScope.of();
 const ALICE_ID = asUserId('user-alice');
@@ -75,8 +76,8 @@ describe('FakeIamUnitOfWork users', () => {
         });
 
         await uow.run(SCOPE, async (ctx) => {
-            const user = await ctx.users.findById(ALICE_ID);
-            await ctx.users.update(user!.suspend());
+            const user = findOrFail(await ctx.users.findById(ALICE_ID), 'Alice');
+            await ctx.users.update(user.suspend());
         });
 
         const stored = await uow.run(SCOPE, (ctx) => ctx.users.findById(ALICE_ID));
@@ -155,8 +156,8 @@ describe('FakeIamUnitOfWork users', () => {
         });
 
         const attemptA = uow.run(SCOPE, async (ctx) => {
-            const user = await ctx.users.findById(ALICE_ID);
-            await ctx.users.update(user!.suspend()); // writes version 2
+            const user = findOrFail(await ctx.users.findById(ALICE_ID), 'Alice');
+            await ctx.users.update(user.suspend()); // writes version 2
             announceAWrote();
             await blockedUntilBCommits;
             throw new Error('boom');
@@ -165,9 +166,9 @@ describe('FakeIamUnitOfWork users', () => {
         // Attempt B observes A's not-yet-committed version 2 and builds on it.
         await aliceUpdatedToVersion2;
         await uow.run(SCOPE, async (ctx) => {
-            const user = await ctx.users.findById(ALICE_ID);
-            expect(user?.version).toBe(2);
-            await ctx.users.update(user!.reactivate()); // writes version 3
+            const user = findOrFail(await ctx.users.findById(ALICE_ID), 'Alice');
+            expect(user.version).toBe(2);
+            await ctx.users.update(user.reactivate()); // writes version 3
         });
 
         releaseA();
@@ -188,19 +189,22 @@ describe('FakeIamUnitOfWork users', () => {
         });
 
         // Reader A loads the user (version 1).
-        const readByA = await uow.run(SCOPE, (ctx) => ctx.users.findById(ALICE_ID));
+        const readByA = findOrFail(
+            await uow.run(SCOPE, (ctx) => ctx.users.findById(ALICE_ID)),
+            'Alice',
+        );
 
         // A concurrent admin suspends the account in its own, already-committed
         // unit of work — bumping the stored version to 2.
         await uow.run(SCOPE, async (ctx) => {
-            const user = await ctx.users.findById(ALICE_ID);
-            await ctx.users.update(user!.suspend());
+            const user = findOrFail(await ctx.users.findById(ALICE_ID), 'Alice');
+            await ctx.users.update(user.suspend());
         });
 
         // Reader A's stale write must fail rather than clobber the suspension.
         await expect(
             uow.run(SCOPE, async (ctx) => {
-                await ctx.users.update(readByA!.logIn({ displayName: 'Alice', email: 'a@x.com' }));
+                await ctx.users.update(readByA.logIn({ displayName: 'Alice', email: 'a@x.com' }));
             }),
         ).rejects.toBeInstanceOf(ConcurrentModificationError);
 
@@ -278,7 +282,8 @@ describe('FakeIamUnitOfWork userRoleGrants', () => {
 
         // ...admin A revokes ShowSecretary and commits first.
         await uow.run(SCOPE, async (ctx) => {
-            readByA.revoke('ShowSecretary', readByA.grants[0]!.scope);
+            const showSecretaryGrant = findOrFail(readByA.grants[0], 'readByA.grants[0]');
+            readByA.revoke('ShowSecretary', showSecretaryGrant.scope);
             await ctx.userRoleGrants.update(readByA);
         });
 
@@ -286,7 +291,8 @@ describe('FakeIamUnitOfWork userRoleGrants', () => {
         // resurrecting ShowSecretary by overwriting A's committed change.
         await expect(
             uow.run(SCOPE, async (ctx) => {
-                readByB.revoke('Judge', readByB.grants[1]!.scope);
+                const judgeGrant = findOrFail(readByB.grants[1], 'readByB.grants[1]');
+                readByB.revoke('Judge', judgeGrant.scope);
                 await ctx.userRoleGrants.update(readByB);
             }),
         ).rejects.toBeInstanceOf(ConcurrentModificationError);

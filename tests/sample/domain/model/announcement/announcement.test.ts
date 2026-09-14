@@ -59,6 +59,8 @@ describe('Announcement', () => {
             name: 'Old name',
         });
 
-        expect(() => announcement.rename('')).toThrow(InvalidAnnouncementNameError);
+        expect(() => {
+            announcement.rename('');
+        }).toThrow(InvalidAnnouncementNameError);
     });
 });

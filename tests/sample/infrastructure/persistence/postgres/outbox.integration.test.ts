@@ -20,12 +20,12 @@ describe('sample context skeleton — outbox plumbing', () => {
 
     beforeAll(async () => {
         await bootstrapSampleSchema(harness);
-        unitOfWork = new PgSampleUnitOfWork(
-            harness.appUserPool,
-            new PgOutboxWriter('sample'),
-            new SystemClock(),
-            new RandomEventIdGenerator(),
-        );
+        unitOfWork = new PgSampleUnitOfWork({
+            pool: harness.appUserPool,
+            writer: new PgOutboxWriter('sample'),
+            clock: new SystemClock(),
+            eventIdGenerator: new RandomEventIdGenerator(),
+        });
     }, 120_000);
 
     afterAll(async () => {
@@ -34,7 +34,7 @@ describe('sample context skeleton — outbox plumbing', () => {
 
     it('commits an empty unit of work with no rows written to the outbox', async () => {
         await expect(
-            unitOfWork.run(PlatformTransactionScope.of(), async (ctx) => ctx),
+            unitOfWork.run(PlatformTransactionScope.of(), (ctx) => Promise.resolve(ctx)),
         ).resolves.toBeDefined();
 
         const { rows } = await harness.superPool.query<{ count: string }>(

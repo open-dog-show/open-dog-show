@@ -13,7 +13,7 @@ import {
 import { ShowType } from '../../../../domain/model/effective-ruleset/entities/show-type.js';
 import { asPlacement } from '../../../../domain/service/award-policy/placement.js';
 import { asAgeMonths } from '../../../../domain/model/effective-ruleset/value-objects/age-months.js';
-import { CertificateKind } from '../../../../domain/model/effective-ruleset/value-objects/certificate-kind.js';
+import { CERTIFICATE_KIND } from '../../../../domain/model/effective-ruleset/value-objects/certificate-kind.js';
 import {
     FCI_PUPPY_GRADE_SCALE_ID,
     FCI_ADULT_GRADE_SCALE_ID,
@@ -78,7 +78,7 @@ export const kmsh20230101: RulesetLayerEdition = RulesetLayerEdition.of({
             id: FCI_CLASS_MINOR_PUPPY,
             fromAgeMonths: asAgeMonths(3),
             lessThanAgeMonths: asAgeMonths(6),
-            requiredCertificates: [CertificateKind.VaccinationCertificate],
+            requiredCertificates: [CERTIFICATE_KIND.VaccinationCertificate],
             bredByExhibitor: false,
             gradeScaleId: FCI_PUPPY_GRADE_SCALE_ID,
             awardTypeIds: [],

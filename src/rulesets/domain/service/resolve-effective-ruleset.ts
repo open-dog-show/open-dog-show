@@ -20,7 +20,7 @@ export class NoEditionInForceError extends DomainError {
 
     constructor(layerId: RulesetLayerId, date: LocalDate) {
         super(
-            `No edition of ruleset layer '${layerId}' is in force on ${date.year}-${date.month}-${date.day}`,
+            `No edition of ruleset layer '${layerId}' is in force on ${String(date.year)}-${String(date.month)}-${String(date.day)}`,
             {
                 layerId,
                 // Plain primitives, not the LocalDate instance itself — LocalDate
@@ -49,12 +49,13 @@ export class NoEditionInForceError extends DomainError {
  *                        (#17); until then callers supply the list directly.
  * @throws {NoEditionInForceError} when a layer has no edition in force on `showDate`.
  */
-export async function resolveEffectiveRuleset(
-    id: EffectiveRulesetId,
-    orderedLayerIds: ReadonlyArray<RulesetLayerId>,
-    editionRepository: RulesetLayerEditionRepository,
-    showDate: LocalDate,
-): Promise<EffectiveRuleset> {
+export async function resolveEffectiveRuleset(params: {
+    readonly id: EffectiveRulesetId;
+    readonly orderedLayerIds: readonly RulesetLayerId[];
+    readonly editionRepository: RulesetLayerEditionRepository;
+    readonly showDate: LocalDate;
+}): Promise<EffectiveRuleset> {
+    const { id, orderedLayerIds, editionRepository, showDate } = params;
     const editions: RulesetLayerEdition[] = [];
     for (const layerId of orderedLayerIds) {
         const edition = await editionRepository.inForce(layerId, showDate);

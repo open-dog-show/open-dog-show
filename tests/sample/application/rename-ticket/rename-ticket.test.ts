@@ -62,7 +62,10 @@ describe('RenameTicketHandler', () => {
             EXHIBITOR_SCOPE,
         );
 
-        expect(result).toEqual({ ok: false, error: expect.any(TicketNotFoundError) });
+        expect(result).toEqual({
+            ok: false,
+            error: expect.any(TicketNotFoundError) as TicketNotFoundError,
+        });
     });
 
     it('returns InvalidTicketNameError for a blank name', async () => {
@@ -74,6 +77,9 @@ describe('RenameTicketHandler', () => {
             EXHIBITOR_SCOPE,
         );
 
-        expect(result).toEqual({ ok: false, error: expect.any(InvalidTicketNameError) });
+        expect(result).toEqual({
+            ok: false,
+            error: expect.any(InvalidTicketNameError) as InvalidTicketNameError,
+        });
     });
 });

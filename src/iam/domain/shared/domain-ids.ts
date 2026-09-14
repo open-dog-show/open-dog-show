@@ -11,7 +11,7 @@
  * definition.
  */
 
-declare const __brand: unique symbol;
+declare const BRAND: unique symbol;
 
 /**
  * Compile-time brand helper — local to the IAM context so this context's branded ids
@@ -19,7 +19,7 @@ declare const __brand: unique symbol;
  * `T` at runtime but is treated as a distinct type by the TypeScript compiler,
  * preventing accidental substitution of one id kind for another.
  */
-type Brand<T, B> = T & { readonly [__brand]: B };
+type Brand<T, B> = T & { readonly [BRAND]: B };
 
 /**
  * Branded string that uniquely identifies a platform user account.

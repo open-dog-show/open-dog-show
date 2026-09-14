@@ -84,6 +84,8 @@ describe('Ticket', () => {
             name: 'Old name',
         });
 
-        expect(() => ticket.rename('')).toThrow(InvalidTicketNameError);
+        expect(() => {
+            ticket.rename('');
+        }).toThrow(InvalidTicketNameError);
     });
 });

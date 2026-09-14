@@ -73,6 +73,29 @@ workaround.
 - Strict mode with `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`.
 - `allowImportingTsExtensions` + `noEmit` — live-source, no compiled output.
 
+### Lint (ESLint, `eslint.config.js`)
+
+`strictTypeChecked` + `stylisticTypeChecked` (type-aware), plus five Clean
+Code structural limits enforced on every `.ts` file — write new code within
+these from the start rather than refactoring after the fact:
+
+- `max-params: 3` — a fourth parameter means collapse the trailing ones into
+  a single options/deps object, not raise the limit.
+- `complexity: 10`
+- `max-depth: 3`
+- `max-lines-per-function: 30` (blank lines and comments not counted;
+  `tests/**` is exempt from this one rule only — every other limit still
+  applies inside tests).
+- `@typescript-eslint/naming-convention` — `variableLike` is `camelCase` or
+  `UPPER_CASE`, `typeLike` is `PascalCase`. A leading underscore is allowed
+  on `parameter`/`variable` names only, for intentionally-unused bindings
+  (type-level "must not compile" probes, unused callback params).
+
+`eslint-disable` comments are a last resort: only for a genuine, narrow
+exception, each with a comment explaining why (e.g. a private nominal-brand
+constructor that must stay empty, or a runtime guard defending a type the
+compiler already treats as unreachable).
+
 ### Architecture (ADR-0004 / ADR-0006 / ADR-0020 / ADR-0021)
 
 The repo follows the canonical directory-structure layout

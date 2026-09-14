@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import type { PostgresHarness } from '../test-kit/index.js';
 import { runMigrations } from '../test-kit/index.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const moduleDir = dirname(fileURLToPath(import.meta.url));
 
 /**
  * Absolute path to the sample context's Drizzle migration
@@ -14,7 +14,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
  * migration directory is resolved once.
  */
 export const SAMPLE_MIGRATIONS_DIR = resolve(
-    __dirname,
+    moduleDir,
     '../../src/sample/infrastructure/persistence/postgres/migrations',
 );
 

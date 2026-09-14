@@ -42,12 +42,17 @@ export class Item extends AggregateRoot {
         return this.#name;
     }
 
-    private constructor(id: ItemId, clubId: ClubId, createdBy: PrincipalId, name: string) {
+    private constructor(input: {
+        readonly id: ItemId;
+        readonly clubId: ClubId;
+        readonly createdBy: PrincipalId;
+        readonly name: string;
+    }) {
         super();
-        this.id = id;
-        this.clubId = clubId;
-        this.createdBy = createdBy;
-        this.#name = name;
+        this.id = input.id;
+        this.clubId = input.clubId;
+        this.createdBy = input.createdBy;
+        this.#name = input.name;
     }
 
     /** Creates a new Item, recording `ItemCreated` scoped to the owning Club. */
@@ -58,7 +63,7 @@ export class Item extends AggregateRoot {
         readonly name: string;
     }): Item {
         assertItemName(input.name);
-        const item = new Item(input.id, input.clubId, input.createdBy, input.name);
+        const item = new Item(input);
         item.record(
             ItemCreated.create(asAggregateId(item.id), ClubEventScope.of(item.clubId), {
                 name: item.name,
@@ -77,7 +82,7 @@ export class Item extends AggregateRoot {
         readonly createdBy: PrincipalId;
         readonly name: string;
     }): Item {
-        return new Item(input.id, input.clubId, input.createdBy, input.name);
+        return new Item(input);
     }
 
     /** Renames this Item, recording `ItemRenamed` scoped to the owning Club. */

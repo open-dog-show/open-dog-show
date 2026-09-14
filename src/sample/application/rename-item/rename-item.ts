@@ -4,7 +4,7 @@
 import type { Result, TransactionScope } from '../../../Shared/index.js';
 import { asItemId } from '../../domain/shared/domain-ids.js';
 import { ItemNotFoundError, InvalidItemNameError } from '../../domain/model/item/item.js';
-import type { SampleUnitOfWork } from '../ports/unit-of-work.js';
+import type { SampleUnitOfWork, SampleUnitOfWorkContext } from '../ports/unit-of-work.js';
 
 /** Inputs to {@link RenameItemHandler.execute}. */
 export interface RenameItemCommand {
@@ -37,23 +37,28 @@ export class RenameItemHandler {
         scope: TransactionScope,
     ): Promise<Result<RenameItemResponse, ItemNotFoundError | InvalidItemNameError>> {
         try {
-            return await this.unitOfWork.run<
-                Result<RenameItemResponse, ItemNotFoundError | InvalidItemNameError>
-            >(scope, async (ctx) => {
-                const id = asItemId(command.id);
-                const item = await ctx.items.findById(id);
-                if (item === undefined) {
-                    throw new ItemNotFoundError(id);
-                }
-                item.rename(command.name);
-                await ctx.items.update(item);
-                return { ok: true, value: { id: item.id, name: item.name } };
-            });
+            return await this.unitOfWork.run(scope, (ctx) =>
+                this.renameInTransaction(ctx, command),
+            );
         } catch (error) {
             if (error instanceof ItemNotFoundError || error instanceof InvalidItemNameError) {
                 return { ok: false, error };
             }
             throw error;
         }
+    }
+
+    private async renameInTransaction(
+        ctx: SampleUnitOfWorkContext,
+        command: RenameItemCommand,
+    ): Promise<Result<RenameItemResponse, ItemNotFoundError | InvalidItemNameError>> {
+        const id = asItemId(command.id);
+        const item = await ctx.items.findById(id);
+        if (item === undefined) {
+            throw new ItemNotFoundError(id);
+        }
+        item.rename(command.name);
+        await ctx.items.update(item);
+        return { ok: true, value: { id: item.id, name: item.name } };
     }
 }
