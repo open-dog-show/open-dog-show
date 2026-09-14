@@ -16,7 +16,7 @@ import {
 } from '../../../../domain/model/effective-ruleset/entities/award-type.js';
 import type { AwardType } from '../../../../domain/model/effective-ruleset/entities/award-type.js';
 import { ShowType } from '../../../../domain/model/effective-ruleset/entities/show-type.js';
-import { asPlacement } from '../../../../domain/model/effective-ruleset/value-objects/placement.js';
+import { asPlacement } from '../../../../domain/service/award-policy/placement.js';
 import { asAgeMonths } from '../../../../domain/model/effective-ruleset/value-objects/age-months.js';
 import { CertificateKind } from '../../../../domain/model/effective-ruleset/value-objects/certificate-kind.js';
 import {
@@ -221,7 +221,7 @@ export const fciAwardTypes: ReadonlyArray<AwardType> = [
         fedBy: [ClassFeeder.of(FCI_CLASS_MINOR_PUPPY)],
     }),
     // -----------------------------------------------------------------------
-    // Collective competition awards (Section 7) — awarded to the winning group.
+    // Collective competition awards (Section 7) — awarded to the winning Team.
     // CollectiveAwardType has no minimumGradeId or worstEligiblePlacement — structural
     // validity is determined by CollectiveAwardPolicy, not individual dog grade.
     // -----------------------------------------------------------------------
@@ -259,7 +259,7 @@ export const fciMinorPuppyClass: ClassDefinition = ClassDefinition.of({
     id: FCI_CLASS_MINOR_PUPPY,
     fromAgeMonths: undefined,
     lessThanAgeMonths: asAgeMonths(6),
-    requiredCertificates: [CertificateKind.Vaccination],
+    requiredCertificates: [CertificateKind.VaccinationCertificate],
     bredByExhibitor: false,
     gradeScaleId: FCI_PUPPY_GRADE_SCALE_ID,
     awardTypeIds: [],

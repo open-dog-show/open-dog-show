@@ -3,10 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { FciClassEligibilityPolicy } from '../../../../../src/rulesets/domain/service/fci/fci-class-eligibility-policy.js';
-import {
-    asClassId,
-    asGradeScaleId,
-} from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+import { asClassId, asGradeScaleId } from '../../../../../src/rulesets/domain/shared/domain-ids.js';
 import { asAgeMonths } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/age-months.js';
 import { CertificateKind } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/certificate-kind.js';
 import {
@@ -14,9 +11,9 @@ import {
     type ClassDefinitionAttributes,
 } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/class-definition.js';
 import {
-    DogEligibilityProfile,
-    type DogEligibilityProfileAttributes,
-} from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/dog-eligibility-profile.js';
+    EntryEligibilityProfile,
+    type EntryEligibilityProfileAttributes,
+} from '../../../../../src/rulesets/domain/service/class-eligibility-policy/entry-eligibility-profile.js';
 import {
     LocalDate,
     LocalDateBeforeReferenceError,
@@ -61,12 +58,12 @@ function makeClass(overrides: ClassDefOverrides = {}): ClassDefinition {
 }
 
 function makeProfile(
-    overrides: Partial<DogEligibilityProfileAttributes> = {},
-): DogEligibilityProfile {
-    return DogEligibilityProfile.of({
+    overrides: Partial<EntryEligibilityProfileAttributes> = {},
+): EntryEligibilityProfile {
+    return EntryEligibilityProfile.of({
         dateOfBirth: BORN_EXACTLY_3M,
         heldCertificates: [],
-        handlerIsBreeder: false,
+        handlerIsBreederOfDog: false,
         ...overrides,
     });
 }
@@ -197,15 +194,19 @@ describe('FciClassEligibilityPolicy — required certificates', () => {
     });
 
     it('is ineligible when vaccination is required but not held', () => {
-        const classDef = makeClass({ requiredCertificates: [CertificateKind.Vaccination] });
+        const classDef = makeClass({
+            requiredCertificates: [CertificateKind.VaccinationCertificate],
+        });
         const profile = makeProfile({ heldCertificates: [] });
 
         expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(false);
     });
 
     it('is eligible when vaccination is required and held', () => {
-        const classDef = makeClass({ requiredCertificates: [CertificateKind.Vaccination] });
-        const profile = makeProfile({ heldCertificates: [CertificateKind.Vaccination] });
+        const classDef = makeClass({
+            requiredCertificates: [CertificateKind.VaccinationCertificate],
+        });
+        const profile = makeProfile({ heldCertificates: [CertificateKind.VaccinationCertificate] });
 
         expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(true);
     });
@@ -214,7 +215,7 @@ describe('FciClassEligibilityPolicy — required certificates', () => {
         const classDef = makeClass({
             requiredCertificates: [
                 CertificateKind.ChampionCertificate,
-                CertificateKind.Vaccination,
+                CertificateKind.VaccinationCertificate,
             ],
         });
         const profile = makeProfile({
@@ -230,21 +231,21 @@ describe('FciClassEligibilityPolicy — required certificates', () => {
 // ---------------------------------------------------------------------------
 
 describe('FciClassEligibilityPolicy — requiresBreederHandler', () => {
-    it('is ineligible when bredByExhibitor is true and handlerIsBreeder is false', () => {
+    it('is ineligible when bredByExhibitor is true and handlerIsBreederOfDog is false', () => {
         const classDef = makeClass({ bredByExhibitor: true });
         const profile = makeProfile();
 
         expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(false);
     });
 
-    it('is eligible when bredByExhibitor is true and handlerIsBreeder is true', () => {
+    it('is eligible when bredByExhibitor is true and handlerIsBreederOfDog is true', () => {
         const classDef = makeClass({ bredByExhibitor: true });
-        const profile = makeProfile({ handlerIsBreeder: true });
+        const profile = makeProfile({ handlerIsBreederOfDog: true });
 
         expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(true);
     });
 
-    it('is eligible when bredByExhibitor is false regardless of handlerIsBreeder', () => {
+    it('is eligible when bredByExhibitor is false regardless of handlerIsBreederOfDog', () => {
         const classDef = makeClass({ bredByExhibitor: false });
         const profile = makeProfile();
 

@@ -1,24 +1,24 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { CollectiveCompetitionResults } from '../model/effective-ruleset/value-objects/collective-competition-results.js';
-import type { EntryRef } from '../model/effective-ruleset/value-objects/entry-ref.js';
+import type { CollectiveCompetitionResults } from './collective-competition-results.js';
+import type { EntryRef } from './entry-ref.js';
 
 /**
  * The outcome of evaluating a Collective Competition.
- * On success, `winningGroupRefs` lists every participating dog entry that
- * forms the winning group.  On failure, `reason` is a human-readable
+ * On success, `winningTeamEntryRefs` lists every participating dog entry that
+ * forms the winning Team.  On failure, `reason` is a human-readable
  * description of the first violation.
  */
 export type CollectiveAwardResult =
     | {
           readonly valid: true;
           /**
-           * Opaque entry refs of every dog that forms the winning group.
+           * Opaque entry refs of every dog that forms the winning Team.
            * All entries are co-winners; collective competitions have no
            * internal ranking.
            */
-          readonly winningGroupRefs: ReadonlyArray<EntryRef>;
+          readonly winningTeamEntryRefs: ReadonlyArray<EntryRef>;
       }
     | { readonly valid: false; readonly reason: string };
 
@@ -34,10 +34,10 @@ export type CollectiveAwardResult =
 export interface CollectiveAwardPolicy {
     /**
      * Validates the participating entries for the given collective
-     * competition type and, when valid, returns the winning group.
+     * competition type and, when valid, returns the winning Team.
      *
-     * Returns `{ valid: true, winningGroupRefs }` when all structural rules
-     * are satisfied.
+     * Returns `{ valid: true, winningTeamEntryRefs }` when all structural
+     * rules are satisfied.
      * Returns `{ valid: false, reason }` for the first violation found.
      */
     evaluate(results: CollectiveCompetitionResults): CollectiveAwardResult;

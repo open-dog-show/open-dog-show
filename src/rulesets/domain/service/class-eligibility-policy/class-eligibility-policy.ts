@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { ClassDefinition } from '../model/effective-ruleset/entities/class-definition.js';
-import type { DogEligibilityProfile } from '../model/effective-ruleset/value-objects/dog-eligibility-profile.js';
-import type { LocalDate } from '../model/effective-ruleset/value-objects/local-date.js';
+import type { ClassDefinition } from '../../model/effective-ruleset/entities/class-definition.js';
+import type { EntryEligibilityProfile } from './entry-eligibility-profile.js';
+import type { LocalDate } from '../../model/effective-ruleset/value-objects/local-date.js';
 
 /**
  * Port: answers whether a Dog may enter a specific Class on a given show day.
@@ -16,7 +16,7 @@ import type { LocalDate } from '../model/effective-ruleset/value-objects/local-d
 export interface ClassEligibilityPolicy {
     isEligible(
         classDefinition: ClassDefinition,
-        dogProfile: DogEligibilityProfile,
+        entryProfile: EntryEligibilityProfile,
         showDate: LocalDate,
     ): boolean;
 }

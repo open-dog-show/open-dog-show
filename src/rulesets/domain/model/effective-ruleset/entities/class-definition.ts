@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { ClassId, GradeScaleId, AwardTypeId } from '../value-objects/domain-ids.js';
+import type { ClassId, GradeScaleId, AwardTypeId } from '../../../shared/domain-ids.js';
 import type { AgeMonths } from '../value-objects/age-months.js';
 import type { CertificateKind } from '../value-objects/certificate-kind.js';
 import { DomainError } from '../../../../../Shared/domain/domain-error.js';

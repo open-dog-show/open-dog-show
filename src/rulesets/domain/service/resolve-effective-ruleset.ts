@@ -2,10 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { EffectiveRuleset } from '../model/effective-ruleset/effective-ruleset.js';
-import type {
-    EffectiveRulesetId,
-    RulesetLayerId,
-} from '../model/effective-ruleset/value-objects/domain-ids.js';
+import type { EffectiveRulesetId, RulesetLayerId } from '../shared/domain-ids.js';
 import type { LocalDate } from '../model/effective-ruleset/value-objects/local-date.js';
 import type { RulesetLayerEdition } from '../model/ruleset-layer-edition/ruleset-layer-edition.js';
 import type { RulesetLayerEditionRepository } from '../model/ruleset-layer-edition/ruleset-layer-edition-repository.js';

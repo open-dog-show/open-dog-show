@@ -8,7 +8,7 @@ import {
     FCI_LAYER_ID,
     FCI_CLASS_BRED_BY_EXHIBITOR,
 } from '../../../../../src/rulesets/infrastructure/persistence/bundled/fci/index.js';
-import { asEffectiveRulesetId } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+import { asEffectiveRulesetId } from '../../../../../src/rulesets/domain/shared/domain-ids.js';
 import { LocalDate } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
 
 /**

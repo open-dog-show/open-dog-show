@@ -1,8 +1,11 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { CollectiveAwardPolicy, CollectiveAwardResult } from '../collective-award-policy.js';
-import type { CollectiveCompetitionResults } from '../../model/effective-ruleset/value-objects/collective-competition-results.js';
+import type {
+    CollectiveAwardPolicy,
+    CollectiveAwardResult,
+} from '../collective-award-policy/collective-award-policy.js';
+import type { CollectiveCompetitionResults } from '../collective-award-policy/collective-competition-results.js';
 
 const BREEDERS_MIN = 3;
 const BREEDERS_MAX = 5;
@@ -13,15 +16,15 @@ const PROGENY_MAX = 5;
  * In-memory FCI implementation of {@link CollectiveAwardPolicy}.
  *
  * **Brace/Couple** — validates the sex composition (exactly one dog and one
- * bitch) and returns both entries as the winning group. Breed/variety
+ * bitch) and returns both entries as the winning Team. Breed/variety
  * consistency is not yet enforced.
  *
  * **Breeders' Group** — validates the group size (3–5 dogs) and returns all
- * entries as the winning group. Same-breed/variety and same-kennel-name
+ * entries as the winning Team. Same-breed/variety and same-kennel-name
  * checks are not yet enforced.
  *
  * **Progeny Group** — validates the group size (3–5 entries) and returns all
- * entries as the winning group. The sire/dam-with-first-generation-offspring
+ * entries as the winning Team. The sire/dam-with-first-generation-offspring
  * structure is not yet enforced.
  *
  * This is a pure in-memory domain service (ADR-0001: concrete rulesets are
@@ -82,7 +85,7 @@ export class FciCollectiveAwardPolicy implements CollectiveAwardPolicy {
 
         return {
             valid: true,
-            winningGroupRefs: entries.map((e) => e.entryRef),
+            winningTeamEntryRefs: entries.map((e) => e.entryRef),
         };
     }
 
@@ -104,7 +107,7 @@ export class FciCollectiveAwardPolicy implements CollectiveAwardPolicy {
 
         return {
             valid: true,
-            winningGroupRefs: entries.map((e) => e.entryRef),
+            winningTeamEntryRefs: entries.map((e) => e.entryRef),
         };
     }
 
@@ -126,7 +129,7 @@ export class FciCollectiveAwardPolicy implements CollectiveAwardPolicy {
 
         return {
             valid: true,
-            winningGroupRefs: entries.map((e) => e.entryRef),
+            winningTeamEntryRefs: entries.map((e) => e.entryRef),
         };
     }
 }

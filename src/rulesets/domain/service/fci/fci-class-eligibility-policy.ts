@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { ClassDefinition } from '../../model/effective-ruleset/entities/class-definition.js';
-import type { ClassEligibilityPolicy } from '../class-eligibility-policy.js';
-import type { DogEligibilityProfile } from '../../model/effective-ruleset/value-objects/dog-eligibility-profile.js';
+import type { ClassEligibilityPolicy } from '../class-eligibility-policy/class-eligibility-policy.js';
+import type { EntryEligibilityProfile } from '../class-eligibility-policy/entry-eligibility-profile.js';
 import type { LocalDate } from '../../model/effective-ruleset/value-objects/local-date.js';
 
 /**
@@ -17,9 +17,9 @@ import type { LocalDate } from '../../model/effective-ruleset/value-objects/loca
  *    to the higher class and is ineligible for the lower (FCI 2026; KMSH ART.23).
  * 3. **Required certificates** — every certificate in
  *    `classDefinition.requiredCertificates` must appear in
- *    `dogProfile.heldCertificates`.
+ *    `entryProfile.heldCertificates`.
  * 4. **Bred-by-Exhibitor** — when `classDefinition.bredByExhibitor` is
- *    `true`, `dogProfile.handlerIsBreeder` must also be `true`.
+ *    `true`, `entryProfile.handlerIsBreederOfDog` must also be `true`.
  *
  * This is a pure in-memory domain service (ADR-0001: concrete rulesets are
  * pure domain modules that depend only on the domain core) — not a test
@@ -38,14 +38,14 @@ import type { LocalDate } from '../../model/effective-ruleset/value-objects/loca
 export class FciClassEligibilityPolicy implements ClassEligibilityPolicy {
     isEligible(
         classDefinition: ClassDefinition,
-        dogProfile: DogEligibilityProfile,
+        entryProfile: EntryEligibilityProfile,
         showDate: LocalDate,
     ): boolean {
         // A show date before the dog's date of birth is a corrupt profile (or
         // a mis-ordered show date); LocalDate.completedMonthsSince itself
         // rejects it (LocalDateBeforeReferenceError) rather than silently
         // filtering the dog out.
-        const age = showDate.completedMonthsSince(dogProfile.dateOfBirth);
+        const age = showDate.completedMonthsSince(entryProfile.dateOfBirth);
 
         if (classDefinition.fromAgeMonths !== undefined && age < classDefinition.fromAgeMonths) {
             return false;
@@ -59,12 +59,12 @@ export class FciClassEligibilityPolicy implements ClassEligibilityPolicy {
         }
 
         for (const cert of classDefinition.requiredCertificates) {
-            if (!dogProfile.heldCertificates.includes(cert)) {
+            if (!entryProfile.heldCertificates.includes(cert)) {
                 return false;
             }
         }
 
-        if (classDefinition.bredByExhibitor && !dogProfile.handlerIsBreeder) {
+        if (classDefinition.bredByExhibitor && !entryProfile.handlerIsBreederOfDog) {
             return false;
         }
 

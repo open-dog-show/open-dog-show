@@ -9,7 +9,7 @@ import {
     asClassId,
     asAwardTypeId,
     asShowTypeId,
-} from '../../../../domain/model/effective-ruleset/value-objects/domain-ids.js';
+} from '../../../../domain/shared/domain-ids.js';
 
 /**
  * Named identifiers for the FCI base Ruleset Layer, shared by every FCI
@@ -51,7 +51,7 @@ export const FCI_AWARD_BEST_JUNIOR = asAwardTypeId('best-junior');
 export const FCI_AWARD_BEST_VETERAN = asAwardTypeId('best-veteran');
 export const FCI_AWARD_BEST_PUPPY = asAwardTypeId('best-puppy');
 export const FCI_AWARD_BEST_MINOR_PUPPY = asAwardTypeId('best-minor-puppy');
-/** Section 7 collective competition awards — awarded to the winning group. */
+/** Section 7 collective competition awards — awarded to the winning Team. */
 export const FCI_AWARD_BEST_BRACE = asAwardTypeId('best-brace');
 export const FCI_AWARD_BEST_BREEDERS_GROUP = asAwardTypeId('best-breeders-group');
 export const FCI_AWARD_BEST_PROGENY_GROUP = asAwardTypeId('best-progeny-group');

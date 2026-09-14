@@ -18,8 +18,8 @@ import type { ClubId, PrincipalId } from './domain-ids.js';
  * validating `of` factory as the construction path (V2/V3). The variants carry only already-validated branded
  * ids, so the factories are pass-throughs that fix the `kind` tag.
  *
- * - `club` — a Club admin acting on behalf of a Club: both `clubId` and `principalId` are set.
- * - `exhibitor` — a dog owner acting cross-Club: only `principalId` is set.
+ * - `club` — a Club official (e.g. a Show Secretary) acting for one Club: both `clubId` and `principalId` are set.
+ * - `exhibitor` — an Exhibitor acting across Clubs: only `principalId` is set.
  * - `platform` — a platform operator acting globally: no Club or user isolation.
  */
 export class ClubTransactionScope {

@@ -28,7 +28,7 @@ import {
     asClassId,
     asAwardTypeId,
     asEffectiveRulesetId,
-} from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+} from '../../../../../src/rulesets/domain/shared/domain-ids.js';
 import { asAgeMonths } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/age-months.js';
 import { LocalDate } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
 

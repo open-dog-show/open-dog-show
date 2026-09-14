@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 /**
- * The three certificate kinds an exhibitor may assert on a Dog.
- * Stored as owner-asserted data; the platform does not verify issuance.
+ * The three certificate kinds that may be recorded on a Dog. Each is
+ * **owner-asserted** data — recorded by the Owner; the platform stores but
+ * does not verify or confirm issuance.
  */
 export const CertificateKind = {
     ChampionCertificate: 'champion-certificate',
     WorkingCertificate: 'working-certificate',
-    Vaccination: 'vaccination',
+    VaccinationCertificate: 'vaccination-certificate',
 } as const;
 
 /** Union type of all valid {@link CertificateKind} values. */

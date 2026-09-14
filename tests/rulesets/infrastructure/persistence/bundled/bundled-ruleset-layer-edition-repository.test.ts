@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 import { BundledRulesetLayerEditionRepository } from '../../../../../src/rulesets/infrastructure/persistence/bundled/bundled-ruleset-layer-edition-repository.js';
 import { FCI_LAYER_ID } from '../../../../../src/rulesets/infrastructure/persistence/bundled/fci/index.js';
 import { KMSH_LAYER_ID } from '../../../../../src/rulesets/infrastructure/persistence/bundled/kmsh/index.js';
-import { asRulesetLayerId } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+import { asRulesetLayerId } from '../../../../../src/rulesets/domain/shared/domain-ids.js';
 import { LocalDate } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
 
 describe('BundledRulesetLayerEditionRepository', () => {

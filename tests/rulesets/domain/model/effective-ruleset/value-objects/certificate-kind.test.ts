@@ -13,8 +13,8 @@ describe('CertificateKind', () => {
         expect(CertificateKind.WorkingCertificate).toBe('working-certificate');
     });
 
-    it('has the vaccination value', () => {
-        expect(CertificateKind.Vaccination).toBe('vaccination');
+    it('has the vaccination-certificate value', () => {
+        expect(CertificateKind.VaccinationCertificate).toBe('vaccination-certificate');
     });
 
     it('has exactly three values', () => {

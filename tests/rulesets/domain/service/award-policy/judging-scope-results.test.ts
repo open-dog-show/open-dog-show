@@ -9,14 +9,14 @@ import {
     ClassFeederStream,
     PerSexJudgingScopeResults,
     HigherScopeJudgingScopeResults,
-} from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/judging-scope-results.js';
+} from '../../../../../src/rulesets/domain/service/award-policy/judging-scope-results.js';
 import {
     asClassId,
     asGradeId,
     asAwardTypeId,
-} from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
-import { asEntryRef } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/entry-ref.js';
-import { asPlacement } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/placement.js';
+} from '../../../../../src/rulesets/domain/shared/domain-ids.js';
+import { asEntryRef } from '../../../../../src/rulesets/domain/service/collective-award-policy/entry-ref.js';
+import { asPlacement } from '../../../../../src/rulesets/domain/service/award-policy/placement.js';
 
 const CLASS_A = asClassId('open');
 const CLASS_B = asClassId('junior');

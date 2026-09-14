@@ -9,7 +9,7 @@ import {
 import {
     asAwardTypeId,
     asClassId,
-} from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+} from '../../../../../../src/rulesets/domain/shared/domain-ids.js';
 
 describe('AwardFeeder.equals', () => {
     it('is true for the same awardTypeId', () => {

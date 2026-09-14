@@ -15,7 +15,7 @@ import {
     FCI_AWARD_BOS,
 } from '../../../../../../src/rulesets/infrastructure/persistence/bundled/fci/index.js';
 import { EffectiveRuleset } from '../../../../../../src/rulesets/domain/model/effective-ruleset/effective-ruleset.js';
-import { asEffectiveRulesetId } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+import { asEffectiveRulesetId } from '../../../../../../src/rulesets/domain/shared/domain-ids.js';
 import { LocalDate } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
 import { findOrFail } from '../../../../../test-kit/index.js';
 import type { HigherScopeAwardType } from '../../../../../../src/rulesets/domain/model/effective-ruleset/entities/award-type.js';

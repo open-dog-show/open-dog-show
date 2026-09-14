@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { Brand } from '../../../shared/brand.js';
+import type { Brand } from '../../../../../Shared/domain/brand.js';
 import { DomainError } from '../../../../../Shared/domain/domain-error.js';
 
 /**

@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { ClassId, GradeId, AwardTypeId } from './domain-ids.js';
-import type { EntryRef } from './entry-ref.js';
-import type { Sex } from './sex.js';
+import type { ClassId, GradeId, AwardTypeId } from '../../shared/domain-ids.js';
+import type { EntryRef } from '../collective-award-policy/entry-ref.js';
+import type { Sex } from '../../model/effective-ruleset/value-objects/sex.js';
 import type { Placement } from './placement.js';
 
 /** Attributes for {@link ClassPlacement.of}. */
@@ -52,10 +52,11 @@ export class ClassPlacement {
 
 /**
  * A candidate dog within a {@link CandidateStream} — the opaque entry reference
- * and the grade the dog received from its feeder (an Award or a Class win).
- * The policy matcher checks only `gradeId` against the higher-scope Award's
- * `minimumGradeId`; picking the 1st-place dog is a construction-time filter in
- * the Judging context, not a policy check (ADR-0017).
+ * and the grade the dog received from its feeder (an Award or a Class win). A
+ * stream is expected to carry only its feeder's qualifying candidates (e.g. a
+ * Class feeder's 1st-place dog) — a construction-time convention this type
+ * does not itself enforce; the policy matcher checks only `gradeId` against
+ * the higher-scope Award's `minimumGradeId` (ADR-0017).
  *
  * A value object (ADR-0022): private constructor plus the {@link
  * StreamCandidate.of} validating factory is the only construction path.

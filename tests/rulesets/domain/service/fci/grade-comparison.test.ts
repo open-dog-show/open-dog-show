@@ -11,7 +11,7 @@ import {
     asGradeScaleId,
     asRulesetLayerId,
     asEffectiveRulesetId,
-} from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+} from '../../../../../src/rulesets/domain/shared/domain-ids.js';
 import { LocalDate } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
 import {
     Grade,

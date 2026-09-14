@@ -12,7 +12,7 @@ import type { Brand } from './brand.js';
  * `PrincipalId` where a `ClubId` is expected).
  */
 
-/** Branded string that uniquely identifies a kennel-club Club. */
+/** Branded string that uniquely identifies an organising Club. */
 export type ClubId = Brand<string, 'ClubId'>;
 /**
  * Branded string naming the context-neutral "actor in a transaction."

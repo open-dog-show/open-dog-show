@@ -3,12 +3,9 @@
 
 import { describe, it, expect } from 'vitest';
 import { FciCollectiveAwardPolicy } from '../../../../../src/rulesets/domain/service/fci/fci-collective-award-policy.js';
-import {
-    asBreedId,
-    asVarietyId,
-} from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
-import { asEntryRef } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/entry-ref.js';
-import type { EntryRef } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/entry-ref.js';
+import { asBreedId, asVarietyId } from '../../../../../src/rulesets/domain/shared/domain-ids.js';
+import { asEntryRef } from '../../../../../src/rulesets/domain/service/collective-award-policy/entry-ref.js';
+import type { EntryRef } from '../../../../../src/rulesets/domain/service/collective-award-policy/entry-ref.js';
 import type { Sex } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/sex.js';
 import {
     CollectiveEntry,
@@ -17,7 +14,7 @@ import {
     BreedersGroupCompetitionResults,
     ProgenyGroupCompetitionResults,
     type CollectiveCompetitionResults,
-} from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/collective-competition-results.js';
+} from '../../../../../src/rulesets/domain/service/collective-award-policy/collective-competition-results.js';
 
 const BREED_ID = asBreedId('german-shepherd');
 const VARIETY_ID = asVarietyId('rough-coated');
@@ -34,7 +31,7 @@ const refs = (...refs: readonly string[]): EntryRef[] => refs.map(asEntryRef);
 // ---------------------------------------------------------------------------
 
 describe('FciCollectiveAwardPolicy — Brace/Couple', () => {
-    it('returns a winning group when exactly one dog and one bitch are present', () => {
+    it('returns a winning Team when exactly one dog and one bitch are present', () => {
         const results: CollectiveCompetitionResults = BraceCoupleCompetitionResults.of({
             breed: BreedVarietyRef.of(BREED_ID, undefined),
             entries: entries(['entry-1', 'male'], ['entry-2', 'female']),
@@ -44,9 +41,9 @@ describe('FciCollectiveAwardPolicy — Brace/Couple', () => {
 
         expect(result.valid).toBe(true);
         if (result.valid) {
-            expect(result.winningGroupRefs).toContain(asEntryRef('entry-1'));
-            expect(result.winningGroupRefs).toContain(asEntryRef('entry-2'));
-            expect(result.winningGroupRefs).toHaveLength(2);
+            expect(result.winningTeamEntryRefs).toContain(asEntryRef('entry-1'));
+            expect(result.winningTeamEntryRefs).toContain(asEntryRef('entry-2'));
+            expect(result.winningTeamEntryRefs).toHaveLength(2);
         }
     });
 
@@ -110,9 +107,9 @@ describe('FciCollectiveAwardPolicy — Brace/Couple', () => {
 
         expect(result.valid).toBe(true);
         if (result.valid) {
-            expect(result.winningGroupRefs).toContain(asEntryRef('entry-1'));
-            expect(result.winningGroupRefs).toContain(asEntryRef('entry-2'));
-            expect(result.winningGroupRefs).toHaveLength(2);
+            expect(result.winningTeamEntryRefs).toContain(asEntryRef('entry-1'));
+            expect(result.winningTeamEntryRefs).toContain(asEntryRef('entry-2'));
+            expect(result.winningTeamEntryRefs).toHaveLength(2);
         }
     });
 });
@@ -122,7 +119,7 @@ describe('FciCollectiveAwardPolicy — Brace/Couple', () => {
 // ---------------------------------------------------------------------------
 
 describe("FciCollectiveAwardPolicy — Breeders' Group", () => {
-    it('returns a winning group for 3 dogs of the same breed and kennel', () => {
+    it('returns a winning Team for 3 dogs of the same breed and kennel', () => {
         const results: CollectiveCompetitionResults = BreedersGroupCompetitionResults.of({
             breed: BreedVarietyRef.of(BREED_ID, undefined),
             kennelName: 'Von der Grafschaft',
@@ -133,11 +130,11 @@ describe("FciCollectiveAwardPolicy — Breeders' Group", () => {
 
         expect(result.valid).toBe(true);
         if (result.valid) {
-            expect(result.winningGroupRefs).toHaveLength(3);
+            expect(result.winningTeamEntryRefs).toHaveLength(3);
         }
     });
 
-    it('returns a winning group for 5 dogs (maximum)', () => {
+    it('returns a winning Team for 5 dogs (maximum)', () => {
         const results: CollectiveCompetitionResults = BreedersGroupCompetitionResults.of({
             breed: BreedVarietyRef.of(BREED_ID, undefined),
             kennelName: 'Von der Grafschaft',
@@ -154,7 +151,7 @@ describe("FciCollectiveAwardPolicy — Breeders' Group", () => {
 
         expect(result.valid).toBe(true);
         if (result.valid) {
-            expect(result.winningGroupRefs).toHaveLength(5);
+            expect(result.winningTeamEntryRefs).toHaveLength(5);
         }
     });
 
@@ -201,7 +198,7 @@ describe("FciCollectiveAwardPolicy — Breeders' Group", () => {
 // ---------------------------------------------------------------------------
 
 describe('FciCollectiveAwardPolicy — Progeny Group', () => {
-    it('returns a winning group for a sire with 3 offspring (minimum)', () => {
+    it('returns a winning Team for a sire with 3 offspring (minimum)', () => {
         const results: CollectiveCompetitionResults = ProgenyGroupCompetitionResults.of({
             parentEntryRef: asEntryRef('sire-1'),
             entries: entries(
@@ -215,14 +212,14 @@ describe('FciCollectiveAwardPolicy — Progeny Group', () => {
 
         expect(result.valid).toBe(true);
         if (result.valid) {
-            expect(result.winningGroupRefs).toHaveLength(3);
-            expect(result.winningGroupRefs).toEqual(
+            expect(result.winningTeamEntryRefs).toHaveLength(3);
+            expect(result.winningTeamEntryRefs).toEqual(
                 expect.arrayContaining(refs('offspring-1', 'offspring-2', 'offspring-3')),
             );
         }
     });
 
-    it('returns a winning group for a dam with 5 offspring (maximum)', () => {
+    it('returns a winning Team for a dam with 5 offspring (maximum)', () => {
         const results: CollectiveCompetitionResults = ProgenyGroupCompetitionResults.of({
             parentEntryRef: asEntryRef('dam-1'),
             entries: entries(
@@ -238,7 +235,7 @@ describe('FciCollectiveAwardPolicy — Progeny Group', () => {
 
         expect(result.valid).toBe(true);
         if (result.valid) {
-            expect(result.winningGroupRefs).toHaveLength(5);
+            expect(result.winningTeamEntryRefs).toHaveLength(5);
         }
     });
 

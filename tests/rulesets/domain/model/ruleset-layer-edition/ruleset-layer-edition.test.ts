@@ -3,13 +3,10 @@
 
 import { describe, it, expect } from 'vitest';
 import { RulesetLayerEdition } from '../../../../../src/rulesets/domain/model/ruleset-layer-edition/ruleset-layer-edition.js';
-import { asRulesetLayerId } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+import { asRulesetLayerId } from '../../../../../src/rulesets/domain/shared/domain-ids.js';
 import { LocalDate } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
 import { ClassDefinition } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/class-definition.js';
-import {
-    asClassId,
-    asGradeScaleId,
-} from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+import { asClassId, asGradeScaleId } from '../../../../../src/rulesets/domain/shared/domain-ids.js';
 
 const FCI = asRulesetLayerId('fci');
 const KMSH = asRulesetLayerId('kmsh');

@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { ShowTypeId, AwardTypeId } from '../value-objects/domain-ids.js';
-import type { CollectiveCompetitionKind } from '../value-objects/collective-competition-results.js';
+import type { ShowTypeId, AwardTypeId } from '../../../shared/domain-ids.js';
+import type { CollectiveCompetitionKind } from '../../../service/collective-award-policy/collective-competition-results.js';
 
 /** Attributes for {@link ShowType.of}. */
 export interface ShowTypeAttributes {

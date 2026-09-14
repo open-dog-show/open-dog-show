@@ -7,7 +7,7 @@ import type {
     EffectiveRulesetId,
     GradeId,
     GradeScaleId,
-} from './value-objects/domain-ids.js';
+} from '../../shared/domain-ids.js';
 import type { LocalDate } from './value-objects/local-date.js';
 import type { ClassDefinition } from './entities/class-definition.js';
 import type { GradeScale } from './entities/grade-scale.js';
