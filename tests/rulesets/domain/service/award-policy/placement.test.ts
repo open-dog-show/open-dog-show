@@ -5,8 +5,8 @@ import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
     asPlacement,
     InvalidPlacementError,
-} from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/placement.js';
-import type { Placement } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/placement.js';
+} from '../../../../../src/rulesets/domain/service/award-policy/placement.js';
+import type { Placement } from '../../../../../src/rulesets/domain/service/award-policy/placement.js';
 
 describe('asPlacement', () => {
     it('casts a raw number to a Placement, preserving the value', () => {

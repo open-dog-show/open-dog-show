@@ -4,7 +4,7 @@
 import type { IndividualAwardType } from '../../model/effective-ruleset/entities/award-type.js';
 import type { ClassDefinition } from '../../model/effective-ruleset/entities/class-definition.js';
 import type { EffectiveRuleset } from '../../model/effective-ruleset/effective-ruleset.js';
-import type { ClassPlacement } from '../../model/effective-ruleset/value-objects/judging-scope-results.js';
+import type { ClassPlacement } from '../award-policy/judging-scope-results.js';
 import { resolveGrade } from './grade-comparison.js';
 
 /**

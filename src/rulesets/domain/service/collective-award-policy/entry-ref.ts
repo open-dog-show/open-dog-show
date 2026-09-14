@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { Brand } from './domain-ids.js';
+import type { Brand } from '../../../../Shared/domain/brand.js';
 
 /**
  * Branded string: an opaque reference to a judged entry (opaque to the

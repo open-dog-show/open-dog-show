@@ -9,7 +9,7 @@ import { asClubId, asPrincipalId, type ClubId, type PrincipalId } from './domain
  * Declares which data-ownership scope produced the event, and — unlike a
  * `TransactionScope` — records *who owns the fact*, not who was acting when
  * it happened:
- * - `club`      — the fact belongs to a kennel-club Club (`clubId`).
+ * - `club`      — the fact belongs to an organising Club (`clubId`).
  * - `exhibitor` — the fact belongs to an individual exhibitor (`principalId`).
  * - `platform`  — the fact is platform-wide and has no single owner.
  *

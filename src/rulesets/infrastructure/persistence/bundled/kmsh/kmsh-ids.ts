@@ -6,7 +6,7 @@ import {
     asClassId,
     asAwardTypeId,
     asShowTypeId,
-} from '../../../../domain/model/effective-ruleset/value-objects/domain-ids.js';
+} from '../../../../domain/shared/domain-ids.js';
 
 export const KMSH_LAYER_ID = asRulesetLayerId('kmsh');
 

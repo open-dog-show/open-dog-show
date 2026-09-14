@@ -11,14 +11,14 @@ export type {
     VarietyId,
     GroupId,
     ShowTypeId,
-    RulesetLayerId,
     EffectiveRulesetId,
-} from './domain/model/effective-ruleset/value-objects/domain-ids.js';
+    RulesetLayerId,
+} from './domain/shared/domain-ids.js';
 export {
     InvalidAgeMonthsError,
     type AgeMonths,
 } from './domain/model/effective-ruleset/value-objects/age-months.js';
-export type { EntryRef } from './domain/model/effective-ruleset/value-objects/entry-ref.js';
+export type { EntryRef } from './domain/service/collective-award-policy/entry-ref.js';
 export {
     asClassId,
     asAwardTypeId,
@@ -29,17 +29,16 @@ export {
     asVarietyId,
     asGroupId,
     asShowTypeId,
-    asRulesetLayerId,
     asEffectiveRulesetId,
-} from './domain/model/effective-ruleset/value-objects/domain-ids.js';
+} from './domain/shared/domain-ids.js';
 export { asAgeMonths } from './domain/model/effective-ruleset/value-objects/age-months.js';
-export { asEntryRef } from './domain/model/effective-ruleset/value-objects/entry-ref.js';
+export { asEntryRef } from './domain/service/collective-award-policy/entry-ref.js';
 export type { Sex } from './domain/model/effective-ruleset/value-objects/sex.js';
 export {
     asPlacement,
     InvalidPlacementError,
     type Placement,
-} from './domain/model/effective-ruleset/value-objects/placement.js';
+} from './domain/service/award-policy/placement.js';
 export {
     LocalDate,
     InvalidLocalDateError,
@@ -47,10 +46,10 @@ export {
 } from './domain/model/effective-ruleset/value-objects/local-date.js';
 export { CertificateKind } from './domain/model/effective-ruleset/value-objects/certificate-kind.js';
 export {
-    DogEligibilityProfile,
-    type DogEligibilityProfileAttributes,
-} from './domain/model/effective-ruleset/value-objects/dog-eligibility-profile.js';
-export type { ClassEligibilityPolicy } from './domain/service/class-eligibility-policy.js';
+    EntryEligibilityProfile,
+    type EntryEligibilityProfileAttributes,
+} from './domain/service/class-eligibility-policy/entry-eligibility-profile.js';
+export type { ClassEligibilityPolicy } from './domain/service/class-eligibility-policy/class-eligibility-policy.js';
 export {
     type GradeOrdinal,
     InvalidGradeOrdinalError,
@@ -102,16 +101,7 @@ export {
     UnknownAwardTypeReferenceError,
     UnknownMinimumGradeReferenceError,
 } from './domain/model/effective-ruleset/effective-ruleset.js';
-export {
-    RulesetLayerEdition,
-    type RulesetLayerEditionAttributes,
-    type RulesetLayerEditionReference,
-} from './domain/model/ruleset-layer-edition/ruleset-layer-edition.js';
-export type { RulesetLayerEditionRepository } from './domain/model/ruleset-layer-edition/ruleset-layer-edition-repository.js';
-export {
-    resolveEffectiveRuleset,
-    NoEditionInForceError,
-} from './domain/service/resolve-effective-ruleset.js';
+export type { RulesetLayerEditionReference } from './domain/model/ruleset-layer-edition/ruleset-layer-edition.js';
 export {
     ClassPlacement,
     type ClassPlacementAttributes,
@@ -126,12 +116,12 @@ export {
     HigherScopeJudgingScopeResults,
     type HigherScopeJudgingScopeKind,
     type JudgingScopeResults,
-} from './domain/model/effective-ruleset/value-objects/judging-scope-results.js';
+} from './domain/service/award-policy/judging-scope-results.js';
 export type {
     ProposedAwardAssignment,
     AwardValidationResult,
     AwardPolicy,
-} from './domain/service/award-policy.js';
+} from './domain/service/award-policy/award-policy.js';
 export {
     CollectiveEntry,
     BreedVarietyRef,
@@ -143,8 +133,8 @@ export {
     type ProgenyGroupCompetitionResultsAttributes,
     type CollectiveCompetitionResults,
     type CollectiveCompetitionKind,
-} from './domain/model/effective-ruleset/value-objects/collective-competition-results.js';
+} from './domain/service/collective-award-policy/collective-competition-results.js';
 export type {
     CollectiveAwardResult,
     CollectiveAwardPolicy,
-} from './domain/service/collective-award-policy.js';
+} from './domain/service/collective-award-policy/collective-award-policy.js';

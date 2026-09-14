@@ -1,14 +1,13 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { Brand } from '../../../shared/brand.js';
-export type { Brand } from '../../../shared/brand.js';
+import type { Brand } from '../../../Shared/domain/brand.js';
 
 /**
- * Compile-time brand helper — keeps rulesets IDs distinct from each other
- * and from kernel IDs even though all are plain strings at runtime. Re-exported
- * from `domain/shared/brand.ts` (which re-uses the kernel's canonical `Brand`)
- * so the non-id value objects consume it from there, not from this module.
+ * The rulesets context's own domain identifiers, keeping every Ruleset id
+ * distinct from every other id (and from kernel ids) even though all are
+ * plain strings at runtime — built on the kernel's canonical `Brand` helper,
+ * imported directly rather than through a context-local re-export.
  */
 
 /** Branded string identifying a Class within a Ruleset. */

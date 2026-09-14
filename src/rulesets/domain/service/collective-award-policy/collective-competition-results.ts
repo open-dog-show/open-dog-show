@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { BreedId, VarietyId } from './domain-ids.js';
+import type { BreedId, VarietyId } from '../../shared/domain-ids.js';
 import type { EntryRef } from './entry-ref.js';
-import type { Sex } from './sex.js';
+import type { Sex } from '../../model/effective-ruleset/value-objects/sex.js';
 
 /**
  * A breed (and optional variety) pair — the shared breed/variety identity that

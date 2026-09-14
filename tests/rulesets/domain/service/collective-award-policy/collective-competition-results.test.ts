@@ -8,12 +8,9 @@ import {
     BraceCoupleCompetitionResults,
     BreedersGroupCompetitionResults,
     ProgenyGroupCompetitionResults,
-} from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/collective-competition-results.js';
-import {
-    asBreedId,
-    asVarietyId,
-} from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
-import { asEntryRef } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/entry-ref.js';
+} from '../../../../../src/rulesets/domain/service/collective-award-policy/collective-competition-results.js';
+import { asBreedId, asVarietyId } from '../../../../../src/rulesets/domain/shared/domain-ids.js';
+import { asEntryRef } from '../../../../../src/rulesets/domain/service/collective-award-policy/entry-ref.js';
 
 const BREED_A = asBreedId('labrador');
 const BREED_B = asBreedId('poodle');

@@ -11,7 +11,7 @@ import { InvalidGradeOrdinalError } from '../../../../../../src/rulesets/domain/
 import {
     asGradeId,
     asGradeScaleId,
-} from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+} from '../../../../../../src/rulesets/domain/shared/domain-ids.js';
 
 const EXCELLENT = asGradeId('excellent');
 const VERY_GOOD = asGradeId('very-good');

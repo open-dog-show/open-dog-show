@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, expectTypeOf, it } from 'vitest';
-import { asEntryRef } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/entry-ref.js';
-import type { EntryRef } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/entry-ref.js';
-import { asClassId } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+import { asEntryRef } from '../../../../../src/rulesets/domain/service/collective-award-policy/entry-ref.js';
+import type { EntryRef } from '../../../../../src/rulesets/domain/service/collective-award-policy/entry-ref.js';
+import { asClassId } from '../../../../../src/rulesets/domain/shared/domain-ids.js';
 
 describe('asEntryRef', () => {
     it('casts a raw string to an EntryRef, preserving the value', () => {

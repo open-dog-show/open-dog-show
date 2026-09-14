@@ -33,7 +33,7 @@ import {
     FCI_AWARD_BEST_PROGENY_GROUP,
     FCI_CLASS_BRED_BY_EXHIBITOR,
 } from '../../../../../../src/rulesets/infrastructure/persistence/bundled/fci/index.js';
-import { asClassId } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+import { asClassId } from '../../../../../../src/rulesets/domain/shared/domain-ids.js';
 import { LocalDate } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
 import { CertificateKind } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/certificate-kind.js';
 import { findOrFail } from '../../../../../test-kit/index.js';
@@ -41,7 +41,7 @@ import type {
     IndividualAwardType,
     HigherScopeAwardType,
 } from '../../../../../../src/rulesets/domain/model/effective-ruleset/entities/award-type.js';
-import type { AwardTypeId } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+import type { AwardTypeId } from '../../../../../../src/rulesets/domain/shared/domain-ids.js';
 import type { RulesetLayerEdition } from '../../../../../../src/rulesets/domain/model/ruleset-layer-edition/ruleset-layer-edition.js';
 
 // ---------------------------------------------------------------------------
@@ -181,7 +181,7 @@ describe.each([
         );
         expect(cls.fromAgeMonths).toBeUndefined();
         expect(cls.lessThanAgeMonths).toBe(6);
-        expect(cls.requiredCertificates).toContain(CertificateKind.Vaccination);
+        expect(cls.requiredCertificates).toContain(CertificateKind.VaccinationCertificate);
         expect(cls.gradeScaleId).toBe(FCI_PUPPY_GRADE_SCALE_ID);
         expect(cls.awardTypeIds).toHaveLength(0);
     });

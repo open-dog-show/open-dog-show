@@ -11,7 +11,7 @@ import {
     asBreedId,
     asVarietyId,
     asGroupId,
-} from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+} from '../../../../../../src/rulesets/domain/shared/domain-ids.js';
 
 // Per ADR-0010, `Breed`/`Variety`/`Group` carry no display `name` — display
 // strings live in the i18n bundle keyed by `<concept-type>.<domain-id>`. These

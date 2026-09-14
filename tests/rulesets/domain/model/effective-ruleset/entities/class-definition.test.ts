@@ -10,7 +10,7 @@ import {
 import {
     asClassId,
     asGradeScaleId,
-} from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+} from '../../../../../../src/rulesets/domain/shared/domain-ids.js';
 import { asAgeMonths } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/age-months.js';
 
 const baseAttributes: ClassDefinitionAttributes = {

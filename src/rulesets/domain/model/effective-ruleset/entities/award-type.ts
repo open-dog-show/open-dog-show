@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { AwardTypeId, ClassId, GradeId } from '../value-objects/domain-ids.js';
-import type { Placement } from '../value-objects/placement.js';
+import type { AwardTypeId, ClassId, GradeId } from '../../../shared/domain-ids.js';
+import type { Placement } from '../../../service/award-policy/placement.js';
 import { DomainError } from '../../../../../Shared/domain/domain-error.js';
 
 /** The scope level at which an {@link AwardType} is determined. */

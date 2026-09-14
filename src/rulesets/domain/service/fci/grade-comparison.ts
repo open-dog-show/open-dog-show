@@ -1,10 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type {
-    GradeId,
-    GradeScaleId,
-} from '../../model/effective-ruleset/value-objects/domain-ids.js';
+import type { GradeId, GradeScaleId } from '../../shared/domain-ids.js';
 import type { EffectiveRuleset } from '../../model/effective-ruleset/effective-ruleset.js';
 import type { Grade } from '../../model/effective-ruleset/entities/grade-scale.js';
 

@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { meetsAwardRequirements } from '../../../../../src/rulesets/domain/service/fci/meets-award-requirements.js';
-import type { GradeId } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+import type { GradeId } from '../../../../../src/rulesets/domain/shared/domain-ids.js';
 import {
     asAwardTypeId,
     asClassId,
@@ -11,10 +11,10 @@ import {
     asGradeScaleId,
     asRulesetLayerId,
     asEffectiveRulesetId,
-} from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/domain-ids.js';
+} from '../../../../../src/rulesets/domain/shared/domain-ids.js';
 import { asAgeMonths } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/age-months.js';
-import { asEntryRef } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/entry-ref.js';
-import { asPlacement } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/placement.js';
+import { asEntryRef } from '../../../../../src/rulesets/domain/service/collective-award-policy/entry-ref.js';
+import { asPlacement } from '../../../../../src/rulesets/domain/service/award-policy/placement.js';
 import type { IndividualAwardType } from '../../../../../src/rulesets/domain/model/effective-ruleset/entities/award-type.js';
 import {
     PerSexAwardType,
@@ -29,7 +29,7 @@ import {
 import { RulesetLayerEdition } from '../../../../../src/rulesets/domain/model/ruleset-layer-edition/ruleset-layer-edition.js';
 import { EffectiveRuleset } from '../../../../../src/rulesets/domain/model/effective-ruleset/effective-ruleset.js';
 import { LocalDate } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
-import { ClassPlacement } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/judging-scope-results.js';
+import { ClassPlacement } from '../../../../../src/rulesets/domain/service/award-policy/judging-scope-results.js';
 
 // ---------------------------------------------------------------------------
 // Shared fixture
