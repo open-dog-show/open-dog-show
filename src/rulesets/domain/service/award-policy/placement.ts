@@ -17,7 +17,7 @@ export class InvalidPlacementError extends DomainError {
     readonly placement: number;
 
     constructor(placement: number) {
-        super(`Placement must be an integer >= 1; received ${placement}`, { placement });
+        super(`Placement must be an integer >= 1; received ${String(placement)}`, { placement });
         this.placement = placement;
     }
 }

@@ -24,6 +24,44 @@ import { Note } from '../../../domain/model/note/note.js';
 
 import { Item } from '../../../domain/model/item/item.js';
 
+interface InMemoryCrudPort<Id, T> {
+    findById(id: Id): Promise<T | undefined>;
+    add(entity: T): Promise<void>;
+    update(entity: T): Promise<void>;
+}
+
+/**
+ * Builds an in-memory {@link InMemoryCrudPort} over `staged` — the single
+ * find/duplicate-check/update shape shared by every aggregate's fake
+ * repository, instead of repeated per aggregate.
+ */
+function createInMemoryPort<
+    Id,
+    T extends { readonly id: Id; pullEvents(): readonly DomainEventFact[] },
+>(
+    staged: T[],
+    record: (...facts: readonly DomainEventFact[]) => void,
+    typeName: string,
+): InMemoryCrudPort<Id, T> {
+    return {
+        findById: (id) => Promise.resolve(staged.find((entity) => entity.id === id)),
+        add: (entity) => {
+            if (staged.some((existing) => existing.id === entity.id)) {
+                return Promise.reject(new Error(`Duplicate ${typeName} id: ${String(entity.id)}`));
+            }
+            staged.push(entity);
+            record(...entity.pullEvents());
+            return Promise.resolve();
+        },
+        update: (updated) => {
+            const index = staged.findIndex((entity) => entity.id === updated.id);
+            if (index !== -1) staged[index] = updated;
+            record(...updated.pullEvents());
+            return Promise.resolve();
+        },
+    };
+}
+
 /**
  * In-memory {@link SampleUnitOfWork} for unit-testing
  * sample-context use cases without Docker.
@@ -53,6 +91,86 @@ export class FakeSampleUnitOfWork implements SampleUnitOfWork {
         private readonly eventIdGenerator: EventIdGenerator = new RandomEventIdGenerator(),
     ) {}
 
+    // plop:staging-methods
+    private stageAnnouncements() {
+        return this.announcements.map((announcement) =>
+            Announcement.rehydrate({ id: announcement.id, name: announcement.name }),
+        );
+    }
+
+    private stageTickets() {
+        return this.tickets.map((ticket) =>
+            Ticket.rehydrate({
+                id: ticket.id,
+                clubId: ticket.clubId,
+                createdBy: ticket.createdBy,
+                itemId: ticket.itemId,
+                name: ticket.name,
+            }),
+        );
+    }
+
+    private stageNotes() {
+        return this.notes.map((note) =>
+            Note.rehydrate({
+                id: note.id,
+                createdBy: note.createdBy,
+                name: note.name,
+            }),
+        );
+    }
+
+    private stageItems() {
+        return this.items.map((item) =>
+            Item.rehydrate({
+                id: item.id,
+                clubId: item.clubId,
+                createdBy: item.createdBy,
+                name: item.name,
+            }),
+        );
+    }
+
+    private stageAll() {
+        return {
+            // plop:staging-init
+            announcements: this.stageAnnouncements(),
+
+            tickets: this.stageTickets(),
+
+            notes: this.stageNotes(),
+
+            items: this.stageItems(),
+        };
+    }
+
+    private buildContext(
+        staged: ReturnType<FakeSampleUnitOfWork['stageAll']>,
+        record: (...facts: readonly DomainEventFact[]) => void,
+    ): SampleUnitOfWorkContext {
+        return {
+            // plop:repositories
+            announcements: createInMemoryPort(staged.announcements, record, 'Announcement'),
+
+            tickets: createInMemoryPort(staged.tickets, record, 'Ticket'),
+
+            notes: createInMemoryPort(staged.notes, record, 'Note'),
+
+            items: createInMemoryPort(staged.items, record, 'Item'),
+        };
+    }
+
+    private commitAll(staged: ReturnType<FakeSampleUnitOfWork['stageAll']>): void {
+        // plop:commit
+        this.announcements.splice(0, this.announcements.length, ...staged.announcements);
+
+        this.tickets.splice(0, this.tickets.length, ...staged.tickets);
+
+        this.notes.splice(0, this.notes.length, ...staged.notes);
+
+        this.items.splice(0, this.items.length, ...staged.items);
+    }
+
     async run<T>(
         _scope: TransactionScope,
         body: (ctx: SampleUnitOfWorkContext) => Promise<T>,
@@ -62,126 +180,10 @@ export class FakeSampleUnitOfWork implements SampleUnitOfWork {
             pendingFacts.push(...facts);
         };
 
-        // plop:staging-init
-        const stagedAnnouncements: Announcement[] = this.announcements.map((announcement) =>
-            Announcement.rehydrate({ id: announcement.id, name: announcement.name }),
-        );
-
-        const stagedTickets: Ticket[] = this.tickets.map((ticket) =>
-            Ticket.rehydrate({
-                id: ticket.id,
-                clubId: ticket.clubId,
-                createdBy: ticket.createdBy,
-                itemId: ticket.itemId,
-                name: ticket.name,
-            }),
-        );
-
-        const stagedNotes: Note[] = this.notes.map((note) =>
-            Note.rehydrate({
-                id: note.id,
-                createdBy: note.createdBy,
-                name: note.name,
-            }),
-        );
-
-        const stagedItems: Item[] = this.items.map((item) =>
-            Item.rehydrate({
-                id: item.id,
-                clubId: item.clubId,
-                createdBy: item.createdBy,
-                name: item.name,
-            }),
-        );
-
-        const ctx: SampleUnitOfWorkContext = {
-            // plop:repositories
-            announcements: {
-                findById: async (id) =>
-                    stagedAnnouncements.find((announcement) => announcement.id === id),
-                add: async (announcement) => {
-                    if (stagedAnnouncements.some((existing) => existing.id === announcement.id)) {
-                        throw new Error('Duplicate Announcement id: ' + announcement.id);
-                    }
-                    stagedAnnouncements.push(announcement);
-                    record(...announcement.pullEvents());
-                },
-                update: async (updated) => {
-                    const index = stagedAnnouncements.findIndex(
-                        (announcement) => announcement.id === updated.id,
-                    );
-                    if (index !== -1) {
-                        stagedAnnouncements[index] = updated;
-                    }
-                    record(...updated.pullEvents());
-                },
-            },
-
-            tickets: {
-                findById: async (id) => stagedTickets.find((ticket) => ticket.id === id),
-                add: async (ticket) => {
-                    if (stagedTickets.some((existing) => existing.id === ticket.id)) {
-                        throw new Error('Duplicate Ticket id: ' + ticket.id);
-                    }
-                    stagedTickets.push(ticket);
-                    record(...ticket.pullEvents());
-                },
-                update: async (updated) => {
-                    const index = stagedTickets.findIndex((ticket) => ticket.id === updated.id);
-                    if (index !== -1) {
-                        stagedTickets[index] = updated;
-                    }
-                    record(...updated.pullEvents());
-                },
-            },
-
-            notes: {
-                findById: async (id) => stagedNotes.find((note) => note.id === id),
-                add: async (note) => {
-                    if (stagedNotes.some((existing) => existing.id === note.id)) {
-                        throw new Error('Duplicate Note id: ' + note.id);
-                    }
-                    stagedNotes.push(note);
-                    record(...note.pullEvents());
-                },
-                update: async (updated) => {
-                    const index = stagedNotes.findIndex((note) => note.id === updated.id);
-                    if (index !== -1) {
-                        stagedNotes[index] = updated;
-                    }
-                    record(...updated.pullEvents());
-                },
-            },
-
-            items: {
-                findById: async (id) => stagedItems.find((item) => item.id === id),
-                add: async (item) => {
-                    if (stagedItems.some((existing) => existing.id === item.id)) {
-                        throw new Error('Duplicate Item id: ' + item.id);
-                    }
-                    stagedItems.push(item);
-                    record(...item.pullEvents());
-                },
-                update: async (updated) => {
-                    const index = stagedItems.findIndex((item) => item.id === updated.id);
-                    if (index !== -1) {
-                        stagedItems[index] = updated;
-                    }
-                    record(...updated.pullEvents());
-                },
-            },
-        };
-
+        const staged = this.stageAll();
+        const ctx = this.buildContext(staged, record);
         const result = await body(ctx);
-
-        // plop:commit
-        this.announcements.splice(0, this.announcements.length, ...stagedAnnouncements);
-
-        this.tickets.splice(0, this.tickets.length, ...stagedTickets);
-
-        this.notes.splice(0, this.notes.length, ...stagedNotes);
-
-        this.items.splice(0, this.items.length, ...stagedItems);
+        this.commitAll(staged);
 
         for (const fact of pendingFacts) {
             this.recordedEvents.push(

@@ -48,7 +48,7 @@ function fakePool(
 ): pg.Pool {
     let served = false;
     const client = {
-        query: async (text: string) => {
+        query: (text: string) => {
             const sql = text.trim();
             if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rows: [] };
             if (sql.startsWith('SELECT seq')) {
@@ -64,7 +64,7 @@ function fakePool(
             }
             return { rows: [] };
         },
-        release: () => {},
+        release: () => undefined,
     };
     return { connect: () => Promise.resolve(client) } as unknown as pg.Pool;
 }
@@ -81,13 +81,13 @@ describe('PgPollingDispatcher construction', () => {
 
         expect(
             () =>
-                new PgPollingDispatcher(
-                    fakePool,
-                    'sample',
-                    async () => {},
+                new PgPollingDispatcher({
+                    pool: fakePool,
+                    schema: 'sample',
+                    handler: () => Promise.resolve(),
                     // @ts-expect-error — registry is required; this pins the runtime guard for a caller that bypasses tsc.
-                    undefined,
-                ),
+                    registry: undefined,
+                }),
         ).toThrow(TypeError);
     });
 
@@ -96,26 +96,26 @@ describe('PgPollingDispatcher construction', () => {
 
         expect(
             () =>
-                new PgPollingDispatcher(
-                    fakePool,
-                    'sample',
-                    async () => {},
-                    new DomainEventRehydrationRegistry(),
-                ),
+                new PgPollingDispatcher({
+                    pool: fakePool,
+                    schema: 'sample',
+                    handler: () => Promise.resolve(),
+                    registry: new DomainEventRehydrationRegistry(),
+                }),
         ).not.toThrow();
     });
 });
 
 describe('PgPollingDispatcher — OutboxDispatchFailed', () => {
     it('wraps a handler failure, carrying seq/eventId/type/attempts', async () => {
-        const dispatcher = new PgPollingDispatcher(
-            fakePool(PENDING_ROW),
-            'sample',
-            async () => {
+        const dispatcher = new PgPollingDispatcher({
+            pool: fakePool(PENDING_ROW),
+            schema: 'sample',
+            handler: () => {
                 throw new Error('handler blew up');
             },
-            registryFor((fact) => fact),
-        );
+            registry: registryFor((fact) => fact),
+        });
 
         let caught: unknown;
         try {
@@ -134,12 +134,12 @@ describe('PgPollingDispatcher — OutboxDispatchFailed', () => {
     });
 
     it('wraps an unregistered-type failure the same way as a handler failure', async () => {
-        const dispatcher = new PgPollingDispatcher(
-            fakePool(PENDING_ROW),
-            'sample',
-            async () => {},
-            new DomainEventRehydrationRegistry(), // empty — nothing registered
-        );
+        const dispatcher = new PgPollingDispatcher({
+            pool: fakePool(PENDING_ROW),
+            schema: 'sample',
+            handler: () => Promise.resolve(),
+            registry: new DomainEventRehydrationRegistry(), // empty — nothing registered
+        });
 
         await expect(dispatcher.poll()).rejects.toBeInstanceOf(OutboxDispatchFailed);
     });
@@ -148,25 +148,25 @@ describe('PgPollingDispatcher — OutboxDispatchFailed', () => {
         const brokenPool = {
             connect: () => Promise.reject(new Error('pool exhausted')),
         } as unknown as pg.Pool;
-        const dispatcher = new PgPollingDispatcher(
-            brokenPool,
-            'sample',
-            async () => {},
-            registryFor((fact) => fact),
-        );
+        const dispatcher = new PgPollingDispatcher({
+            pool: brokenPool,
+            schema: 'sample',
+            handler: () => Promise.resolve(),
+            registry: registryFor((fact) => fact),
+        });
 
         await expect(dispatcher.poll()).rejects.not.toBeInstanceOf(OutboxDispatchFailed);
     });
 
     it('preserves a failure in the best-effort attempts/last_error recording as cause.recordingError, rather than swallowing it', async () => {
-        const dispatcher = new PgPollingDispatcher(
-            fakePool(PENDING_ROW, { failRecording: true }),
-            'sample',
-            async () => {
+        const dispatcher = new PgPollingDispatcher({
+            pool: fakePool(PENDING_ROW, { failRecording: true }),
+            schema: 'sample',
+            handler: () => {
                 throw new Error('handler blew up');
             },
-            registryFor((fact) => fact),
-        );
+            registry: registryFor((fact) => fact),
+        });
 
         let caught: unknown;
         try {
@@ -188,12 +188,12 @@ describe('PgPollingDispatcher — OutboxDispatchFailed', () => {
     });
 
     it('returns 0 without throwing when there is no pending row', async () => {
-        const dispatcher = new PgPollingDispatcher(
-            fakePool(undefined),
-            'sample',
-            async () => {},
-            registryFor((fact) => fact),
-        );
+        const dispatcher = new PgPollingDispatcher({
+            pool: fakePool(undefined),
+            schema: 'sample',
+            handler: () => Promise.resolve(),
+            registry: registryFor((fact) => fact),
+        });
 
         await expect(dispatcher.poll()).resolves.toBe(0);
     });

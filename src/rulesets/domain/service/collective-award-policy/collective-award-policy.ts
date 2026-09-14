@@ -18,7 +18,7 @@ export type CollectiveAwardResult =
            * All entries are co-winners; collective competitions have no
            * internal ranking.
            */
-          readonly winningTeamEntryRefs: ReadonlyArray<EntryRef>;
+          readonly winningTeamEntryRefs: readonly EntryRef[];
       }
     | { readonly valid: false; readonly reason: string };
 

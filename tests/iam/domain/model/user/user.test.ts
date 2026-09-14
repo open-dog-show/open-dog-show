@@ -150,7 +150,7 @@ describe('User.register', () => {
         ).toThrow(InvalidProviderClaimsError);
         expect(() =>
             User.register(ALICE_ID, '', { displayName: 'Alice', email: 'alice@example.com' }),
-        ).toThrow(expect.objectContaining({ field: 'sub' }));
+        ).toThrow(expect.objectContaining({ field: 'sub' }) as Error);
     });
 
     it('throws InvalidProviderClaimsError (field: sub) when the sub is whitespace-only', () => {
@@ -159,7 +159,7 @@ describe('User.register', () => {
         ).toThrow(InvalidProviderClaimsError);
         expect(() =>
             User.register(ALICE_ID, '   ', { displayName: 'Alice', email: 'alice@example.com' }),
-        ).toThrow(expect.objectContaining({ field: 'sub' }));
+        ).toThrow(expect.objectContaining({ field: 'sub' }) as Error);
     });
 
     it('throws InvalidProviderClaimsError (field: email) when the email is empty', () => {
@@ -168,7 +168,7 @@ describe('User.register', () => {
         ).toThrow(InvalidProviderClaimsError);
         expect(() =>
             User.register(ALICE_ID, 'sub|alice', { displayName: 'Alice', email: '' }),
-        ).toThrow(expect.objectContaining({ field: 'email' }));
+        ).toThrow(expect.objectContaining({ field: 'email' }) as Error);
     });
 
     it('throws InvalidProviderClaimsError (field: email) when the email is whitespace-only', () => {
@@ -177,7 +177,7 @@ describe('User.register', () => {
         ).toThrow(InvalidProviderClaimsError);
         expect(() =>
             User.register(ALICE_ID, 'sub|alice', { displayName: 'Alice', email: '   ' }),
-        ).toThrow(expect.objectContaining({ field: 'email' }));
+        ).toThrow(expect.objectContaining({ field: 'email' }) as Error);
     });
 
     it('normalizes email by trimming and lowercasing', () => {

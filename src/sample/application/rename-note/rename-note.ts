@@ -4,7 +4,7 @@
 import type { Result, TransactionScope } from '../../../Shared/index.js';
 import { asNoteId } from '../../domain/shared/domain-ids.js';
 import { NoteNotFoundError, InvalidNoteNameError } from '../../domain/model/note/note.js';
-import type { SampleUnitOfWork } from '../ports/unit-of-work.js';
+import type { SampleUnitOfWork, SampleUnitOfWorkContext } from '../ports/unit-of-work.js';
 
 /** Inputs to {@link RenameNoteHandler.execute}. */
 export interface RenameNoteCommand {
@@ -37,23 +37,28 @@ export class RenameNoteHandler {
         scope: TransactionScope,
     ): Promise<Result<RenameNoteResponse, NoteNotFoundError | InvalidNoteNameError>> {
         try {
-            return await this.unitOfWork.run<
-                Result<RenameNoteResponse, NoteNotFoundError | InvalidNoteNameError>
-            >(scope, async (ctx) => {
-                const id = asNoteId(command.id);
-                const note = await ctx.notes.findById(id);
-                if (note === undefined) {
-                    throw new NoteNotFoundError(id);
-                }
-                note.rename(command.name);
-                await ctx.notes.update(note);
-                return { ok: true, value: { id: note.id, name: note.name } };
-            });
+            return await this.unitOfWork.run(scope, (ctx) =>
+                this.renameInTransaction(ctx, command),
+            );
         } catch (error) {
             if (error instanceof NoteNotFoundError || error instanceof InvalidNoteNameError) {
                 return { ok: false, error };
             }
             throw error;
         }
+    }
+
+    private async renameInTransaction(
+        ctx: SampleUnitOfWorkContext,
+        command: RenameNoteCommand,
+    ): Promise<Result<RenameNoteResponse, NoteNotFoundError | InvalidNoteNameError>> {
+        const id = asNoteId(command.id);
+        const note = await ctx.notes.findById(id);
+        if (note === undefined) {
+            throw new NoteNotFoundError(id);
+        }
+        note.rename(command.name);
+        await ctx.notes.update(note);
+        return { ok: true, value: { id: note.id, name: note.name } };
     }
 }

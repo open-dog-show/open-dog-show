@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 import { FciClassEligibilityPolicy } from '../../../../../src/rulesets/domain/service/fci/fci-class-eligibility-policy.js';
 import { asClassId, asGradeScaleId } from '../../../../../src/rulesets/domain/shared/domain-ids.js';
 import { asAgeMonths } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/age-months.js';
-import { CertificateKind } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/certificate-kind.js';
+import { CERTIFICATE_KIND } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/certificate-kind.js';
 import {
     ClassDefinition,
     type ClassDefinitionAttributes,
@@ -162,32 +162,36 @@ describe('FciClassEligibilityPolicy — age window', () => {
 
 describe('FciClassEligibilityPolicy — required certificates', () => {
     it('is ineligible when champion-certificate is required but not held', () => {
-        const classDef = makeClass({ requiredCertificates: [CertificateKind.ChampionCertificate] });
+        const classDef = makeClass({
+            requiredCertificates: [CERTIFICATE_KIND.ChampionCertificate],
+        });
         const profile = makeProfile({ heldCertificates: [] });
 
         expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(false);
     });
 
     it('is eligible when champion-certificate is required and held', () => {
-        const classDef = makeClass({ requiredCertificates: [CertificateKind.ChampionCertificate] });
+        const classDef = makeClass({
+            requiredCertificates: [CERTIFICATE_KIND.ChampionCertificate],
+        });
         const profile = makeProfile({
-            heldCertificates: [CertificateKind.ChampionCertificate],
+            heldCertificates: [CERTIFICATE_KIND.ChampionCertificate],
         });
 
         expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(true);
     });
 
     it('is ineligible when working-certificate is required but not held', () => {
-        const classDef = makeClass({ requiredCertificates: [CertificateKind.WorkingCertificate] });
+        const classDef = makeClass({ requiredCertificates: [CERTIFICATE_KIND.WorkingCertificate] });
         const profile = makeProfile({ heldCertificates: [] });
 
         expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(false);
     });
 
     it('is eligible when working-certificate is required and held', () => {
-        const classDef = makeClass({ requiredCertificates: [CertificateKind.WorkingCertificate] });
+        const classDef = makeClass({ requiredCertificates: [CERTIFICATE_KIND.WorkingCertificate] });
         const profile = makeProfile({
-            heldCertificates: [CertificateKind.WorkingCertificate],
+            heldCertificates: [CERTIFICATE_KIND.WorkingCertificate],
         });
 
         expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(true);
@@ -195,7 +199,7 @@ describe('FciClassEligibilityPolicy — required certificates', () => {
 
     it('is ineligible when vaccination is required but not held', () => {
         const classDef = makeClass({
-            requiredCertificates: [CertificateKind.VaccinationCertificate],
+            requiredCertificates: [CERTIFICATE_KIND.VaccinationCertificate],
         });
         const profile = makeProfile({ heldCertificates: [] });
 
@@ -204,9 +208,11 @@ describe('FciClassEligibilityPolicy — required certificates', () => {
 
     it('is eligible when vaccination is required and held', () => {
         const classDef = makeClass({
-            requiredCertificates: [CertificateKind.VaccinationCertificate],
+            requiredCertificates: [CERTIFICATE_KIND.VaccinationCertificate],
         });
-        const profile = makeProfile({ heldCertificates: [CertificateKind.VaccinationCertificate] });
+        const profile = makeProfile({
+            heldCertificates: [CERTIFICATE_KIND.VaccinationCertificate],
+        });
 
         expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(true);
     });
@@ -214,12 +220,12 @@ describe('FciClassEligibilityPolicy — required certificates', () => {
     it('is ineligible when one of multiple required certificates is missing', () => {
         const classDef = makeClass({
             requiredCertificates: [
-                CertificateKind.ChampionCertificate,
-                CertificateKind.VaccinationCertificate,
+                CERTIFICATE_KIND.ChampionCertificate,
+                CERTIFICATE_KIND.VaccinationCertificate,
             ],
         });
         const profile = makeProfile({
-            heldCertificates: [CertificateKind.ChampionCertificate],
+            heldCertificates: [CERTIFICATE_KIND.ChampionCertificate],
         });
 
         expect(policy.isEligible(classDef, profile, SHOW_DATE)).toBe(false);

@@ -42,12 +42,17 @@ export class {{pascalCase name}} extends AggregateRoot {
         return this.#name;
     }
 
-    private constructor(id: {{pascalCase name}}Id, clubId: ClubId, createdBy: PrincipalId, name: string) {
+    private constructor(input: {
+        readonly id: {{pascalCase name}}Id;
+        readonly clubId: ClubId;
+        readonly createdBy: PrincipalId;
+        readonly name: string;
+    }) {
         super();
-        this.id = id;
-        this.clubId = clubId;
-        this.createdBy = createdBy;
-        this.#name = name;
+        this.id = input.id;
+        this.clubId = input.clubId;
+        this.createdBy = input.createdBy;
+        this.#name = input.name;
     }
 
     /** Creates a new {{pascalCase name}}, recording `{{pascalCase name}}Created` scoped to the owning Club. */
@@ -58,7 +63,7 @@ export class {{pascalCase name}} extends AggregateRoot {
         readonly name: string;
     }): {{pascalCase name}} {
         assert{{pascalCase name}}Name(input.name);
-        const {{camelCase name}} = new {{pascalCase name}}(input.id, input.clubId, input.createdBy, input.name);
+        const {{camelCase name}} = new {{pascalCase name}}(input);
         {{camelCase name}}.record(
             {{pascalCase name}}Created.create(
                 asAggregateId({{camelCase name}}.id),
@@ -79,7 +84,7 @@ export class {{pascalCase name}} extends AggregateRoot {
         readonly createdBy: PrincipalId;
         readonly name: string;
     }): {{pascalCase name}} {
-        return new {{pascalCase name}}(input.id, input.clubId, input.createdBy, input.name);
+        return new {{pascalCase name}}(input);
     }
 
     /** Renames this {{pascalCase name}}, recording `{{pascalCase name}}Renamed` scoped to the owning Club. */

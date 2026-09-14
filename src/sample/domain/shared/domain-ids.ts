@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-declare const __brand: unique symbol;
+declare const BRAND: unique symbol;
 
 /**
  * Compile-time brand helper — keeps the sample context's IDs distinct
@@ -9,7 +9,7 @@ declare const __brand: unique symbol;
  * runtime. A branded type is structurally identical to `T` at runtime but is
  * treated as a distinct type by the TypeScript compiler.
  */
-type Brand<T, B> = T & { readonly [__brand]: B };
+type Brand<T, B> = T & { readonly [BRAND]: B };
 
 // plop:ids
 /** Branded string that uniquely identifies an Announcement within the sample context. */

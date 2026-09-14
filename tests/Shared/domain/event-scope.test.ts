@@ -98,14 +98,20 @@ describe('asEventScope', () => {
     });
 
     it.each([
-        ['club without a clubId', 'club', null, null],
-        ['club with a principalId', 'club', CLUB_ID, PRINCIPAL_ID],
-        ['exhibitor without a principalId', 'exhibitor', null, null],
-        ['exhibitor with a clubId', 'exhibitor', CLUB_ID, PRINCIPAL_ID],
-        ['platform with a clubId', 'platform', CLUB_ID, null],
-        ['platform with a principalId', 'platform', null, PRINCIPAL_ID],
-        ['an unknown kind', 'bogus', null, null],
-    ])('throws TypeError for %s', (_label, kind, clubId, principalId) => {
+        ['club without a clubId', { kind: 'club', clubId: null, principalId: null }],
+        ['club with a principalId', { kind: 'club', clubId: CLUB_ID, principalId: PRINCIPAL_ID }],
+        ['exhibitor without a principalId', { kind: 'exhibitor', clubId: null, principalId: null }],
+        [
+            'exhibitor with a clubId',
+            { kind: 'exhibitor', clubId: CLUB_ID, principalId: PRINCIPAL_ID },
+        ],
+        ['platform with a clubId', { kind: 'platform', clubId: CLUB_ID, principalId: null }],
+        [
+            'platform with a principalId',
+            { kind: 'platform', clubId: null, principalId: PRINCIPAL_ID },
+        ],
+        ['an unknown kind', { kind: 'bogus', clubId: null, principalId: null }],
+    ] as const)('throws TypeError for %s', (_label, { kind, clubId, principalId }) => {
         expect(() => asEventScope(kind, clubId, principalId)).toThrow(TypeError);
     });
 });

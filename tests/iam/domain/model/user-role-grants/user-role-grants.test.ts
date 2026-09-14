@@ -147,7 +147,9 @@ describe('UserRoleGrants.prototype.grantJudge', () => {
         const root = UserRoleGrants.empty(ALICE_ID);
         root.grantJudge();
 
-        expect(() => root.grantJudge()).toThrow(DuplicateRoleGrantError);
+        expect(() => {
+            root.grantJudge();
+        }).toThrow(DuplicateRoleGrantError);
     });
 });
 
@@ -165,7 +167,9 @@ describe('UserRoleGrants.prototype.grantPlatformAdministrator', () => {
         const root = UserRoleGrants.empty(ALICE_ID);
         root.grantPlatformAdministrator();
 
-        expect(() => root.grantPlatformAdministrator()).toThrow(DuplicateRoleGrantError);
+        expect(() => {
+            root.grantPlatformAdministrator();
+        }).toThrow(DuplicateRoleGrantError);
     });
 });
 
@@ -234,7 +238,9 @@ describe('UserRoleGrants.prototype.revoke', () => {
         root.grantShowSecretary(CLUB_A);
         root.revoke('ShowSecretary', RoleScope.club(CLUB_A));
 
-        expect(() => root.grantShowSecretary(CLUB_A)).not.toThrow();
+        expect(() => {
+            root.grantShowSecretary(CLUB_A);
+        }).not.toThrow();
         expect(root.grants).toHaveLength(1);
     });
 });

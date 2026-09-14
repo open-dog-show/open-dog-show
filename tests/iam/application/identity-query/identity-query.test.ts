@@ -12,6 +12,7 @@ import { User } from '../../../../src/iam/domain/model/user/user.js';
 import { UserRoleGrants } from '../../../../src/iam/domain/model/user-role-grants/user-role-grants.js';
 import { IdentityQuery } from '../../../../src/iam/application/identity-query/identity-query.js';
 import { FakeIamUnitOfWork } from '../../../../src/iam/infrastructure/persistence/inmemory/fake-iam-unit-of-work.js';
+import { findOrFail } from '../../../test-kit/index.js';
 
 const ALICE_ID = asUserId('user-alice');
 const CLUB_A = asClubId('club-a');
@@ -85,6 +86,8 @@ describe('IdentityQuery.findIdentity', () => {
             { role: 'Judge' },
         ]);
         // The platform-scoped entry must not carry an explicit clubId key at all.
-        expect(Object.hasOwn(snapshot!.roleGrants[1]!, 'clubId')).toBe(false);
+        const identity = findOrFail(snapshot, 'identity snapshot for ALICE_ID');
+        const judgeEntry = findOrFail(identity.roleGrants[1], 'roleGrants[1] (Judge entry)');
+        expect(Object.hasOwn(judgeEntry, 'clubId')).toBe(false);
     });
 });

@@ -35,6 +35,7 @@ describe('kernel public surface — identity ownership (ADR-0013)', () => {
 
     it('does not export the IAM-owned asUserId caster', () => {
         // @ts-expect-error — asUserId moved to the IAM context (ADR-0013)
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- accessing a property TS already knows doesn't exist (above) is inherently error-typed; that's the point of this must-not-compile probe.
         const _asUserId = kernel.asUserId;
         expect(_asUserId).toBeUndefined();
         expect(kernel).not.toHaveProperty('asUserId');
@@ -48,6 +49,7 @@ describe('kernel public surface — identity ownership (ADR-0013)', () => {
 
     it('does not export the dead asExhibitorId caster', () => {
         // @ts-expect-error — asExhibitorId was removed (ADR-0013)
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- accessing a property TS already knows doesn't exist (above) is inherently error-typed; that's the point of this must-not-compile probe.
         const _asExhibitorId = kernel.asExhibitorId;
         expect(_asExhibitorId).toBeUndefined();
         expect(kernel).not.toHaveProperty('asExhibitorId');
@@ -64,6 +66,7 @@ describe('kernel public surface — identity ownership (ADR-0013)', () => {
 describe('kernel public surface — envelope-event retirement (issue #176)', () => {
     it('does not export the retired createDomainEvent factory', () => {
         // @ts-expect-error — createDomainEvent was retired (ADR-0022, #176)
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- accessing a property TS already knows doesn't exist (above) is inherently error-typed; that's the point of this must-not-compile probe.
         const _createDomainEvent = kernel.createDomainEvent;
         expect(_createDomainEvent).toBeUndefined();
         expect(kernel).not.toHaveProperty('createDomainEvent');

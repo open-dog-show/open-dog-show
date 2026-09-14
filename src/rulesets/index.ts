@@ -44,7 +44,10 @@ export {
     InvalidLocalDateError,
     LocalDateBeforeReferenceError,
 } from './domain/model/effective-ruleset/value-objects/local-date.js';
-export { CertificateKind } from './domain/model/effective-ruleset/value-objects/certificate-kind.js';
+export {
+    CERTIFICATE_KIND,
+    type CertificateKind,
+} from './domain/model/effective-ruleset/value-objects/certificate-kind.js';
 export {
     EntryEligibilityProfile,
     type EntryEligibilityProfileAttributes,

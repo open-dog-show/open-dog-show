@@ -7,7 +7,10 @@ import {
     {{pascalCase name}}NotFoundError,
     Invalid{{pascalCase name}}NameError,
 } from '../../domain/model/{{dashCase name}}/{{dashCase name}}.js';
-import type { {{pascalCase context}}UnitOfWork } from '../ports/unit-of-work.js';
+import type {
+    {{pascalCase context}}UnitOfWork,
+    {{pascalCase context}}UnitOfWorkContext,
+} from '../ports/unit-of-work.js';
 
 /** Inputs to {@link Rename{{pascalCase name}}Handler.execute}. */
 export interface Rename{{pascalCase name}}Command {
@@ -42,23 +45,28 @@ export class Rename{{pascalCase name}}Handler {
         Result<Rename{{pascalCase name}}Response, {{pascalCase name}}NotFoundError | Invalid{{pascalCase name}}NameError>
     > {
         try {
-            return await this.unitOfWork.run<
-                Result<Rename{{pascalCase name}}Response, {{pascalCase name}}NotFoundError | Invalid{{pascalCase name}}NameError>
-            >(scope, async (ctx) => {
-                const id = as{{pascalCase name}}Id(command.id);
-                const {{camelCase name}} = await ctx.{{plural (camelCase name)}}.findById(id);
-                if ({{camelCase name}} === undefined) {
-                    throw new {{pascalCase name}}NotFoundError(id);
-                }
-                {{camelCase name}}.rename(command.name);
-                await ctx.{{plural (camelCase name)}}.update({{camelCase name}});
-                return { ok: true, value: { id: {{camelCase name}}.id, name: {{camelCase name}}.name } };
-            });
+            return await this.unitOfWork.run(scope, (ctx) =>
+                this.renameInTransaction(ctx, command),
+            );
         } catch (error) {
             if (error instanceof {{pascalCase name}}NotFoundError || error instanceof Invalid{{pascalCase name}}NameError) {
                 return { ok: false, error };
             }
             throw error;
         }
+    }
+
+    private async renameInTransaction(
+        ctx: {{pascalCase context}}UnitOfWorkContext,
+        command: Rename{{pascalCase name}}Command,
+    ): Promise<Result<Rename{{pascalCase name}}Response, {{pascalCase name}}NotFoundError | Invalid{{pascalCase name}}NameError>> {
+        const id = as{{pascalCase name}}Id(command.id);
+        const {{camelCase name}} = await ctx.{{plural (camelCase name)}}.findById(id);
+        if ({{camelCase name}} === undefined) {
+            throw new {{pascalCase name}}NotFoundError(id);
+        }
+        {{camelCase name}}.rename(command.name);
+        await ctx.{{plural (camelCase name)}}.update({{camelCase name}});
+        return { ok: true, value: { id: {{camelCase name}}.id, name: {{camelCase name}}.name } };
     }
 }

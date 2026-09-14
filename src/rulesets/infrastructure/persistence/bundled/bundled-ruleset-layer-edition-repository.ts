@@ -9,11 +9,7 @@ import { fci20260101, fci20270101 } from './fci/index.js';
 import { kmsh20230101 } from './kmsh/index.js';
 
 /** Every edition bundled with this deployment, across every ruleset layer. */
-const BUNDLED_EDITIONS: ReadonlyArray<RulesetLayerEdition> = [
-    fci20260101,
-    fci20270101,
-    kmsh20230101,
-];
+const BUNDLED_EDITIONS: readonly RulesetLayerEdition[] = [fci20260101, fci20270101, kmsh20230101];
 
 /**
  * {@link RulesetLayerEditionRepository} backed by the ruleset content bundled
@@ -25,10 +21,7 @@ const BUNDLED_EDITIONS: ReadonlyArray<RulesetLayerEdition> = [
  * ruleset catalog would actually await).
  */
 export class BundledRulesetLayerEditionRepository implements RulesetLayerEditionRepository {
-    async inForce(
-        layerId: RulesetLayerId,
-        date: LocalDate,
-    ): Promise<RulesetLayerEdition | undefined> {
-        return RulesetLayerEdition.latestInForce(BUNDLED_EDITIONS, layerId, date);
+    inForce(layerId: RulesetLayerId, date: LocalDate): Promise<RulesetLayerEdition | undefined> {
+        return Promise.resolve(RulesetLayerEdition.latestInForce(BUNDLED_EDITIONS, layerId, date));
     }
 }

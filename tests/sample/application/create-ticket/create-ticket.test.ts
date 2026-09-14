@@ -62,7 +62,10 @@ describe('CreateTicketHandler', () => {
             EXHIBITOR_SCOPE,
         );
 
-        expect(result).toEqual({ ok: false, error: expect.any(ItemNotFoundError) });
+        expect(result).toEqual({
+            ok: false,
+            error: expect.any(ItemNotFoundError) as ItemNotFoundError,
+        });
         expect(unitOfWork.recordedEvents).toHaveLength(0);
     });
 
@@ -79,6 +82,9 @@ describe('CreateTicketHandler', () => {
             EXHIBITOR_SCOPE,
         );
 
-        expect(result).toEqual({ ok: false, error: expect.any(InvalidTicketNameError) });
+        expect(result).toEqual({
+            ok: false,
+            error: expect.any(InvalidTicketNameError) as InvalidTicketNameError,
+        });
     });
 });

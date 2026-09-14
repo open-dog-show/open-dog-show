@@ -17,7 +17,7 @@ export class InvalidLocalDateError extends DomainError {
 
     constructor(year: number, month: number, day: number) {
         super(
-            `Invalid calendar date { year: ${year}, month: ${month}, day: ${day} }: not a real Gregorian calendar date`,
+            `Invalid calendar date { year: ${String(year)}, month: ${String(month)}, day: ${String(day)} }: not a real Gregorian calendar date`,
             { year, month, day },
         );
         this.year = year;
@@ -38,7 +38,7 @@ export class LocalDateBeforeReferenceError extends DomainError {
 
     constructor(date: LocalDate, reference: LocalDate) {
         super(
-            `Date ${date.year}-${date.month}-${date.day} is before reference date ${reference.year}-${reference.month}-${reference.day}`,
+            `Date ${String(date.year)}-${String(date.month)}-${String(date.day)} is before reference date ${String(reference.year)}-${String(reference.month)}-${String(reference.day)}`,
             {
                 // Plain primitives, not the LocalDate instances themselves —
                 // LocalDate has no toJSON, so a structured logger reading

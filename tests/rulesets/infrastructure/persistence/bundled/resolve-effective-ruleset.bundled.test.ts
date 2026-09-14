@@ -23,12 +23,12 @@ describe('resolveEffectiveRuleset — bundled FCI editions either side of 2027-0
     const repository = new BundledRulesetLayerEditionRepository();
 
     it('excludes Bred by Exhibitor for a show date under the 2026-01-01 edition', async () => {
-        const ruleset = await resolveEffectiveRuleset(
-            asEffectiveRulesetId('ruleset-1'),
-            [FCI_LAYER_ID],
-            repository,
-            LocalDate.of(2026, 12, 31),
-        );
+        const ruleset = await resolveEffectiveRuleset({
+            id: asEffectiveRulesetId('ruleset-1'),
+            orderedLayerIds: [FCI_LAYER_ID],
+            editionRepository: repository,
+            showDate: LocalDate.of(2026, 12, 31),
+        });
 
         expect(ruleset.classDefinitions).toHaveLength(9);
         expect(ruleset.classDefinition(FCI_CLASS_BRED_BY_EXHIBITOR)).toBeUndefined();
@@ -38,12 +38,12 @@ describe('resolveEffectiveRuleset — bundled FCI editions either side of 2027-0
     });
 
     it('includes Bred by Exhibitor for a show date under the 2027-01-01 edition', async () => {
-        const ruleset = await resolveEffectiveRuleset(
-            asEffectiveRulesetId('ruleset-2'),
-            [FCI_LAYER_ID],
-            repository,
-            LocalDate.of(2027, 1, 1),
-        );
+        const ruleset = await resolveEffectiveRuleset({
+            id: asEffectiveRulesetId('ruleset-2'),
+            orderedLayerIds: [FCI_LAYER_ID],
+            editionRepository: repository,
+            showDate: LocalDate.of(2027, 1, 1),
+        });
 
         expect(ruleset.classDefinitions).toHaveLength(10);
         expect(ruleset.classDefinition(FCI_CLASS_BRED_BY_EXHIBITOR)).toBeDefined();

@@ -10,6 +10,7 @@ import {
     rehydrateDomainEvent,
     DomainEventRehydrationRegistry,
     assertPayloadHasStringField,
+    type DomainEventJson,
 } from '../../../../src/Shared/infrastructure/messaging/domain-event-codec.js';
 import type { DomainEvent, DomainEventFact } from '../../../../src/Shared/domain/domain-event.js';
 import { ClubEventScope, PlatformEventScope } from '../../../../src/Shared/domain/event-scope.js';
@@ -59,12 +60,16 @@ function registryFor(
 }
 
 describe('encodeDomainEvent', () => {
+    const fact = new StubEntrySubmitted({
+        scope: ClubEventScope.of(CLUB_ID),
+        aggregateId: asAggregateId('entry-abc'),
+        payload: { dogId: 'dog-1', classNumber: 42 },
+    });
     const event: DomainEvent = {
-        ...new StubEntrySubmitted({
-            scope: ClubEventScope.of(CLUB_ID),
-            aggregateId: asAggregateId('entry-abc'),
-            payload: { dogId: 'dog-1', classNumber: 42 },
-        }),
+        type: fact.type,
+        scope: fact.scope,
+        aggregateId: fact.aggregateId,
+        payload: fact.payload,
         eventId: asEventId('00000000-0000-4000-8000-000000000001'),
         occurredAt: new Date('2026-08-01T12:00:00.000Z'),
     };
@@ -218,17 +223,21 @@ describe('decodeDomainEvent', () => {
 
 describe('encode → JSON.stringify → JSON.parse → decode round-trip', () => {
     it('round-trips an event with Date payload field losslessly', () => {
+        const fact = new StubEntrySubmitted({
+            scope: PlatformEventScope.of(),
+            aggregateId: asAggregateId('show-1'),
+            payload: { dogId: 'dog-1', classNumber: 7 } satisfies OrderedPayload,
+        });
         const original: DomainEvent = {
-            ...new StubEntrySubmitted({
-                scope: PlatformEventScope.of(),
-                aggregateId: asAggregateId('show-1'),
-                payload: { dogId: 'dog-1', classNumber: 7 } satisfies OrderedPayload,
-            }),
+            type: fact.type,
+            scope: fact.scope,
+            aggregateId: fact.aggregateId,
+            payload: fact.payload,
             eventId: asEventId('00000000-0000-4000-8000-000000000099'),
             occurredAt: new Date('2026-12-25T09:00:00.000Z'),
         };
 
-        const json = JSON.parse(JSON.stringify(encodeDomainEvent(original)));
+        const json = JSON.parse(JSON.stringify(encodeDomainEvent(original))) as DomainEventJson;
         const restored = decodeDomainEvent(json, registryFor());
 
         expect(restored.eventId).toBe(original.eventId);
@@ -299,7 +308,9 @@ describe('DomainEventRehydrationRegistry', () => {
 
 describe('assertPayloadHasStringField', () => {
     it('does not throw when the field is a string', () => {
-        expect(() => assertPayloadHasStringField({ dogName: 'Fido' }, 'dogName')).not.toThrow();
+        expect(() => {
+            assertPayloadHasStringField({ dogName: 'Fido' }, 'dogName');
+        }).not.toThrow();
     });
 
     it('narrows payload so the field is accessible as a string', () => {
@@ -314,8 +325,8 @@ describe('assertPayloadHasStringField', () => {
         ['an object missing the field', {}],
         ['an object with a non-string field', { dogName: 42 }],
     ])('throws InvalidDomainEventEnvelopeError for %s', (_label, payload) => {
-        expect(() => assertPayloadHasStringField(payload, 'dogName')).toThrow(
-            InvalidDomainEventEnvelopeError,
-        );
+        expect(() => {
+            assertPayloadHasStringField(payload, 'dogName');
+        }).toThrow(InvalidDomainEventEnvelopeError);
     });
 });

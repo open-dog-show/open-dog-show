@@ -11,7 +11,7 @@ export class InvalidAgeMonthsError extends DomainError {
     readonly months: number;
 
     constructor(months: number) {
-        super(`AgeMonths must be an integer >= 0; received ${months}`, { months });
+        super(`AgeMonths must be an integer >= 0; received ${String(months)}`, { months });
         this.months = months;
     }
 }

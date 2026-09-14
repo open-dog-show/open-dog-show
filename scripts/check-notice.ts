@@ -111,7 +111,7 @@ export function run(): void {
     for (const dep of allDeps) {
         const licence = resolveLicence(dep, rootDir);
         if (licence === null || !isApprovedLicence(licence)) {
-            const label = licence === null ? '(could not resolve)' : licence;
+            const label = licence ?? '(could not resolve)';
             console.error(`[LICENCE] non-approved licence for ${dep}: ${label}`);
             failed = true;
         }

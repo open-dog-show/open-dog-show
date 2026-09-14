@@ -149,16 +149,19 @@ export async function withTransaction<T>(
  * persisted.
  */
 export async function withOutboxTransaction<T>(
-    pool: pg.Pool,
-    scope: TransactionScope,
-    writer: PgOutboxWriter,
-    clock: Clock,
-    eventIdGenerator: EventIdGenerator,
+    deps: {
+        readonly pool: pg.Pool;
+        readonly scope: TransactionScope;
+        readonly writer: PgOutboxWriter;
+        readonly clock: Clock;
+        readonly eventIdGenerator: EventIdGenerator;
+    },
     fn: (
         client: pg.PoolClient,
         record: (...facts: readonly DomainEventFact[]) => void,
     ) => Promise<T>,
 ): Promise<T> {
+    const { pool, scope, writer, clock, eventIdGenerator } = deps;
     const pending: DomainEvent[] = [];
     const record = (...facts: readonly DomainEventFact[]): void => {
         for (const fact of facts) {

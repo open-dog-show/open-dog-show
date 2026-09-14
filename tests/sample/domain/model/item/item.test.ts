@@ -74,6 +74,8 @@ describe('Item', () => {
             name: 'Old name',
         });
 
-        expect(() => item.rename('')).toThrow(InvalidItemNameError);
+        expect(() => {
+            item.rename('');
+        }).toThrow(InvalidItemNameError);
     });
 });

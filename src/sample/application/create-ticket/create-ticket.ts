@@ -1,11 +1,16 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { requireActor, type Result, type TransactionScope } from '../../../Shared/index.js';
+import {
+    requireActor,
+    type PrincipalId,
+    type Result,
+    type TransactionScope,
+} from '../../../Shared/index.js';
 import { asTicketId, asItemId } from '../../domain/shared/domain-ids.js';
 import { Ticket, InvalidTicketNameError } from '../../domain/model/ticket/ticket.js';
 import { ItemNotFoundError } from '../../domain/model/item/item.js';
-import type { SampleUnitOfWork } from '../ports/unit-of-work.js';
+import type { SampleUnitOfWork, SampleUnitOfWorkContext } from '../ports/unit-of-work.js';
 
 /**
  * Inputs to {@link CreateTicketHandler.execute} that are not
@@ -61,30 +66,36 @@ export class CreateTicketHandler {
     ): Promise<Result<CreateTicketResponse, InvalidTicketNameError | ItemNotFoundError>> {
         const createdBy = requireActor(scope);
         try {
-            return await this.unitOfWork.run<
-                Result<CreateTicketResponse, InvalidTicketNameError | ItemNotFoundError>
-            >(scope, async (ctx) => {
-                const itemId = asItemId(command.itemId);
-                const item = await ctx.items.findById(itemId);
-                if (item === undefined) {
-                    throw new ItemNotFoundError(itemId);
-                }
-
-                const ticket = Ticket.create({
-                    id: asTicketId(command.id),
-                    clubId: item.clubId,
-                    createdBy,
-                    itemId,
-                    name: command.name,
-                });
-                await ctx.tickets.add(ticket);
-                return { ok: true, value: { id: ticket.id, name: ticket.name } };
-            });
+            return await this.unitOfWork.run(scope, (ctx) =>
+                this.createInTransaction(ctx, command, createdBy),
+            );
         } catch (error) {
             if (error instanceof InvalidTicketNameError || error instanceof ItemNotFoundError) {
                 return { ok: false, error };
             }
             throw error;
         }
+    }
+
+    private async createInTransaction(
+        ctx: SampleUnitOfWorkContext,
+        command: CreateTicketCommand,
+        createdBy: PrincipalId,
+    ): Promise<Result<CreateTicketResponse, InvalidTicketNameError | ItemNotFoundError>> {
+        const itemId = asItemId(command.itemId);
+        const item = await ctx.items.findById(itemId);
+        if (item === undefined) {
+            throw new ItemNotFoundError(itemId);
+        }
+
+        const ticket = Ticket.create({
+            id: asTicketId(command.id),
+            clubId: item.clubId,
+            createdBy,
+            itemId,
+            name: command.name,
+        });
+        await ctx.tickets.add(ticket);
+        return { ok: true, value: { id: ticket.id, name: ticket.name } };
     }
 }

@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { EntryEligibilityProfile } from '../../../../../src/rulesets/domain/service/class-eligibility-policy/entry-eligibility-profile.js';
-import { CertificateKind } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/certificate-kind.js';
+import { CERTIFICATE_KIND } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/certificate-kind.js';
 import { LocalDate } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
 
 const DOB = LocalDate.of(2024, 6, 1);
@@ -21,8 +21,8 @@ function profile(overrides: Partial<Parameters<typeof EntryEligibilityProfile.of
 describe('EntryEligibilityProfile.equals', () => {
     it('is true when every field matches', () => {
         expect(
-            profile({ heldCertificates: [CertificateKind.VaccinationCertificate] }).equals(
-                profile({ heldCertificates: [CertificateKind.VaccinationCertificate] }),
+            profile({ heldCertificates: [CERTIFICATE_KIND.VaccinationCertificate] }).equals(
+                profile({ heldCertificates: [CERTIFICATE_KIND.VaccinationCertificate] }),
             ),
         ).toBe(true);
     });
@@ -43,8 +43,8 @@ describe('EntryEligibilityProfile.equals', () => {
 
     it('is false when heldCertificates differ in content', () => {
         expect(
-            profile({ heldCertificates: [CertificateKind.VaccinationCertificate] }).equals(
-                profile({ heldCertificates: [CertificateKind.WorkingCertificate] }),
+            profile({ heldCertificates: [CERTIFICATE_KIND.VaccinationCertificate] }).equals(
+                profile({ heldCertificates: [CERTIFICATE_KIND.WorkingCertificate] }),
             ),
         ).toBe(false);
     });
@@ -53,10 +53,10 @@ describe('EntryEligibilityProfile.equals', () => {
         expect(
             profile({
                 heldCertificates: [
-                    CertificateKind.VaccinationCertificate,
-                    CertificateKind.WorkingCertificate,
+                    CERTIFICATE_KIND.VaccinationCertificate,
+                    CERTIFICATE_KIND.WorkingCertificate,
                 ],
-            }).equals(profile({ heldCertificates: [CertificateKind.VaccinationCertificate] })),
+            }).equals(profile({ heldCertificates: [CERTIFICATE_KIND.VaccinationCertificate] })),
         ).toBe(false);
     });
 });

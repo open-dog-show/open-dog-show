@@ -17,6 +17,47 @@ import type {
 } from '../../../application/ports/unit-of-work.js';
 // plop:imports
 
+interface InMemoryCrudPort<Id, T> {
+    findById(id: Id): Promise<T | undefined>;
+    add(entity: T): Promise<void>;
+    update(entity: T): Promise<void>;
+}
+
+/**
+ * Builds an in-memory {@link InMemoryCrudPort} over `staged` — the single
+ * find/duplicate-check/update shape shared by every aggregate's fake
+ * repository, instead of repeated per aggregate.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's repositories; unused only in a bare context skeleton
+function createInMemoryPort<
+    Id,
+    T extends { readonly id: Id; pullEvents(): readonly DomainEventFact[] },
+>(
+    staged: T[],
+    record: (...facts: readonly DomainEventFact[]) => void,
+    typeName: string,
+): InMemoryCrudPort<Id, T> {
+    return {
+        findById: (id) => Promise.resolve(staged.find((entity) => entity.id === id)),
+        add: (entity) => {
+            if (staged.some((existing) => existing.id === entity.id)) {
+                return Promise.reject(
+                    new Error(`Duplicate ${typeName} id: ${String(entity.id)}`),
+                );
+            }
+            staged.push(entity);
+            record(...entity.pullEvents());
+            return Promise.resolve();
+        },
+        update: (updated) => {
+            const index = staged.findIndex((entity) => entity.id === updated.id);
+            if (index !== -1) staged[index] = updated;
+            record(...updated.pullEvents());
+            return Promise.resolve();
+        },
+    };
+}
+
 /**
  * In-memory {@link {{pascalCase name}}UnitOfWork} for unit-testing
  * {{dashCase name}}-context use cases without Docker.
@@ -39,25 +80,43 @@ export class Fake{{pascalCase name}}UnitOfWork implements {{pascalCase name}}Uni
         private readonly eventIdGenerator: EventIdGenerator = new RandomEventIdGenerator(),
     ) {}
 
+    // plop:staging-methods
+
+    private stageAll() {
+        return {
+            // plop:staging-init
+        };
+    }
+
+    /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function -- staged/record are used by new:aggregate's repositories; unused only in a bare context skeleton */
+    private buildContext(
+        staged: ReturnType<Fake{{pascalCase name}}UnitOfWork['stageAll']>,
+        record: (...facts: readonly DomainEventFact[]) => void,
+    ): {{pascalCase name}}UnitOfWorkContext {
+        return {
+            // plop:repositories
+        };
+    }
+
+    private commitAll(staged: ReturnType<Fake{{pascalCase name}}UnitOfWork['stageAll']>): void {
+        // plop:commit
+    }
+    /* eslint-enable @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function */
+
     async run<T>(
         _scope: TransactionScope,
         body: (ctx: {{pascalCase name}}UnitOfWorkContext) => Promise<T>,
     ): Promise<T> {
         const pendingFacts: DomainEventFact[] = [];
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- called by new:aggregate's repositories; unused only in a bare context skeleton
         const record = (...facts: readonly DomainEventFact[]): void => {
             pendingFacts.push(...facts);
         };
 
-        // plop:staging-init
-
-        const ctx: {{pascalCase name}}UnitOfWorkContext = {
-            // plop:repositories
-        };
-
+        const staged = this.stageAll();
+        const ctx = this.buildContext(staged, record);
         const result = await body(ctx);
+        this.commitAll(staged);
 
-        // plop:commit
         for (const fact of pendingFacts) {
             this.recordedEvents.push(
                 stampDomainEvent(fact, this.eventIdGenerator.generate(), this.clock.now()),

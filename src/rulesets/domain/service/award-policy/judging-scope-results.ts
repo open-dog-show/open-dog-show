@@ -85,10 +85,7 @@ export class StreamCandidate {
  * ClassFeederStream.equals} so the pairwise-compare-without-an-unsafe-cast
  * logic lives in one place.
  */
-function candidatesEqual(
-    a: ReadonlyArray<StreamCandidate>,
-    b: ReadonlyArray<StreamCandidate>,
-): boolean {
+function candidatesEqual(a: readonly StreamCandidate[], b: readonly StreamCandidate[]): boolean {
     if (a.length !== b.length) return false;
     return a.every((candidate, i) => {
         const counterpart = b[i];
@@ -101,7 +98,7 @@ interface CandidateStreamAttributesBase {
     /** Sex tag — breed scope only (male/female streams for BOB/BOS); undefined at group/show. */
     readonly sex: Sex | undefined;
     /** The candidate dogs this feeder supplies, each with its feeder grade. */
-    readonly candidates: ReadonlyArray<StreamCandidate>;
+    readonly candidates: readonly StreamCandidate[];
 }
 
 /** Attributes for {@link AwardFeederStream.of}. */
@@ -125,7 +122,7 @@ export class AwardFeederStream {
     readonly kind = 'award' as const;
     readonly feederAwardTypeId: AwardTypeId;
     readonly sex: Sex | undefined;
-    readonly candidates: ReadonlyArray<StreamCandidate>;
+    readonly candidates: readonly StreamCandidate[];
 
     private constructor(attributes: AwardFeederStreamAttributes) {
         this.feederAwardTypeId = attributes.feederAwardTypeId;
@@ -161,7 +158,7 @@ export class ClassFeederStream {
     readonly kind = 'class' as const;
     readonly feederClassId: ClassId;
     readonly sex: Sex | undefined;
-    readonly candidates: ReadonlyArray<StreamCandidate>;
+    readonly candidates: readonly StreamCandidate[];
 
     private constructor(attributes: ClassFeederStreamAttributes) {
         this.feederClassId = attributes.feederClassId;
@@ -211,10 +208,7 @@ function candidateStreamEquals(a: CandidateStream, b: CandidateStream): boolean 
  * Value equality for a {@link ClassPlacement} array — same length, and each
  * pair equal in order. Mirrors {@link candidatesEqual}.
  */
-function placementsEqual(
-    a: ReadonlyArray<ClassPlacement>,
-    b: ReadonlyArray<ClassPlacement>,
-): boolean {
+function placementsEqual(a: readonly ClassPlacement[], b: readonly ClassPlacement[]): boolean {
     if (a.length !== b.length) return false;
     return a.every((placement, i) => {
         const counterpart = b[i];
@@ -225,7 +219,7 @@ function placementsEqual(
 /** Attributes for {@link PerSexJudgingScopeResults.of}. */
 export interface PerSexJudgingScopeResultsAttributes {
     /** All class placements from this sex's judging, across all classes. */
-    readonly placements: ReadonlyArray<ClassPlacement>;
+    readonly placements: readonly ClassPlacement[];
 }
 
 /**
@@ -239,7 +233,7 @@ export interface PerSexJudgingScopeResultsAttributes {
  */
 export class PerSexJudgingScopeResults {
     readonly kind = 'per-sex' as const;
-    readonly placements: ReadonlyArray<ClassPlacement>;
+    readonly placements: readonly ClassPlacement[];
 
     private constructor(attributes: PerSexJudgingScopeResultsAttributes) {
         this.placements = [...attributes.placements];
@@ -277,25 +271,22 @@ export type HigherScopeJudgingScopeKind = 'breed' | 'group' | 'show';
  */
 export class HigherScopeJudgingScopeResults {
     readonly kind: HigherScopeJudgingScopeKind;
-    readonly streams: ReadonlyArray<CandidateStream>;
+    readonly streams: readonly CandidateStream[];
 
-    private constructor(
-        kind: HigherScopeJudgingScopeKind,
-        streams: ReadonlyArray<CandidateStream>,
-    ) {
+    private constructor(kind: HigherScopeJudgingScopeKind, streams: readonly CandidateStream[]) {
         this.kind = kind;
         this.streams = [...streams];
     }
 
-    static breed(streams: ReadonlyArray<CandidateStream>): HigherScopeJudgingScopeResults {
+    static breed(streams: readonly CandidateStream[]): HigherScopeJudgingScopeResults {
         return new HigherScopeJudgingScopeResults('breed', streams);
     }
 
-    static group(streams: ReadonlyArray<CandidateStream>): HigherScopeJudgingScopeResults {
+    static group(streams: readonly CandidateStream[]): HigherScopeJudgingScopeResults {
         return new HigherScopeJudgingScopeResults('group', streams);
     }
 
-    static show(streams: ReadonlyArray<CandidateStream>): HigherScopeJudgingScopeResults {
+    static show(streams: readonly CandidateStream[]): HigherScopeJudgingScopeResults {
         return new HigherScopeJudgingScopeResults('show', streams);
     }
 

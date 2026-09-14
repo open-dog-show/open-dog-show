@@ -59,6 +59,6 @@ describe('{{pascalCase name}}', () => {
             name: 'Old name',
         });
 
-        expect(() => {{camelCase name}}.rename('')).toThrow(Invalid{{pascalCase name}}NameError);
+        expect(() => { {{camelCase name}}.rename(''); }).toThrow(Invalid{{pascalCase name}}NameError);
     });
 });

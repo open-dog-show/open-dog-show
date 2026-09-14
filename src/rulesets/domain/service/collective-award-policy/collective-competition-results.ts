@@ -73,10 +73,7 @@ export type CollectiveCompetitionKind = CollectiveCompetitionResults['kind'];
  * variant's `equals` (mirrors `candidatesEqual` in
  * `judging-scope-results.ts`).
  */
-function entriesEqual(
-    a: ReadonlyArray<CollectiveEntry>,
-    b: ReadonlyArray<CollectiveEntry>,
-): boolean {
+function entriesEqual(a: readonly CollectiveEntry[], b: readonly CollectiveEntry[]): boolean {
     if (a.length !== b.length) return false;
     return a.every((entry, i) => {
         const counterpart = b[i];
@@ -87,7 +84,7 @@ function entriesEqual(
 /** Attributes for {@link BraceCoupleCompetitionResults.of}. */
 export interface BraceCoupleCompetitionResultsAttributes {
     readonly breed: BreedVarietyRef;
-    readonly entries: ReadonlyArray<CollectiveEntry>;
+    readonly entries: readonly CollectiveEntry[];
 }
 
 /**
@@ -103,7 +100,7 @@ export interface BraceCoupleCompetitionResultsAttributes {
 export class BraceCoupleCompetitionResults {
     readonly kind = 'brace-couple' as const;
     readonly breed: BreedVarietyRef;
-    readonly entries: ReadonlyArray<CollectiveEntry>;
+    readonly entries: readonly CollectiveEntry[];
 
     private constructor(attributes: BraceCoupleCompetitionResultsAttributes) {
         this.breed = attributes.breed;
@@ -124,7 +121,7 @@ export interface BreedersGroupCompetitionResultsAttributes {
     readonly breed: BreedVarietyRef;
     /** Name of the kennel that bred all competing dogs. */
     readonly kennelName: string;
-    readonly entries: ReadonlyArray<CollectiveEntry>;
+    readonly entries: readonly CollectiveEntry[];
 }
 
 /**
@@ -136,7 +133,7 @@ export class BreedersGroupCompetitionResults {
     readonly kind = 'breeders-group' as const;
     readonly breed: BreedVarietyRef;
     readonly kennelName: string;
-    readonly entries: ReadonlyArray<CollectiveEntry>;
+    readonly entries: readonly CollectiveEntry[];
 
     private constructor(attributes: BreedersGroupCompetitionResultsAttributes) {
         this.breed = attributes.breed;
@@ -163,7 +160,7 @@ export class BreedersGroupCompetitionResults {
 export interface ProgenyGroupCompetitionResultsAttributes {
     /** Opaque reference to the sire or dam whose offspring are competing. */
     readonly parentEntryRef: EntryRef;
-    readonly entries: ReadonlyArray<CollectiveEntry>;
+    readonly entries: readonly CollectiveEntry[];
 }
 
 /**
@@ -174,7 +171,7 @@ export interface ProgenyGroupCompetitionResultsAttributes {
 export class ProgenyGroupCompetitionResults {
     readonly kind = 'progeny-group' as const;
     readonly parentEntryRef: EntryRef;
-    readonly entries: ReadonlyArray<CollectiveEntry>;
+    readonly entries: readonly CollectiveEntry[];
 
     private constructor(attributes: ProgenyGroupCompetitionResultsAttributes) {
         this.parentEntryRef = attributes.parentEntryRef;

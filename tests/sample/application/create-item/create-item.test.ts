@@ -38,7 +38,10 @@ describe('CreateItemHandler', () => {
             SCOPE,
         );
 
-        expect(result).toEqual({ ok: false, error: expect.any(InvalidItemNameError) });
+        expect(result).toEqual({
+            ok: false,
+            error: expect.any(InvalidItemNameError) as InvalidItemNameError,
+        });
         expect(unitOfWork.recordedEvents).toHaveLength(0);
     });
 });

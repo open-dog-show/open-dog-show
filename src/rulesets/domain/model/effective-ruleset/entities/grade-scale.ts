@@ -61,10 +61,10 @@ export class SpecialOutcome {
 export interface GradeScaleAttributes {
     readonly id: GradeScaleId;
     /** All grades on this scale, ordered best-first (lowest ordinal first). */
-    readonly grades: ReadonlyArray<Grade>;
+    readonly grades: readonly Grade[];
     /** Minimum grade for a Dog to be eligible for an ordinal Placement. */
     readonly placeableThresholdId: GradeId;
-    readonly specialOutcomes: ReadonlyArray<SpecialOutcome>;
+    readonly specialOutcomes: readonly SpecialOutcome[];
 }
 
 /**
@@ -97,9 +97,9 @@ export class UnknownPlaceableThresholdError extends DomainError {
  */
 export class GradeScale {
     readonly id: GradeScaleId;
-    readonly grades: ReadonlyArray<Grade>;
+    readonly grades: readonly Grade[];
     readonly placeableThresholdId: GradeId;
-    readonly specialOutcomes: ReadonlyArray<SpecialOutcome>;
+    readonly specialOutcomes: readonly SpecialOutcome[];
 
     private constructor(attributes: GradeScaleAttributes) {
         if (!attributes.grades.some((g) => g.id === attributes.placeableThresholdId)) {

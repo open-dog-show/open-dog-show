@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-declare const __brand: unique symbol;
+declare const BRAND: unique symbol;
 
 /**
  * Compile-time brand helper. A branded type is structurally identical to `T` at
@@ -13,4 +13,4 @@ declare const __brand: unique symbol;
  * it (directly or via a re-export) instead of re-declaring their own `Brand`,
  * so the helper lives in one place.
  */
-export type Brand<T, B> = T & { readonly [__brand]: B };
+export type Brand<T, B> = T & { readonly [BRAND]: B };

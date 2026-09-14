@@ -36,9 +36,9 @@ describe('runInClientTransaction — TransactionFailed wrapping', () => {
             return Promise.resolve();
         });
 
-        await expect(runInClientTransaction(client, async () => 'ok')).rejects.toBeInstanceOf(
-            TransactionFailed,
-        );
+        await expect(
+            runInClientTransaction(client, () => Promise.resolve('ok')),
+        ).rejects.toBeInstanceOf(TransactionFailed);
     });
 
     it('wraps a COMMIT failure as TransactionFailed', async () => {
@@ -47,9 +47,9 @@ describe('runInClientTransaction — TransactionFailed wrapping', () => {
             return Promise.resolve();
         });
 
-        await expect(runInClientTransaction(client, async () => 'ok')).rejects.toBeInstanceOf(
-            TransactionFailed,
-        );
+        await expect(
+            runInClientTransaction(client, () => Promise.resolve('ok')),
+        ).rejects.toBeInstanceOf(TransactionFailed);
     });
 
     it('does NOT wrap a body error — it propagates unwrapped and rolls back', async () => {
@@ -61,7 +61,7 @@ describe('runInClientTransaction — TransactionFailed wrapping', () => {
         const bodyError = new Error('business failure');
 
         await expect(
-            runInClientTransaction(client, async () => {
+            runInClientTransaction(client, () => {
                 throw bodyError;
             }),
         ).rejects.toBe(bodyError);
@@ -76,7 +76,7 @@ describe('runInClientTransaction — TransactionFailed wrapping', () => {
         const bodyError = new Error('business failure');
 
         await expect(
-            runInClientTransaction(client, async () => {
+            runInClientTransaction(client, () => {
                 throw bodyError;
             }),
         ).rejects.toBe(bodyError);
@@ -89,9 +89,9 @@ describe('withTransaction — TransactionFailed wrapping', () => {
             connect: () => Promise.reject(new Error('pool exhausted')),
         } as unknown as pg.Pool;
 
-        await expect(withTransaction(pool, SCOPE, async () => 'ok')).rejects.toBeInstanceOf(
-            TransactionFailed,
-        );
+        await expect(
+            withTransaction(pool, SCOPE, () => Promise.resolve('ok')),
+        ).rejects.toBeInstanceOf(TransactionFailed);
     });
 
     it('wraps a set_config (RLS session var) failure as TransactionFailed', async () => {
@@ -106,9 +106,9 @@ describe('withTransaction — TransactionFailed wrapping', () => {
         } as unknown as pg.PoolClient;
         const pool = { connect: () => Promise.resolve(client) } as unknown as pg.Pool;
 
-        await expect(withTransaction(pool, SCOPE, async () => 'ok')).rejects.toBeInstanceOf(
-            TransactionFailed,
-        );
+        await expect(
+            withTransaction(pool, SCOPE, () => Promise.resolve('ok')),
+        ).rejects.toBeInstanceOf(TransactionFailed);
         expect(release).toHaveBeenCalled();
     });
 });
@@ -119,40 +119,44 @@ describe('withOutboxTransaction — stamping and writing recorded facts', () => 
         const clock: Clock = { now: () => fixedDate };
         let counter = 0;
         const eventIdGenerator: EventIdGenerator = {
-            generate: () => asEventId(`00000000-0000-4000-8000-00000000000${++counter}`),
+            generate: () => asEventId(`00000000-0000-4000-8000-00000000000${String(++counter)}`),
         };
 
         const writeCalls: { eventId: string; occurredAt: Date; type: string }[][] = [];
         const writer = {
             write: vi.fn(
-                async (
+                (
                     _client: unknown,
                     events: readonly { eventId: string; occurredAt: Date; type: string }[],
                 ) => {
                     writeCalls.push([...events]);
+                    return Promise.resolve();
                 },
             ),
         };
 
         const client = {
             query: () => Promise.resolve(),
-            release: () => {},
+            release: () => undefined,
         } as unknown as pg.PoolClient;
         const pool = { connect: () => Promise.resolve(client) } as unknown as pg.Pool;
 
         await withOutboxTransaction(
-            pool,
-            SCOPE,
-            writer as unknown as PgOutboxWriter,
-            clock,
-            eventIdGenerator,
-            async (_client, record) => {
+            {
+                pool,
+                scope: SCOPE,
+                writer: writer as unknown as PgOutboxWriter,
+                clock,
+                eventIdGenerator,
+            },
+            (_client, record) => {
                 record({
                     type: asEventType('sample.EntrySubmitted'),
                     scope: ClubEventScope.of(SCOPE.clubId),
                     aggregateId: asAggregateId('entry-1'),
                     payload: { dogName: 'Fido' },
                 });
+                return Promise.resolve();
             },
         );
 
@@ -167,17 +171,21 @@ describe('withOutboxTransaction — stamping and writing recorded facts', () => 
         const writer = { write: vi.fn() };
         const client = {
             query: () => Promise.resolve(),
-            release: () => {},
+            release: () => undefined,
         } as unknown as pg.PoolClient;
         const pool = { connect: () => Promise.resolve(client) } as unknown as pg.Pool;
 
         await withOutboxTransaction(
-            pool,
-            SCOPE,
-            writer as unknown as PgOutboxWriter,
-            { now: () => new Date() },
-            { generate: () => asEventId('00000000-0000-4000-8000-000000000001') },
-            async () => {},
+            {
+                pool,
+                scope: SCOPE,
+                writer: writer as unknown as PgOutboxWriter,
+                clock: { now: () => new Date() },
+                eventIdGenerator: {
+                    generate: () => asEventId('00000000-0000-4000-8000-000000000001'),
+                },
+            },
+            () => Promise.resolve(),
         );
 
         expect(writer.write).not.toHaveBeenCalled();

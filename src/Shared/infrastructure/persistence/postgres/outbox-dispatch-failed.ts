@@ -14,6 +14,26 @@
  * preserved too — via `cause.recordingError` — rather than silently
  * discarded, so no failure information is lost.
  */
+// `recordingError` is caught from a best-effort write and may be anything;
+// stringify each primitive kind explicitly rather than falling through to
+// Object's default `[object Object]` toString.
+function describeUnstringifiedCause(value: unknown): string {
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+        return String(value);
+    }
+    if (value === null || value === undefined) return String(value);
+    try {
+        // TS's lib types claim `JSON.stringify` always returns `string`, but
+        // it returns `undefined` for a function, a bare symbol, or a value
+        // whose `toJSON` returns `undefined` — the cast restores that.
+        const json = JSON.stringify(value) as string | undefined;
+        return json ?? Object.prototype.toString.call(value);
+    } catch {
+        return Object.prototype.toString.call(value);
+    }
+}
+
 export class OutboxDispatchFailed extends Error {
     readonly seq: string;
     readonly eventId: string;
@@ -29,7 +49,7 @@ export class OutboxDispatchFailed extends Error {
         readonly recordingError?: unknown;
     }) {
         super(
-            `Outbox dispatch failed for event '${params.eventId}' (type '${params.type}', attempt ${params.attempts})`,
+            `Outbox dispatch failed for event '${params.eventId}' (type '${params.type}', attempt ${String(params.attempts)})`,
             {
                 cause: {
                     error:
@@ -39,7 +59,7 @@ export class OutboxDispatchFailed extends Error {
                             ? undefined
                             : params.recordingError instanceof Error
                               ? params.recordingError.message
-                              : String(params.recordingError),
+                              : describeUnstringifiedCause(params.recordingError),
                 },
             },
         );

@@ -18,7 +18,7 @@ import type { AwardType } from '../../../../domain/model/effective-ruleset/entit
 import { ShowType } from '../../../../domain/model/effective-ruleset/entities/show-type.js';
 import { asPlacement } from '../../../../domain/service/award-policy/placement.js';
 import { asAgeMonths } from '../../../../domain/model/effective-ruleset/value-objects/age-months.js';
-import { CertificateKind } from '../../../../domain/model/effective-ruleset/value-objects/certificate-kind.js';
+import { CERTIFICATE_KIND } from '../../../../domain/model/effective-ruleset/value-objects/certificate-kind.js';
 import {
     FCI_ADULT_GRADE_SCALE_ID,
     FCI_PUPPY_GRADE_SCALE_ID,
@@ -105,13 +105,13 @@ export const fciPuppyGradeScale: GradeScale = GradeScale.of({
     specialOutcomes: [], // FCI Section 6 defines no separate special outcomes for the puppy scale
 });
 
-export const fciGradeScales: ReadonlyArray<GradeScale> = [fciAdultGradeScale, fciPuppyGradeScale];
+export const fciGradeScales: readonly GradeScale[] = [fciAdultGradeScale, fciPuppyGradeScale];
 
 // ---------------------------------------------------------------------------
 // Award types
 // ---------------------------------------------------------------------------
 
-export const fciAwardTypes: ReadonlyArray<AwardType> = [
+export const fciAwardTypes: readonly AwardType[] = [
     PerSexAwardType.of({
         id: FCI_AWARD_CACIB,
         minimumGradeId: FCI_GRADE_EXCELLENT,
@@ -259,7 +259,7 @@ export const fciMinorPuppyClass: ClassDefinition = ClassDefinition.of({
     id: FCI_CLASS_MINOR_PUPPY,
     fromAgeMonths: undefined,
     lessThanAgeMonths: asAgeMonths(6),
-    requiredCertificates: [CertificateKind.VaccinationCertificate],
+    requiredCertificates: [CERTIFICATE_KIND.VaccinationCertificate],
     bredByExhibitor: false,
     gradeScaleId: FCI_PUPPY_GRADE_SCALE_ID,
     awardTypeIds: [],
@@ -345,7 +345,7 @@ export const fciWorkingClass: ClassDefinition = ClassDefinition.of({
     id: FCI_CLASS_WORKING,
     fromAgeMonths: asAgeMonths(15),
     lessThanAgeMonths: undefined,
-    requiredCertificates: [CertificateKind.WorkingCertificate],
+    requiredCertificates: [CERTIFICATE_KIND.WorkingCertificate],
     bredByExhibitor: false,
     gradeScaleId: FCI_ADULT_GRADE_SCALE_ID,
     awardTypeIds: [FCI_AWARD_CACIB, FCI_AWARD_RES_CACIB],
@@ -358,7 +358,7 @@ export const fciChampionClass: ClassDefinition = ClassDefinition.of({
     id: FCI_CLASS_CHAMPION,
     fromAgeMonths: asAgeMonths(15),
     lessThanAgeMonths: undefined,
-    requiredCertificates: [CertificateKind.ChampionCertificate],
+    requiredCertificates: [CERTIFICATE_KIND.ChampionCertificate],
     bredByExhibitor: false,
     gradeScaleId: FCI_ADULT_GRADE_SCALE_ID,
     awardTypeIds: [FCI_AWARD_CACIB, FCI_AWARD_RES_CACIB],
@@ -395,7 +395,7 @@ export const fciHonourClass: ClassDefinition = ClassDefinition.of({
 // Show types
 // ---------------------------------------------------------------------------
 
-export const fciShowTypes: ReadonlyArray<ShowType> = [
+export const fciShowTypes: readonly ShowType[] = [
     ShowType.of({
         id: FCI_SHOW_TYPE_CACIB_SHOW,
         availableAwardTypeIds: [

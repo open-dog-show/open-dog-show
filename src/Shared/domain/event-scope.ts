@@ -59,6 +59,7 @@ export class ExhibitorEventScope {
 export class PlatformEventScope {
     readonly kind = 'platform' as const;
 
+    // eslint-disable-next-line @typescript-eslint/no-empty-function -- private nominal constructor (ADR-0023); `of()` is the only way to construct this singleton-shaped variant.
     private constructor() {}
 
     static of(): PlatformEventScope {
@@ -66,6 +67,9 @@ export class PlatformEventScope {
     }
 
     equals(other: PlatformEventScope): boolean {
+        // Mirrors the other variants' equals(other) shape; always true since
+        // PlatformEventScope carries no data beyond `kind`.
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- always true by construction (no fields beyond `kind`), kept for shape parity with the other variants
         return this.kind === other.kind;
     }
 }
@@ -98,6 +102,39 @@ export function eventScopesEqual(a: EventScope, b: EventScope): boolean {
  * @throws {TypeError} when `kind` is unknown, or the id combination does not
  *   match the expected shape for `kind`.
  */
+function toClubEventScope(clubId: string | null, principalId: string | null): ClubEventScope {
+    if (clubId === null || principalId !== null) {
+        throw new TypeError(
+            `Invalid EventScope 'club': expected a clubId and no principalId (got clubId=${String(clubId)}, principalId=${String(principalId)}).`,
+        );
+    }
+    return ClubEventScope.of(asClubId(clubId));
+}
+
+function toExhibitorEventScope(
+    clubId: string | null,
+    principalId: string | null,
+): ExhibitorEventScope {
+    if (principalId === null || clubId !== null) {
+        throw new TypeError(
+            `Invalid EventScope 'exhibitor': expected a principalId and no clubId (got clubId=${String(clubId)}, principalId=${String(principalId)}).`,
+        );
+    }
+    return ExhibitorEventScope.of(asPrincipalId(principalId));
+}
+
+function toPlatformEventScope(
+    clubId: string | null,
+    principalId: string | null,
+): PlatformEventScope {
+    if (clubId !== null || principalId !== null) {
+        throw new TypeError(
+            `Invalid EventScope 'platform': expected neither clubId nor principalId (got clubId=${String(clubId)}, principalId=${String(principalId)}).`,
+        );
+    }
+    return PlatformEventScope.of();
+}
+
 export function asEventScope(
     kind: string,
     clubId: string | null,
@@ -105,26 +142,11 @@ export function asEventScope(
 ): EventScope {
     switch (kind) {
         case 'club':
-            if (clubId === null || principalId !== null) {
-                throw new TypeError(
-                    `Invalid EventScope 'club': expected a clubId and no principalId (got clubId=${String(clubId)}, principalId=${String(principalId)}).`,
-                );
-            }
-            return ClubEventScope.of(asClubId(clubId));
+            return toClubEventScope(clubId, principalId);
         case 'exhibitor':
-            if (principalId === null || clubId !== null) {
-                throw new TypeError(
-                    `Invalid EventScope 'exhibitor': expected a principalId and no clubId (got clubId=${String(clubId)}, principalId=${String(principalId)}).`,
-                );
-            }
-            return ExhibitorEventScope.of(asPrincipalId(principalId));
+            return toExhibitorEventScope(clubId, principalId);
         case 'platform':
-            if (clubId !== null || principalId !== null) {
-                throw new TypeError(
-                    `Invalid EventScope 'platform': expected neither clubId nor principalId (got clubId=${String(clubId)}, principalId=${String(principalId)}).`,
-                );
-            }
-            return PlatformEventScope.of();
+            return toPlatformEventScope(clubId, principalId);
         default:
             throw new TypeError(
                 `Invalid EventScope '${kind}': expected 'club', 'exhibitor', or 'platform'.`,

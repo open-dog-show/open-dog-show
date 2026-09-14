@@ -151,7 +151,7 @@ export interface HigherScopeAwardTypeAttributes {
      * class wins) is a multi-element array; a single feeder is a one-element
      * array. Always defined for higher-scope awards.
      */
-    readonly fedBy: ReadonlyArray<Feeder>;
+    readonly fedBy: readonly Feeder[];
 }
 
 /**
@@ -175,7 +175,7 @@ export class HigherScopeAwardType {
     readonly worstEligiblePlacement: Placement | undefined;
     readonly isDiscretionary: boolean;
     readonly scope: 'breed' | 'group' | 'show';
-    readonly fedBy: ReadonlyArray<Feeder>;
+    readonly fedBy: readonly Feeder[];
 
     private constructor(
         scope: 'breed' | 'group' | 'show',

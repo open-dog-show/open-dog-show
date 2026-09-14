@@ -138,13 +138,13 @@ export class UserRoleGrants extends AggregateRoot {
  * duplicates while reporting a successful revocation.
  */
 function assertNoDuplicateGrants(userId: UserId, grants: readonly RoleGrant[]): void {
-    for (let i = 0; i < grants.length; i += 1) {
-        for (let j = i + 1; j < grants.length; j += 1) {
-            if (grants[i]!.equals(grants[j]!)) {
-                throw new DuplicateRoleGrantError(userId, grants[i]!.role, grants[i]!.scope.clubId);
+    grants.forEach((grant, i) => {
+        for (const other of grants.slice(i + 1)) {
+            if (grant.equals(other)) {
+                throw new DuplicateRoleGrantError(userId, grant.role, grant.scope.clubId);
             }
         }
-    }
+    });
 }
 
 /**

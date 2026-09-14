@@ -19,6 +19,40 @@ import { resolveGrade } from './grade-comparison.js';
 export type AwardRequirementCheck =
     { readonly meets: true } | { readonly meets: false; readonly reason: string };
 
+// EffectiveRuleset.resolve's validating factory guarantees every award
+// type's minimumGradeId resolves on the scale it is used with (ADR-0029);
+// this throw is an invariant guard, not a reachable business outcome.
+function resolveRequiredMinimumGrade(
+    awardType: IndividualAwardType,
+    classDef: ClassDefinition,
+    ruleset: EffectiveRuleset,
+) {
+    const minGrade = resolveGrade(awardType.minimumGradeId, classDef.gradeScaleId, ruleset);
+    if (!minGrade) {
+        throw new Error(
+            `Invariant violated: minimum grade '${awardType.minimumGradeId}' not found on grade scale '${classDef.gradeScaleId}'`,
+        );
+    }
+    return minGrade;
+}
+
+function checkPlacementRequirement(
+    placement: ClassPlacement,
+    awardType: IndividualAwardType,
+): AwardRequirementCheck {
+    if (
+        awardType.worstEligiblePlacement !== undefined &&
+        (placement.placement === undefined ||
+            placement.placement > awardType.worstEligiblePlacement)
+    ) {
+        return {
+            meets: false,
+            reason: `Dog '${placement.entryRef}' has placement ${String(placement.placement)} but '${awardType.id}' requires placement ${String(awardType.worstEligiblePlacement)} or better`,
+        };
+    }
+    return { meets: true };
+}
+
 /**
  * Checks whether `placement` satisfies `awardType`'s minimum-grade and
  * minimum-placement requirements, resolving both grades against the grade
@@ -31,12 +65,13 @@ export type AwardRequirementCheck =
  * defines them: a missing grade is a failure, while an undefined
  * `worstEligiblePlacement` means no placement restriction applies.
  */
-export function meetsAwardRequirements(
-    placement: ClassPlacement,
-    awardType: IndividualAwardType,
-    classDef: ClassDefinition,
-    ruleset: EffectiveRuleset,
-): AwardRequirementCheck {
+export function meetsAwardRequirements(params: {
+    readonly placement: ClassPlacement;
+    readonly awardType: IndividualAwardType;
+    readonly classDef: ClassDefinition;
+    readonly ruleset: EffectiveRuleset;
+}): AwardRequirementCheck {
+    const { placement, awardType, classDef, ruleset } = params;
     const dogGrade = resolveGrade(placement.gradeId, classDef.gradeScaleId, ruleset);
     if (!dogGrade) {
         return {
@@ -45,11 +80,7 @@ export function meetsAwardRequirements(
         };
     }
 
-    // EffectiveRuleset.resolve's validating factory guarantees every award
-    // type's minimumGradeId resolves on the scale it is used with (ADR-0029),
-    // so no compensating "unknown minimum grade" check is needed here.
-    const minGrade = resolveGrade(awardType.minimumGradeId, classDef.gradeScaleId, ruleset)!;
-
+    const minGrade = resolveRequiredMinimumGrade(awardType, classDef, ruleset);
     if (!dogGrade.isAtLeast(minGrade)) {
         return {
             meets: false,
@@ -57,16 +88,5 @@ export function meetsAwardRequirements(
         };
     }
 
-    if (
-        awardType.worstEligiblePlacement !== undefined &&
-        (placement.placement === undefined ||
-            placement.placement > awardType.worstEligiblePlacement)
-    ) {
-        return {
-            meets: false,
-            reason: `Dog '${placement.entryRef}' has placement ${String(placement.placement)} but '${awardType.id}' requires placement ${String(awardType.worstEligiblePlacement)} or better`,
-        };
-    }
-
-    return { meets: true };
+    return checkPlacementRequirement(placement, awardType);
 }

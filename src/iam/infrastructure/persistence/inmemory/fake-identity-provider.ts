@@ -22,11 +22,11 @@ export class FakeIdentityProvider implements IdentityProvider {
         this.tokens = tokens;
     }
 
-    async resolve(token: string): Promise<ProviderClaims> {
+    resolve(token: string): Promise<ProviderClaims> {
         const claims = this.tokens.get(token);
         if (claims === undefined) {
-            throw new Error(`FakeIdentityProvider: unknown token '${token}'`);
+            return Promise.reject(new Error(`FakeIdentityProvider: unknown token '${token}'`));
         }
-        return claims;
+        return Promise.resolve(claims);
     }
 }

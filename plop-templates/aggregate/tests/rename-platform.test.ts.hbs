@@ -41,7 +41,7 @@ describe('Rename{{pascalCase name}}Handler', () => {
             SCOPE,
         );
 
-        expect(result).toEqual({ ok: false, error: expect.any({{pascalCase name}}NotFoundError) });
+        expect(result).toEqual({ ok: false, error: expect.any({{pascalCase name}}NotFoundError) as {{pascalCase name}}NotFoundError });
     });
 
     it('returns Invalid{{pascalCase name}}NameError for a blank name', async () => {
@@ -56,6 +56,6 @@ describe('Rename{{pascalCase name}}Handler', () => {
             SCOPE,
         );
 
-        expect(result).toEqual({ ok: false, error: expect.any(Invalid{{pascalCase name}}NameError) });
+        expect(result).toEqual({ ok: false, error: expect.any(Invalid{{pascalCase name}}NameError) as Invalid{{pascalCase name}}NameError });
     });
 });

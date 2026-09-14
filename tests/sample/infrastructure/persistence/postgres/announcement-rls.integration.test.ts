@@ -31,12 +31,12 @@ describe('Announcement (platform scope) — RLS-exempt', () => {
 
     beforeAll(async () => {
         await bootstrapSampleSchema(harness);
-        unitOfWork = new PgSampleUnitOfWork(
-            harness.appUserPool,
-            new PgOutboxWriter('sample'),
-            new SystemClock(),
-            new RandomEventIdGenerator(),
-        );
+        unitOfWork = new PgSampleUnitOfWork({
+            pool: harness.appUserPool,
+            writer: new PgOutboxWriter('sample'),
+            clock: new SystemClock(),
+            eventIdGenerator: new RandomEventIdGenerator(),
+        });
 
         await unitOfWork.run(PlatformTransactionScope.of(), async (ctx) => {
             await ctx.announcements.add(

@@ -26,12 +26,12 @@ describe('Note RLS isolation (exhibitor scope)', () => {
 
     beforeAll(async () => {
         await bootstrapSampleSchema(harness);
-        unitOfWork = new PgSampleUnitOfWork(
-            harness.appUserPool,
-            new PgOutboxWriter('sample'),
-            new SystemClock(),
-            new RandomEventIdGenerator(),
-        );
+        unitOfWork = new PgSampleUnitOfWork({
+            pool: harness.appUserPool,
+            writer: new PgOutboxWriter('sample'),
+            clock: new SystemClock(),
+            eventIdGenerator: new RandomEventIdGenerator(),
+        });
 
         await unitOfWork.run(ExhibitorTransactionScope.of(PRINCIPAL_A_ID), async (ctx) => {
             await ctx.notes.add(

@@ -101,23 +101,23 @@ const placement = (
 
 describe('meetsAwardRequirements', () => {
     it('meets when the grade is at least the minimum and the placement is at least the minimum', () => {
-        const result = meetsAwardRequirements(
-            placement(EXCELLENT, 1),
-            cacib,
-            classDefinition,
-            RULESET,
-        );
+        const result = meetsAwardRequirements({
+            placement: placement(EXCELLENT, 1),
+            awardType: cacib,
+            classDef: classDefinition,
+            ruleset: RULESET,
+        });
 
         expect(result).toEqual({ meets: true });
     });
 
     it('does not meet when the grade is below the minimum', () => {
-        const result = meetsAwardRequirements(
-            placement(VERY_GOOD, 1),
-            cacib,
-            classDefinition,
-            RULESET,
-        );
+        const result = meetsAwardRequirements({
+            placement: placement(VERY_GOOD, 1),
+            awardType: cacib,
+            classDef: classDefinition,
+            ruleset: RULESET,
+        });
 
         expect(result).toEqual({
             meets: false,
@@ -126,12 +126,12 @@ describe('meetsAwardRequirements', () => {
     });
 
     it('does not meet when the placement is worse than the minimum', () => {
-        const result = meetsAwardRequirements(
-            placement(EXCELLENT, 2),
-            cacib,
-            classDefinition,
-            RULESET,
-        );
+        const result = meetsAwardRequirements({
+            placement: placement(EXCELLENT, 2),
+            awardType: cacib,
+            classDef: classDefinition,
+            ruleset: RULESET,
+        });
 
         expect(result).toEqual({
             meets: false,
@@ -140,12 +140,12 @@ describe('meetsAwardRequirements', () => {
     });
 
     it('does not meet when a placement is required but the dog was not placed', () => {
-        const result = meetsAwardRequirements(
-            placement(EXCELLENT, undefined),
-            cacib,
-            classDefinition,
-            RULESET,
-        );
+        const result = meetsAwardRequirements({
+            placement: placement(EXCELLENT, undefined),
+            awardType: cacib,
+            classDef: classDefinition,
+            ruleset: RULESET,
+        });
 
         expect(result).toEqual({
             meets: false,
@@ -162,23 +162,23 @@ describe('meetsAwardRequirements', () => {
             fedBy: [AwardFeeder.of(CACIB_ID)],
         });
 
-        const result = meetsAwardRequirements(
-            placement(EXCELLENT, undefined),
-            awardWithoutPlacement,
-            classDefinition,
-            RULESET,
-        );
+        const result = meetsAwardRequirements({
+            placement: placement(EXCELLENT, undefined),
+            awardType: awardWithoutPlacement,
+            classDef: classDefinition,
+            ruleset: RULESET,
+        });
 
         expect(result).toEqual({ meets: true });
     });
 
     it('does not meet when the dog grade is unknown in the class grade scale', () => {
-        const result = meetsAwardRequirements(
-            placement(UNKNOWN_GRADE_ID, 1),
-            cacib,
-            classDefinition,
-            RULESET,
-        );
+        const result = meetsAwardRequirements({
+            placement: placement(UNKNOWN_GRADE_ID, 1),
+            awardType: cacib,
+            classDef: classDefinition,
+            ruleset: RULESET,
+        });
 
         expect(result).toEqual({
             meets: false,

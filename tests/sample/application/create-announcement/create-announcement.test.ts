@@ -36,7 +36,10 @@ describe('CreateAnnouncementHandler', () => {
             SCOPE,
         );
 
-        expect(result).toEqual({ ok: false, error: expect.any(InvalidAnnouncementNameError) });
+        expect(result).toEqual({
+            ok: false,
+            error: expect.any(InvalidAnnouncementNameError) as InvalidAnnouncementNameError,
+        });
         expect(unitOfWork.recordedEvents).toHaveLength(0);
     });
 });

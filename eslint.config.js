@@ -27,13 +27,70 @@ const allowRulesetsIndex = allowContextIndex('rulesets');
 const allowIamIndex = allowContextIndex('iam');
 
 export default tseslint.config(
-    { ignores: ['**/node_modules/**', '**/dist/**'] },
+    // .claude/ is gitignored local tooling (not part of the repo's source
+    // tree) — outside this config's lint scope.
+    { ignores: ['**/node_modules/**', '**/dist/**', 'coverage/**', '.claude/**'] },
     eslint.configs.recommended,
-    ...tseslint.configs.recommended,
+    ...tseslint.configs.strictTypeChecked,
+    ...tseslint.configs.stylisticTypeChecked,
     {
+        // Type-checked linting uses the project service, which resolves the
+        // nearest tsconfig for each linted file. `allowDefaultProject` covers
+        // the synthetic, never-on-disk `check.ts` paths
+        // `scripts/__tests__/boundary-lint.test.ts` feeds to a nested ESLint
+        // instance (via `eslint.lintText`) to probe `boundaries/dependencies`
+        // — without it the project service can't find a tsconfig for a path
+        // that doesn't exist and fails the parse, silently zeroing out every
+        // violation the test expects.
+        languageOptions: {
+            parserOptions: {
+                projectService: {
+                    allowDefaultProject: [
+                        'src/sample/domain/check.ts',
+                        'src/sample/application/check.ts',
+                        'src/sample/infrastructure/check.ts',
+                        'src/sample/interfaces/check.ts',
+                        'src/rulesets/domain/check.ts',
+                        'src/iam/domain/check.ts',
+                    ],
+                },
+            },
+        },
         plugins: { unicorn },
+        // Deterministic Clean Code structural limits — the size/shape
+        // heuristics a tool can judge. Naming honesty and one-thing-ness stay
+        // with the instruction and review layers.
         rules: {
             'unicorn/filename-case': ['error', { case: 'kebabCase', checkDirectories: false }],
+            'max-params': ['error', 3],
+            complexity: ['error', 10],
+            'max-depth': ['error', 3],
+            'max-lines-per-function': [
+                'error',
+                { max: 30, skipBlankLines: true, skipComments: true },
+            ],
+            '@typescript-eslint/naming-convention': [
+                'error',
+                { selector: 'variableLike', format: ['camelCase', 'UPPER_CASE'] },
+                { selector: 'typeLike', format: ['PascalCase'] },
+                // Idiomatic TS marks an intentionally-unused binding with a
+                // leading underscore (type-level "must not compile" probes,
+                // unused callback params). Scoped to parameter/variable only —
+                // functions and types still require the format above.
+                {
+                    selector: ['parameter', 'variable'],
+                    format: ['camelCase', 'UPPER_CASE'],
+                    leadingUnderscore: 'allow',
+                },
+            ],
+        },
+    },
+    // Test bodies commonly exceed 30 lines for arrange/act/assert clarity;
+    // every other structural limit still applies inside tests.
+    {
+        files: ['tests/**'],
+        rules: {
+            'max-lines-per-function': 'off',
         },
     },
     // plopfile.js is a plain Node script (not a .ts file, so it doesn't get
@@ -44,6 +101,13 @@ export default tseslint.config(
         languageOptions: {
             globals: { process: 'readonly' },
         },
+    },
+    // Tooling files outside tsconfig's `include` (root config files and plain
+    // JS) have no project for the project service; lint them without
+    // type information.
+    {
+        files: ['**/*.{js,mjs,cjs}', 'vitest.config.ts', 'vitest.integration.config.ts'],
+        ...tseslint.configs.disableTypeChecked,
     },
     // ── ADR-0006 / ADR-0020 / ADR-0021 boundary rules ────────────────────────
     // Layer taxonomy (inward-only) and context-zone taxonomy (no cross-context

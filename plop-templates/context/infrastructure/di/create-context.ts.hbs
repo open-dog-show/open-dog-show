@@ -38,12 +38,12 @@ export function create{{pascalCase name}}Context(
 ): {{pascalCase name}}Context {
     const writer = new PgOutboxWriter('{{snakeCase name}}');
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's Handler instances; unused only in a bare context skeleton
-    const unitOfWork = new Pg{{pascalCase name}}UnitOfWork(
-        deps.pool,
+    const unitOfWork = new Pg{{pascalCase name}}UnitOfWork({
+        pool: deps.pool,
         writer,
-        deps.clock,
-        deps.eventIdGenerator,
-    );
+        clock: deps.clock,
+        eventIdGenerator: deps.eventIdGenerator,
+    });
 
     return {
         useCases: {

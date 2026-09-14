@@ -70,12 +70,15 @@ export type EventHandler = (event: DomainEvent, signal: AbortSignal) => Promise<
  *   {@link TransactionFailed} instead — it is not a per-row dispatch failure.
  */
 export class PgPollingDispatcher {
+    private readonly pool: pg.Pool;
     private readonly quotedSchema: string;
+    private readonly handler: EventHandler;
+    private readonly registry: DomainEventRehydrationRegistry;
     private readonly maxAttempts: number;
     private readonly handlerTimeoutMs: number;
 
     /**
-     * @param registry - This context's event-type → class rehydration
+     * @param deps.registry - This context's event-type → class rehydration
      *   registry (built by its composition root). Every row's `type` must be
      *   registered — an unregistered type throws
      *   {@link UnregisteredDomainEventTypeError} rather than delivering a
@@ -84,22 +87,24 @@ export class PgPollingDispatcher {
      *   real class (e.g. a context's `XxxSubmitted.rehydrate`) — the registry
      *   itself cannot verify that.
      */
-    constructor(
-        private readonly pool: pg.Pool,
-        schema: string,
-        private readonly handler: EventHandler,
-        private readonly registry: DomainEventRehydrationRegistry,
-        options?: {
-            readonly maxAttempts?: number;
-            readonly handlerTimeoutMs?: number;
-        },
-    ) {
-        if (registry === undefined) {
+    constructor(deps: {
+        readonly pool: pg.Pool;
+        readonly schema: string;
+        readonly handler: EventHandler;
+        readonly registry: DomainEventRehydrationRegistry;
+        readonly maxAttempts?: number;
+        readonly handlerTimeoutMs?: number;
+    }) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- registry is required by the type, but this guards a caller that bypasses tsc (plain JS, or a cast); see the @ts-expect-error test that pins this.
+        if (deps.registry === undefined) {
             throw new TypeError('PgPollingDispatcher requires a DomainEventRehydrationRegistry');
         }
-        this.quotedSchema = quoteSchemaIdent(schema);
-        this.maxAttempts = options?.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
-        this.handlerTimeoutMs = options?.handlerTimeoutMs ?? DEFAULT_HANDLER_TIMEOUT_MS;
+        this.pool = deps.pool;
+        this.quotedSchema = quoteSchemaIdent(deps.schema);
+        this.handler = deps.handler;
+        this.registry = deps.registry;
+        this.maxAttempts = deps.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
+        this.handlerTimeoutMs = deps.handlerTimeoutMs ?? DEFAULT_HANDLER_TIMEOUT_MS;
     }
 
     /**
@@ -161,13 +166,12 @@ export class PgPollingDispatcher {
                     // fault (TransactionFailed). Not a per-row dispatch failure.
                     throw err;
                 }
-                throw await this.recordDispatchFailure(
-                    client,
+                throw await this.recordDispatchFailure(client, {
                     seq,
-                    rawEventId ?? '',
-                    rawType ?? '',
-                    err,
-                );
+                    eventId: rawEventId ?? '',
+                    type: rawType ?? '',
+                    cause: err,
+                });
             }
         });
     }
@@ -205,7 +209,9 @@ export class PgPollingDispatcher {
         const controller = new AbortController();
         const timer =
             this.handlerTimeoutMs > 0
-                ? setTimeout(() => controller.abort(), this.handlerTimeoutMs)
+                ? setTimeout(() => {
+                      controller.abort();
+                  }, this.handlerTimeoutMs)
                 : undefined;
         try {
             await this.handler(event, controller.signal);
@@ -229,11 +235,14 @@ export class PgPollingDispatcher {
      */
     private async recordDispatchFailure(
         client: pg.PoolClient,
-        seq: string,
-        eventId: string,
-        type: string,
-        cause: unknown,
+        failure: {
+            readonly seq: string;
+            readonly eventId: string;
+            readonly type: string;
+            readonly cause: unknown;
+        },
     ): Promise<OutboxDispatchFailed> {
+        const { seq, eventId, type, cause } = failure;
         let attempts = 0;
         let recordingError: unknown;
         try {

@@ -14,7 +14,7 @@ export class InvalidClassAgeRangeError extends DomainError {
 
     constructor(classId: ClassId, fromAgeMonths: AgeMonths, lessThanAgeMonths: AgeMonths) {
         super(
-            `Class '${classId}' fromAgeMonths (${fromAgeMonths}) must be less than lessThanAgeMonths (${lessThanAgeMonths})`,
+            `Class '${classId}' fromAgeMonths (${String(fromAgeMonths)}) must be less than lessThanAgeMonths (${String(lessThanAgeMonths)})`,
             { classId, fromAgeMonths, lessThanAgeMonths },
         );
         this.classId = classId;
@@ -31,12 +31,12 @@ export interface ClassDefinitionAttributes {
     /** Exclusive upper age in whole calendar months on show day (FCI: "less than Y months"). Undefined = no upper bound. */
     readonly lessThanAgeMonths: AgeMonths | undefined;
     /** Entry certificates required to enter this Class. */
-    readonly requiredCertificates: ReadonlyArray<CertificateKind>;
+    readonly requiredCertificates: readonly CertificateKind[];
     /** Whether the Bred-by-Exhibitor handler condition applies. */
     readonly bredByExhibitor: boolean;
     readonly gradeScaleId: GradeScaleId;
     /** AwardTypes that Dogs in this Class are eligible to feed. */
-    readonly awardTypeIds: ReadonlyArray<AwardTypeId>;
+    readonly awardTypeIds: readonly AwardTypeId[];
 }
 
 /**
@@ -54,10 +54,10 @@ export class ClassDefinition {
     readonly id: ClassId;
     readonly fromAgeMonths: AgeMonths | undefined;
     readonly lessThanAgeMonths: AgeMonths | undefined;
-    readonly requiredCertificates: ReadonlyArray<CertificateKind>;
+    readonly requiredCertificates: readonly CertificateKind[];
     readonly bredByExhibitor: boolean;
     readonly gradeScaleId: GradeScaleId;
-    readonly awardTypeIds: ReadonlyArray<AwardTypeId>;
+    readonly awardTypeIds: readonly AwardTypeId[];
 
     private constructor(attributes: ClassDefinitionAttributes) {
         if (

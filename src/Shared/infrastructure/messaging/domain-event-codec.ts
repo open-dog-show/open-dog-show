@@ -194,6 +194,59 @@ export function decodeDomainEvent(
     return rehydrateDomainEvent(json, registry);
 }
 
+interface IsoComponents {
+    readonly year: string;
+    readonly month: string;
+    readonly day: string;
+    readonly hour: string;
+    readonly minute: string;
+    readonly second: string;
+    readonly ms: string | undefined;
+}
+
+// The fixed pattern in `parseStrictIso` always captures these six groups when
+// `m` is non-null; this check exists so their type is `string`, not `string |
+// undefined`, without a non-null assertion.
+function requireIsoComponents(m: RegExpExecArray, raw: string): IsoComponents {
+    const [, year, month, day, hour, minute, second, ms] = m;
+    if (
+        year === undefined ||
+        month === undefined ||
+        day === undefined ||
+        hour === undefined ||
+        minute === undefined ||
+        second === undefined
+    ) {
+        throw new InvalidDomainEventEnvelopeError('occurredAt', raw);
+    }
+    return { year, month, day, hour, minute, second, ms };
+}
+
+function toUtcDate(c: IsoComponents): Date {
+    return new Date(
+        Date.UTC(
+            +c.year,
+            +c.month - 1,
+            +c.day,
+            +c.hour,
+            +c.minute,
+            +c.second,
+            c.ms ? +c.ms.slice(1) : 0,
+        ),
+    );
+}
+
+function isRoundTripMismatch(d: Date, c: IsoComponents): boolean {
+    return (
+        d.getUTCFullYear() !== +c.year ||
+        d.getUTCMonth() !== +c.month - 1 ||
+        d.getUTCDate() !== +c.day ||
+        d.getUTCHours() !== +c.hour ||
+        d.getUTCMinutes() !== +c.minute ||
+        d.getUTCSeconds() !== +c.second
+    );
+}
+
 /**
  * Strictly parse an ISO-8601 UTC timestamp, rejecting values `new Date(string)`
  * would silently normalise — both non-ISO garbage (→ Invalid Date) and rollover
@@ -205,19 +258,11 @@ export function decodeDomainEvent(
 function parseStrictIso(value: string): Date {
     const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d{3})?Z$/.exec(value);
     if (!m) throw new InvalidDomainEventEnvelopeError('occurredAt', value);
-    const ms = m[7];
-    const d = new Date(
-        Date.UTC(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +m[6]!, ms ? +ms.slice(1) : 0),
-    );
-    if (
-        d.getUTCFullYear() !== +m[1]! ||
-        d.getUTCMonth() !== +m[2]! - 1 ||
-        d.getUTCDate() !== +m[3]! ||
-        d.getUTCHours() !== +m[4]! ||
-        d.getUTCMinutes() !== +m[5]! ||
-        d.getUTCSeconds() !== +m[6]!
-    )
+    const components = requireIsoComponents(m, value);
+    const d = toUtcDate(components);
+    if (isRoundTripMismatch(d, components)) {
         throw new InvalidDomainEventEnvelopeError('occurredAt', value);
+    }
     return d;
 }
 
