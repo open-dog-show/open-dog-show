@@ -18,6 +18,7 @@ export {
     IdentityQuery,
     type IdentitySnapshot,
 } from './application/identity-query/identity-query.js';
+export type { DomainRole } from './domain/model/role-grant/role-grant.js';
 export {
     RoleGranted,
     ROLE_GRANTED_TYPE,

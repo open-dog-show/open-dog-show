@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import type { Brand } from '../../../Shared/domain/brand.js';
+
 /**
  * The IAM context's own domain identifiers.
  *
@@ -8,18 +10,8 @@
  * identifier (`UserId`) in its own domain layer rather than importing it from the
  * shared kernel. The kernel, in turn, owns the context-neutral `PrincipalId` it
  * needs for RLS plumbing. This module is the identity owner's identifier
- * definition.
+ * definition, built on the kernel's canonical `Brand` helper.
  */
-
-declare const BRAND: unique symbol;
-
-/**
- * Compile-time brand helper — local to the IAM context so this context's branded ids
- * are owned here, not in the kernel. A branded type is structurally identical to
- * `T` at runtime but is treated as a distinct type by the TypeScript compiler,
- * preventing accidental substitution of one id kind for another.
- */
-type Brand<T, B> = T & { readonly [BRAND]: B };
 
 /**
  * Branded string that uniquely identifies a platform user account.

@@ -65,11 +65,12 @@ export type AuthenticateError = UserSuspendedError | InvalidProviderClaimsError;
  *
  * **Technical faults are not part of the `Result`** (E4): an invalid/unknown
  * token is rejected by {@link IdentityProvider.resolve}, whose port contract
- * throws — that fault propagates out of `execute` to the outermost boundary
- * handler, which maps it to an authentication failure alongside the `Result`
- * error cases. One outer `try`/`catch` maps the two expected domain failures
- * to the `Result`; everything else (including `ConcurrentModificationError`)
- * rethrows.
+ * throws — that fault propagates out of `execute` to the caller. A future
+ * outermost boundary handler (the `apps/api` composition root scoped by
+ * ADR-0021, not yet built — see `apps/README.md`) will map it to an
+ * authentication failure alongside the `Result` error cases. One outer
+ * `try`/`catch` maps the two expected domain failures to the `Result`;
+ * everything else (including `ConcurrentModificationError`) rethrows.
  *
  * The platform `UserId` is intentionally distinct from the provider `sub`
  * (ADR-0013); a new id is minted by the {@link UserIdGenerator} on first login.

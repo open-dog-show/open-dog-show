@@ -22,7 +22,8 @@ export {
 } from './domain/domain-ids.js';
 export { AggregateRoot } from './domain/aggregate-root.js';
 export { DomainError } from './domain/domain-error.js';
-export { requireClubScope, requireActor } from './domain/require-scope.js';
+export { requireClubScope } from './domain/require-club-scope.js';
+export { requireActor } from './domain/require-actor.js';
 export { ScopeMismatchError } from './domain/scope-mismatch-error.js';
 export type { Result } from './application/result.js';
 export type { TransactionScope } from './domain/transaction-scope.js';

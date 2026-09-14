@@ -10,6 +10,7 @@ import type {
 } from '../../model/effective-ruleset/entities/award-type.js';
 import type { ClassDefinition } from '../../model/effective-ruleset/entities/class-definition.js';
 import type { EffectiveRuleset } from '../../model/effective-ruleset/effective-ruleset.js';
+import type { Sex } from '../../model/effective-ruleset/value-objects/sex.js';
 import type {
     AwardPolicy,
     AwardValidationResult,
@@ -336,8 +337,6 @@ export class FciAwardPolicy implements AwardPolicy {
     ): AwardValidationResult | undefined {
         if (scope.kind !== 'breed') return undefined;
 
-        const sexOf = (entryRef: EntryRef) =>
-            scope.streams.find((s) => s.candidates.some((c) => c.entryRef === entryRef))?.sex;
         const breedProposals = proposed.filter((p) => {
             const at = ruleset.awardType(p.awardTypeId);
             return at?.scope === 'breed';
@@ -350,7 +349,7 @@ export class FciAwardPolicy implements AwardPolicy {
             };
         }
         if (breedProposals.length === BOB_AND_BOS_PROPOSAL_COUNT) {
-            const sexes = breedProposals.map((p) => sexOf(p.entryRef));
+            const sexes = breedProposals.map((p) => this.sexOfCandidate(scope, p.entryRef));
             if (!(sexes.includes('male') && sexes.includes('female'))) {
                 return {
                     valid: false,
@@ -359,6 +358,14 @@ export class FciAwardPolicy implements AwardPolicy {
             }
         }
         return undefined;
+    }
+
+    /**
+     * The sex of the dog behind `entryRef`, found by searching `scope`'s
+     * streams for the candidate — `undefined` when no stream carries it.
+     */
+    private sexOfCandidate(scope: StreamedScope, entryRef: EntryRef): Sex | undefined {
+        return scope.streams.find((s) => s.candidates.some((c) => c.entryRef === entryRef))?.sex;
     }
 
     /**

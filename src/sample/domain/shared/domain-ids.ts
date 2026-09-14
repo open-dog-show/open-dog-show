@@ -1,15 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-declare const BRAND: unique symbol;
-
-/**
- * Compile-time brand helper — keeps the sample context's IDs distinct
- * from each other and from other strings even though all are plain strings at
- * runtime. A branded type is structurally identical to `T` at runtime but is
- * treated as a distinct type by the TypeScript compiler.
- */
-type Brand<T, B> = T & { readonly [BRAND]: B };
+import type { Brand } from '../../../Shared/domain/brand.js';
 
 // plop:ids
 /** Branded string that uniquely identifies an Announcement within the sample context. */

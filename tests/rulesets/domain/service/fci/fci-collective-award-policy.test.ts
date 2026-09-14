@@ -7,9 +7,9 @@ import { asBreedId, asVarietyId } from '../../../../../src/rulesets/domain/share
 import { asEntryRef } from '../../../../../src/rulesets/domain/service/collective-award-policy/entry-ref.js';
 import type { EntryRef } from '../../../../../src/rulesets/domain/service/collective-award-policy/entry-ref.js';
 import type { Sex } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/sex.js';
+import { CollectiveEntry } from '../../../../../src/rulesets/domain/service/collective-award-policy/collective-entry.js';
+import { BreedVarietyRef } from '../../../../../src/rulesets/domain/service/collective-award-policy/breed-variety-ref.js';
 import {
-    CollectiveEntry,
-    BreedVarietyRef,
     BraceCoupleCompetitionResults,
     BreedersGroupCompetitionResults,
     ProgenyGroupCompetitionResults,
