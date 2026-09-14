@@ -81,13 +81,30 @@ function stripSkeletonDisableComments(answers) {
 }
 
 /**
+ * Finds `parent`'s create-table migration by its `new:aggregate`-assigned
+ * filename (`NNNN_create_<parent>s_table.sql`).
+ *
+ * @returns the migration filename, or `undefined` when not found.
+ */
+function findMigrationFile(migrationsDir, parent) {
+    const tableFileSuffix = `create_${parent.replaceAll('-', '_')}s_table.sql`;
+    return fs.readdirSync(migrationsDir).find((f) => f.endsWith(tableFileSuffix));
+}
+
+/**
+ * Whether a create-table migration's SQL carries the club-scope policy
+ * marker (`_read ON`, unique to the club RLS template's read-open/
+ * write-scoped policy split) rather than the `_hybrid`/`_exhibitor` markers
+ * or platform's policy-free table.
+ */
+function isClubScoped(sql) {
+    return sql.includes('_read ON');
+}
+
+/**
  * Validates that `parent` names an aggregate already generated in `context`,
  * and that it was generated with `--scope club` — the only scope a hybrid
- * aggregate may reference (ADR-0026). Finds the parent's migration by its
- * `new:aggregate`-assigned filename (`NNNN_create_<parent>s_table.sql`) and
- * checks it for the club-scope policy marker (`_read ON`, unique to the club
- * RLS template's read-open/write-scoped policy split) rather than the
- * `_hybrid`/`_exhibitor` markers or platform's policy-free table.
+ * aggregate may reference (ADR-0026).
  *
  * @returns an error message string when invalid, or `true` when valid.
  */
@@ -110,14 +127,13 @@ function validateHybridParent(context, parent) {
         context,
         'infrastructure/persistence/postgres/migrations',
     );
-    const tableFileSuffix = `create_${parent.replaceAll('-', '_')}s_table.sql`;
-    const migrationFile = fs.readdirSync(migrationsDir).find((f) => f.endsWith(tableFileSuffix));
+    const migrationFile = findMigrationFile(migrationsDir, parent);
     if (migrationFile === undefined) {
         return `Could not find '${parent}'s migration in '${context}' — is it generated correctly?`;
     }
 
     const sql = fs.readFileSync(path.join(migrationsDir, migrationFile), 'utf8');
-    if (!sql.includes('_read ON')) {
+    if (!isClubScoped(sql)) {
         return `'${parent}' is not a club-scoped aggregate — a hybrid aggregate's parent must be`;
     }
     return true;

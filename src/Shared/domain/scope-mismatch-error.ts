@@ -4,8 +4,9 @@
 import type { TransactionScope } from './transaction-scope.js';
 
 /**
- * Thrown by `requireClubScope` / `requireActor` (`require-scope.ts`) when the
- * acting `TransactionScope` is not one the use case can work with (ADR-0026).
+ * Thrown by `requireClubScope` (`require-club-scope.ts`) / `requireActor`
+ * (`require-actor.ts`) when the acting `TransactionScope` is not one the use
+ * case can work with (ADR-0026).
  *
  * A wrong scope kind is a technical fault, not a business outcome the caller
  * branches on: a delivery route knows statically which scope it builds, and

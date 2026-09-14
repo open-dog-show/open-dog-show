@@ -6,7 +6,7 @@ status: accepted
 
 The `ClassEligibilityPolicy` checks the dog's `heldCertificates` against the
 `ClassDefinition.requiredCertificates`: every required `CertificateKind` must be
-present in `DogEligibilityProfile.heldCertificates`. The profile carries a set of
+present in `EntryEligibilityProfile.heldCertificates`. The profile carries a set of
 held certificate kinds, not a single champion-certificate boolean.
 
 ## Context
@@ -22,7 +22,7 @@ Class requires a working certificate, and the Puppy class requires vaccination. 
 single `hasChampionCertificate: boolean` cannot express "requires a working
 certificate" or "requires vaccination," so the eligibility model carries a
 `requiredCertificates: ReadonlyArray<CertificateKind>` list on the `ClassDefinition`
-and matches it against `DogEligibilityProfile.heldCertificates: ReadonlyArray<CertificateKind>`.
+and matches it against `EntryEligibilityProfile.heldCertificates: ReadonlyArray<CertificateKind>`.
 
 ## Decision
 
@@ -38,11 +38,11 @@ The type-specific lookup is deferred until cross-NCO entry is in scope — e.g. 
 with only a German champion entering a Belgian show where the SRSH ruleset layer
 restricts which foreign titles qualify. At that point `ChampionCertificateType`
 vocabulary and per-ruleset accepted-type lists can be added to the `EffectiveRuleset`
-and `DogEligibilityProfile` without changing the port's shape beyond adding the new
+and `EntryEligibilityProfile` without changing the port's shape beyond adding the new
 field; the held-vs-required set check generalises to that lookup unchanged.
 
 > **Amendment (issue #133, 2026-08-28).** The original ADR prescribed a single
-> `hasChampionCertificate: boolean` on `DogEligibilityProfile`. The implementation
+> `hasChampionCertificate: boolean` on `EntryEligibilityProfile`. The implementation
 > generalised this to `heldCertificates: ReadonlyArray<CertificateKind>` matched
 > against `ClassDefinition.requiredCertificates`, because the FCI ruleset data
 > already requires non-champion certificates (working certificate for the Working
@@ -52,6 +52,6 @@ field; the held-vs-required set check generalises to that lookup unchanged.
 
 ## Considered options
 
-- **Type-based lookup** — `DogEligibilityProfile.heldCertificateTypeIds: ChampionCertificateTypeId[]` checked against `EffectiveRuleset.acceptedChampionCertificateTypeIds` — rejected as premature: for the first two ruleset layers (FCI + SRSH) any holder of a recognised champion certificate qualifies; no ruleset-layer distinction is needed yet.
+- **Type-based lookup** — `EntryEligibilityProfile.heldCertificateTypeIds: ChampionCertificateTypeId[]` checked against `EffectiveRuleset.acceptedChampionCertificateTypeIds` — rejected as premature: for the first two ruleset layers (FCI + SRSH) any holder of a recognised champion certificate qualifies; no ruleset-layer distinction is needed yet.
 - **Single champion boolean** — `hasChampionCertificate: boolean` — the original wording of this ADR. Sufficient for the Champion Class invariant alone, but it cannot express the working-certificate and vaccination requirements that the FCI ruleset data already carries, so the held-vs-required set membership was adopted instead.
-- **Held-vs-required set membership** — `DogEligibilityProfile.heldCertificates: ReadonlyArray<CertificateKind>` checked against `ClassDefinition.requiredCertificates` — chosen; a small closed `CertificateKind` vocabulary expresses every certificate requirement the current ruleset layers need, and generalises to the deferred type-specific lookup without reshaping the port.
+- **Held-vs-required set membership** — `EntryEligibilityProfile.heldCertificates: ReadonlyArray<CertificateKind>` checked against `ClassDefinition.requiredCertificates` — chosen; a small closed `CertificateKind` vocabulary expresses every certificate requirement the current ruleset layers need, and generalises to the deferred type-specific lookup without reshaping the port.

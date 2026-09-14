@@ -188,7 +188,11 @@ export class EffectiveRuleset {
         const awardTypes = mergeById(editions.flatMap((e) => [...e.awardTypes]));
         const showTypes = mergeById(editions.flatMap((e) => [...e.showTypes]));
 
-        validateReferences(classDefinitions, gradeScales, awardTypes);
+        validateReferences({
+            classDefinitions,
+            scaleById: new Map(gradeScales.map((gs) => [gs.id, gs])),
+            awardById: new Map(awardTypes.map((at) => [at.id, at])),
+        });
 
         return new EffectiveRuleset({
             id,
@@ -246,6 +250,18 @@ function mergeById<T extends { readonly id: string }>(items: readonly T[]): read
 }
 
 /**
+ * The composed snapshot's class definitions plus the id-keyed lookups every
+ * cross-reference validator needs — built once in {@link
+ * EffectiveRuleset.resolve} and threaded through instead of each validator
+ * re-deriving (or re-passing) the same three values separately.
+ */
+interface ComposedRulesetIndex {
+    readonly classDefinitions: readonly ClassDefinition[];
+    readonly scaleById: ReadonlyMap<GradeScaleId, GradeScale>;
+    readonly awardById: ReadonlyMap<AwardTypeId, AwardType>;
+}
+
+/**
  * Validates every cross-reference in a composed snapshot (ADR-0029): each
  * Class's `gradeScaleId` and `awardTypeIds` resolve, each award type
  * reachable from a Class's `awardTypeIds` has its `minimumGradeId` resolve
@@ -253,22 +269,20 @@ function mergeById<T extends { readonly id: string }>(items: readonly T[]): read
  * `minimumGradeId` resolves on every scale reachable through its `fedBy`
  * feeder graph.
  */
-function validateReferences(
-    classDefinitions: readonly ClassDefinition[],
-    gradeScales: readonly GradeScale[],
-    awardTypes: readonly AwardType[],
-): void {
-    const scaleById = new Map(gradeScales.map((gs) => [gs.id, gs]));
-    const awardById = new Map(awardTypes.map((at) => [at.id, at]));
-
-    for (const classDef of classDefinitions) {
-        const scale = resolveClassGradeScale(classDef, scaleById);
+function validateReferences(index: ComposedRulesetIndex): void {
+    for (const classDef of index.classDefinitions) {
+        const scale = resolveClassGradeScale(classDef, index.scaleById);
         for (const awardTypeId of classDef.awardTypeIds) {
-            validateAwardTypeReference({ classDef, awardTypeId, scale, awardById });
+            validateAwardTypeReference({
+                classDef,
+                awardTypeId,
+                scale,
+                awardById: index.awardById,
+            });
         }
     }
 
-    validateHigherScopeMinimumGrades(classDefinitions, scaleById, awardById);
+    validateHigherScopeMinimumGrades(index);
 }
 
 /** Resolves `classDef.gradeScaleId`, or throws {@link UnknownGradeScaleReferenceError}. */
@@ -342,13 +356,12 @@ function groupClassesByAwardTypeId(
 function validateOneHigherScopeMinimumGrade(
     awardType: HigherScopeAwardType,
     lookups: FeederGraphLookups,
-    scaleById: ReadonlyMap<GradeScaleId, GradeScale>,
 ): void {
     const reachableScaleIds = reachableGradeScaleIds(awardType, lookups, new Set());
     if (reachableScaleIds.size === 0) return;
 
     const resolves = [...reachableScaleIds].some(
-        (scaleId) => scaleById.get(scaleId)?.grade(awardType.minimumGradeId) !== undefined,
+        (scaleId) => lookups.scaleById.get(scaleId)?.grade(awardType.minimumGradeId) !== undefined,
     );
     if (!resolves) {
         throw new UnknownMinimumGradeReferenceError(awardType.id, awardType.minimumGradeId, [
@@ -357,20 +370,17 @@ function validateOneHigherScopeMinimumGrade(
     }
 }
 
-function validateHigherScopeMinimumGrades(
-    classDefinitions: readonly ClassDefinition[],
-    scaleById: ReadonlyMap<GradeScaleId, GradeScale>,
-    awardById: ReadonlyMap<AwardTypeId, AwardType>,
-): void {
+function validateHigherScopeMinimumGrades(index: ComposedRulesetIndex): void {
     const lookups: FeederGraphLookups = {
-        classesByAwardTypeId: groupClassesByAwardTypeId(classDefinitions),
-        classById: new Map(classDefinitions.map((c) => [c.id, c])),
-        awardById,
+        classesByAwardTypeId: groupClassesByAwardTypeId(index.classDefinitions),
+        classById: new Map(index.classDefinitions.map((c) => [c.id, c])),
+        awardById: index.awardById,
+        scaleById: index.scaleById,
     };
 
-    for (const awardType of awardById.values()) {
+    for (const awardType of index.awardById.values()) {
         if (isHigherScopeAwardType(awardType)) {
-            validateOneHigherScopeMinimumGrade(awardType, lookups, scaleById);
+            validateOneHigherScopeMinimumGrade(awardType, lookups);
         }
     }
 }
@@ -383,11 +393,14 @@ function validateHigherScopeMinimumGrades(
  * when it in turn is itself higher-scope, recurses into its own `fedBy`.
  * `visiting` guards against a cycle in the feeder graph.
  */
-/** Shared read-only lookups threaded through the `fedBy` feeder-graph traversal. */
-interface FeederGraphLookups {
+/**
+ * Shared read-only lookups threaded through the `fedBy` feeder-graph
+ * traversal — the {@link ComposedRulesetIndex}'s id-keyed maps, plus the two
+ * class-grouping lookups the traversal additionally needs.
+ */
+interface FeederGraphLookups extends Pick<ComposedRulesetIndex, 'awardById' | 'scaleById'> {
     readonly classesByAwardTypeId: ReadonlyMap<AwardTypeId, readonly ClassDefinition[]>;
     readonly classById: ReadonlyMap<ClassId, ClassDefinition>;
-    readonly awardById: ReadonlyMap<AwardTypeId, AwardType>;
 }
 
 function reachableGradeScaleIds(

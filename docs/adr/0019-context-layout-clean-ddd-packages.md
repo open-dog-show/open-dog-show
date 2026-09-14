@@ -90,7 +90,7 @@ empty dirs); the structure above is the target.
 
     domain/
       value-objects/   local-date, age-months, entry-ref, certificate-kind,
-                       domain-ids, dog-eligibility-profile, judging-scope-results,
+                       domain-ids, entry-eligibility-profile, judging-scope-results,
                        collective-competition-results
       entities/        class-definition, award-type, grade-scale, show-type, breed,
                        ruleset-layer          # anemic data records (ADR-0001)

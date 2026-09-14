@@ -125,9 +125,9 @@ export type {
     AwardValidationResult,
     AwardPolicy,
 } from './domain/service/award-policy/award-policy.js';
+export { CollectiveEntry } from './domain/service/collective-award-policy/collective-entry.js';
+export { BreedVarietyRef } from './domain/service/collective-award-policy/breed-variety-ref.js';
 export {
-    CollectiveEntry,
-    BreedVarietyRef,
     BraceCoupleCompetitionResults,
     type BraceCoupleCompetitionResultsAttributes,
     BreedersGroupCompetitionResults,

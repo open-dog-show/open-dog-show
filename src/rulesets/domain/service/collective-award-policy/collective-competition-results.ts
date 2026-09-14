@@ -1,64 +1,9 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { BreedId, VarietyId } from '../../shared/domain-ids.js';
 import type { EntryRef } from './entry-ref.js';
-import type { Sex } from '../../model/effective-ruleset/value-objects/sex.js';
-
-/**
- * A breed (and optional variety) pair — the shared breed/variety identity that
- * several collective competitions require participants to share. Bundled as one
- * value object so the `(breedId, varietyId)` pair travels together and a
- * caller cannot pass one without the other.
- *
- * A value object (ADR-0022): private constructor plus the {@link
- * BreedVarietyRef.of} validating factory is the only construction path
- * (V2/V3). The fields carry no independent invariant of their own, so the
- * factory is a pass-through (mirrors {@link RoleScope}).
- */
-export class BreedVarietyRef {
-    readonly breedId: BreedId;
-    readonly varietyId: VarietyId | undefined;
-
-    private constructor(breedId: BreedId, varietyId: VarietyId | undefined) {
-        this.breedId = breedId;
-        this.varietyId = varietyId;
-    }
-
-    static of(breedId: BreedId, varietyId: VarietyId | undefined): BreedVarietyRef {
-        return new BreedVarietyRef(breedId, varietyId);
-    }
-
-    equals(other: BreedVarietyRef): boolean {
-        return this.breedId === other.breedId && this.varietyId === other.varietyId;
-    }
-}
-
-/**
- * A single dog competing within a Collective Competition.
- * Sex is required because Brace/Couple mandates one of each.
- *
- * A value object (ADR-0022): private constructor plus the {@link
- * CollectiveEntry.of} validating factory is the only construction path.
- */
-export class CollectiveEntry {
-    /** Opaque reference to the judged entry. */
-    readonly entryRef: EntryRef;
-    readonly sex: Sex;
-
-    private constructor(entryRef: EntryRef, sex: Sex) {
-        this.entryRef = entryRef;
-        this.sex = sex;
-    }
-
-    static of(entryRef: EntryRef, sex: Sex): CollectiveEntry {
-        return new CollectiveEntry(entryRef, sex);
-    }
-
-    equals(other: CollectiveEntry): boolean {
-        return this.entryRef === other.entryRef && this.sex === other.sex;
-    }
-}
+import type { BreedVarietyRef } from './breed-variety-ref.js';
+import type { CollectiveEntry } from './collective-entry.js';
 
 /**
  * The three FCI collective competition types.

@@ -236,14 +236,14 @@ function toUtcDate(c: IsoComponents): Date {
     );
 }
 
-function isRoundTripMismatch(d: Date, c: IsoComponents): boolean {
+function isRoundTripMismatch(roundTripped: Date, c: IsoComponents): boolean {
     return (
-        d.getUTCFullYear() !== +c.year ||
-        d.getUTCMonth() !== +c.month - 1 ||
-        d.getUTCDate() !== +c.day ||
-        d.getUTCHours() !== +c.hour ||
-        d.getUTCMinutes() !== +c.minute ||
-        d.getUTCSeconds() !== +c.second
+        roundTripped.getUTCFullYear() !== +c.year ||
+        roundTripped.getUTCMonth() !== +c.month - 1 ||
+        roundTripped.getUTCDate() !== +c.day ||
+        roundTripped.getUTCHours() !== +c.hour ||
+        roundTripped.getUTCMinutes() !== +c.minute ||
+        roundTripped.getUTCSeconds() !== +c.second
     );
 }
 
