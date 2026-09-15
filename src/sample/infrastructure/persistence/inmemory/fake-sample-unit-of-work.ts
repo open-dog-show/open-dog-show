@@ -9,6 +9,7 @@ import {
     type DomainEventFact,
     type EventIdGenerator,
     type TransactionScope,
+    UnitOfWorkGate,
 } from '../../../../Shared/index.js';
 import { SystemClock } from '../../../../Shared/infrastructure/system-clock.js';
 import { RandomEventIdGenerator } from '../../../../Shared/infrastructure/random-event-id-generator.js';
@@ -31,6 +32,11 @@ import type { NoteId } from '../../../domain/shared/domain-ids.js';
 
 import { Item } from '../../../domain/model/item/item.js';
 import type { ItemId } from '../../../domain/shared/domain-ids.js';
+
+/** {@link UnitOfWorkGate}'s error factory for this context. */
+function buildUnitOfWorkClosedError(aggregate: string, operation: string): UnitOfWorkClosedError {
+    return new UnitOfWorkClosedError(aggregate, operation);
+}
 
 interface VersionedEntity<Id> {
     readonly id: Id;
@@ -87,7 +93,7 @@ interface InMemoryStore<Id, T> {
  * generated aggregate mutates in place, so two readers must never share a
  * live instance — and to bump the stored version on a successful write,
  * since this helper has no generic way to construct either itself), and
- * `closed` is shared across every aggregate's port for one `run` call so a
+ * `gate` is shared across every aggregate's port for one `run` call so a
  * `ctx` that escaped it throws {@link UnitOfWorkClosedError} (#188) instead
  * of touching state from an attempt that already finished.
  */
@@ -95,7 +101,7 @@ interface InMemoryPortOptions<T> {
     readonly record: (...facts: readonly DomainEventFact[]) => void;
     readonly typeName: string;
     readonly rehydrateAt: (entity: T, version: number) => T;
-    readonly closed: { readonly value: boolean };
+    readonly gate: UnitOfWorkGate;
 }
 
 function tryAdd<Id, T extends VersionedEntity<Id>>(
@@ -152,22 +158,19 @@ function createInMemoryPort<Id, T extends VersionedEntity<Id>>(
     store: InMemoryStore<Id, T>,
     options: InMemoryPortOptions<T>,
 ): CrudRepositoryPort<Id, T> {
-    const assertOpen = (operation: string): void => {
-        if (options.closed.value) throw new UnitOfWorkClosedError(options.typeName, operation);
-    };
     return {
-        // eslint-disable-next-line @typescript-eslint/require-await -- must stay `async` so assertOpen's synchronous throw becomes a rejection (this method's Promise-typed signature), not an uncaught synchronous throw at the call site.
+        // eslint-disable-next-line @typescript-eslint/require-await -- must stay `async` so gate.assertOpen's synchronous throw becomes a rejection (this method's Promise-typed signature), not an uncaught synchronous throw at the call site.
         findById: async (id) => {
-            assertOpen('findById');
+            options.gate.assertOpen(options.typeName, 'findById');
             const stored = store.committed.get(id);
             return stored === undefined ? undefined : options.rehydrateAt(stored, stored.version);
         },
         add: async (entity) => {
-            assertOpen('add');
+            options.gate.assertOpen(options.typeName, 'add');
             return tryAdd(store, entity, options);
         },
         update: async (updated) => {
-            assertOpen('update');
+            options.gate.assertOpen(options.typeName, 'update');
             return tryUpdate(store, updated, options);
         },
     };
@@ -271,9 +274,9 @@ export class FakeSampleUnitOfWork implements SampleUnitOfWork {
     private buildContext(
         stores: ReturnType<FakeSampleUnitOfWork['buildStores']>,
         record: (...facts: readonly DomainEventFact[]) => void,
-        closed: { readonly value: boolean },
+        gate: UnitOfWorkGate,
     ): SampleUnitOfWorkContext {
-        const portDeps = { record, closed };
+        const portDeps = { record, gate };
         return {
             // plop:repositories
             announcements: createInMemoryPort(stores.announcements, {
@@ -322,9 +325,9 @@ export class FakeSampleUnitOfWork implements SampleUnitOfWork {
             pendingFacts.push(...facts);
         };
 
-        const closed = { value: false };
+        const gate = new UnitOfWorkGate(buildUnitOfWorkClosedError);
         const stores = this.buildStores();
-        const ctx = this.buildContext(stores, record, closed);
+        const ctx = this.buildContext(stores, record, gate);
 
         try {
             const result = await body(ctx);
@@ -337,7 +340,7 @@ export class FakeSampleUnitOfWork implements SampleUnitOfWork {
             this.rollbackStores(stores);
             throw error;
         } finally {
-            closed.value = true;
+            gate.close();
         }
     }
 }

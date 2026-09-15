@@ -7,6 +7,7 @@ import {
     type DomainEventFact,
     type OutboxTransactionDeps,
     type TransactionScope,
+    UnitOfWorkGate,
 } from '../../../../Shared/index.js';
 // plop:imports
 import type {
@@ -15,13 +16,18 @@ import type {
 } from '../../../application/ports/unit-of-work.js';
 import { UnitOfWorkClosedError } from '../../../domain/shared/unit-of-work-closed-error.js';
 
+/** {@link UnitOfWorkGate}'s error factory for this context. */
+function buildUnitOfWorkClosedError(aggregate: string, operation: string): UnitOfWorkClosedError {
+    return new UnitOfWorkClosedError(aggregate, operation);
+}
+
 /**
  * Wraps a repository's `add`/`update` so each pulls and forwards the
  * aggregate's recorded facts to `record` (ADR-0027) — the single place this
  * context translates "saved" into "events queued for the outbox", shared by
  * every aggregate's port instead of repeated per aggregate. Every method
- * first checks `closed` so a `ctx` that escaped its `run` callback (#188)
- * throws {@link UnitOfWorkClosedError} instead of touching a
+ * first calls `gate.assertOpen` so a `ctx` that escaped its `run` callback
+ * (#188) throws {@link UnitOfWorkClosedError} instead of touching a
  * connection/transaction that no longer belongs to it.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's ctx-field wiring; unused only in a bare context skeleton
@@ -29,25 +35,22 @@ function wrapRepositoryPort<Id, T extends { pullEvents(): readonly DomainEventFa
     repository: CrudRepositoryPort<Id, T>,
     options: {
         readonly record: (...facts: readonly DomainEventFact[]) => void;
-        readonly closed: { readonly value: boolean };
+        readonly gate: UnitOfWorkGate;
         readonly typeName: string;
     },
 ): CrudRepositoryPort<Id, T> {
-    const assertOpen = (operation: string): void => {
-        if (options.closed.value) throw new UnitOfWorkClosedError(options.typeName, operation);
-    };
     return {
         findById: async (id) => {
-            assertOpen('findById');
+            options.gate.assertOpen(options.typeName, 'findById');
             return repository.findById(id);
         },
         add: async (entity) => {
-            assertOpen('add');
+            options.gate.assertOpen(options.typeName, 'add');
             await repository.add(entity);
             options.record(...entity.pullEvents());
         },
         update: async (entity) => {
-            assertOpen('update');
+            options.gate.assertOpen(options.typeName, 'update');
             await repository.update(entity);
             options.record(...entity.pullEvents());
         },
@@ -90,7 +93,7 @@ export class Pg{{pascalCase name}}UnitOfWork implements {{pascalCase name}}UnitO
         scope: TransactionScope,
         body: (ctx: {{pascalCase name}}UnitOfWorkContext) => Promise<T>,
     ): Promise<T> {
-        const closed = { value: false };
+        const gate = new UnitOfWorkGate(buildUnitOfWorkClosedError);
         try {
             return await withOutboxTransaction(
                 { ...this.deps, scope },
@@ -98,7 +101,7 @@ export class Pg{{pascalCase name}}UnitOfWork implements {{pascalCase name}}UnitO
                 async (client, record) => {
                     // plop:repository-instances
                     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's repository instances; unused only in a bare context skeleton
-                    const portDeps = { record, closed };
+                    const portDeps = { record, gate };
                     const ctx: {{pascalCase name}}UnitOfWorkContext = {
                         // plop:repositories
                     };
@@ -106,7 +109,7 @@ export class Pg{{pascalCase name}}UnitOfWork implements {{pascalCase name}}UnitO
                 },
             );
         } finally {
-            closed.value = true;
+            gate.close();
         }
     }
 }

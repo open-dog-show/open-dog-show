@@ -22,6 +22,7 @@ export {
 } from './domain/domain-ids.js';
 export { AggregateRoot } from './domain/aggregate-root.js';
 export { DomainError } from './domain/domain-error.js';
+export { UnitOfWorkGate } from './domain/unit-of-work-gate.js';
 export { requireClubScope } from './domain/require-club-scope.js';
 export { requireActor } from './domain/require-actor.js';
 export { ScopeMismatchError } from './domain/scope-mismatch-error.js';

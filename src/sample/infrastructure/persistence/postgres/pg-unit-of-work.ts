@@ -7,6 +7,7 @@ import {
     type DomainEventFact,
     type OutboxTransactionDeps,
     type TransactionScope,
+    UnitOfWorkGate,
 } from '../../../../Shared/index.js';
 // plop:imports
 import { DrizzleAnnouncementRepository } from './drizzle-announcement-repository.js';
@@ -23,38 +24,40 @@ import type {
 } from '../../../application/ports/unit-of-work.js';
 import { UnitOfWorkClosedError } from '../../../domain/shared/unit-of-work-closed-error.js';
 
+/** {@link UnitOfWorkGate}'s error factory for this context. */
+function buildUnitOfWorkClosedError(aggregate: string, operation: string): UnitOfWorkClosedError {
+    return new UnitOfWorkClosedError(aggregate, operation);
+}
+
 /**
  * Wraps a repository's `add`/`update` so each pulls and forwards the
  * aggregate's recorded facts to `record` (ADR-0027) — the single place this
  * context translates "saved" into "events queued for the outbox", shared by
  * every aggregate's port instead of repeated per aggregate. Every method
- * first checks `closed` so a `ctx` that escaped its `run` callback (#188)
- * throws {@link UnitOfWorkClosedError} instead of touching a
+ * first calls `gate.assertOpen` so a `ctx` that escaped its `run` callback
+ * (#188) throws {@link UnitOfWorkClosedError} instead of touching a
  * connection/transaction that no longer belongs to it.
  */
 function wrapRepositoryPort<Id, T extends { pullEvents(): readonly DomainEventFact[] }>(
     repository: CrudRepositoryPort<Id, T>,
     options: {
         readonly record: (...facts: readonly DomainEventFact[]) => void;
-        readonly closed: { readonly value: boolean };
+        readonly gate: UnitOfWorkGate;
         readonly typeName: string;
     },
 ): CrudRepositoryPort<Id, T> {
-    const assertOpen = (operation: string): void => {
-        if (options.closed.value) throw new UnitOfWorkClosedError(options.typeName, operation);
-    };
     return {
         findById: async (id) => {
-            assertOpen('findById');
+            options.gate.assertOpen(options.typeName, 'findById');
             return repository.findById(id);
         },
         add: async (entity) => {
-            assertOpen('add');
+            options.gate.assertOpen(options.typeName, 'add');
             await repository.add(entity);
             options.record(...entity.pullEvents());
         },
         update: async (entity) => {
-            assertOpen('update');
+            options.gate.assertOpen(options.typeName, 'update');
             await repository.update(entity);
             options.record(...entity.pullEvents());
         },
@@ -97,7 +100,7 @@ export class PgSampleUnitOfWork implements SampleUnitOfWork {
         scope: TransactionScope,
         body: (ctx: SampleUnitOfWorkContext) => Promise<T>,
     ): Promise<T> {
-        const closed = { value: false };
+        const gate = new UnitOfWorkGate(buildUnitOfWorkClosedError);
         try {
             return await withOutboxTransaction({ ...this.deps, scope }, async (client, record) => {
                 // plop:repository-instances
@@ -109,7 +112,7 @@ export class PgSampleUnitOfWork implements SampleUnitOfWork {
 
                 const itemRepository = new DrizzleItemRepository(client);
 
-                const portDeps = { record, closed };
+                const portDeps = { record, gate };
                 const ctx: SampleUnitOfWorkContext = {
                     // plop:repositories
                     announcements: wrapRepositoryPort(announcementRepository, {
@@ -129,7 +132,7 @@ export class PgSampleUnitOfWork implements SampleUnitOfWork {
                 return body(ctx);
             });
         } finally {
-            closed.value = true;
+            gate.close();
         }
     }
 }

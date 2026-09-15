@@ -17,6 +17,11 @@ import type { DomainEvent } from '../../domain/domain-event.js';
  * write step and does not itself accumulate events across a transaction the
  * way the pre-#186 `OutboxAppender` did; atomicity is a property of the
  * implementation, not one this interface enforces.
+ *
+ * A single implementer is expected here, not speculative: this restores a
+ * name `application/ports/` held before #186 deleted it as an oversight
+ * (issue #209 item 24), and the port exists to keep the `pg` driver out of
+ * application-layer code (B1/B5) — not to anticipate a second adapter.
  */
 export interface OutboxAppender<TTransaction = unknown> {
     write(transaction: TTransaction, events: readonly DomainEvent[]): Promise<void>;
