@@ -27,26 +27,29 @@ import { UnitOfWorkClosedError } from '../../../domain/shared/unit-of-work-close
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's ctx-field wiring; unused only in a bare context skeleton
 function wrapRepositoryPort<Id, T extends { pullEvents(): readonly DomainEventFact[] }>(
     repository: CrudRepositoryPort<Id, T>,
-    record: (...facts: readonly DomainEventFact[]) => void,
-    closed: { readonly value: boolean },
+    options: {
+        readonly record: (...facts: readonly DomainEventFact[]) => void;
+        readonly closed: { readonly value: boolean };
+        readonly typeName: string;
+    },
 ): CrudRepositoryPort<Id, T> {
-    const assertOpen = (): void => {
-        if (closed.value) throw new UnitOfWorkClosedError();
+    const assertOpen = (operation: string): void => {
+        if (options.closed.value) throw new UnitOfWorkClosedError(options.typeName, operation);
     };
     return {
-        findById: (id) => {
-            assertOpen();
+        findById: async (id) => {
+            assertOpen('findById');
             return repository.findById(id);
         },
         add: async (entity) => {
-            assertOpen();
+            assertOpen('add');
             await repository.add(entity);
-            record(...entity.pullEvents());
+            options.record(...entity.pullEvents());
         },
         update: async (entity) => {
-            assertOpen();
+            assertOpen('update');
             await repository.update(entity);
-            record(...entity.pullEvents());
+            options.record(...entity.pullEvents());
         },
     };
 }
@@ -94,6 +97,8 @@ export class Pg{{pascalCase name}}UnitOfWork implements {{pascalCase name}}UnitO
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's repository instances; unused only in a bare context skeleton
                 async (client, record) => {
                     // plop:repository-instances
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's repository instances; unused only in a bare context skeleton
+                    const portDeps = { record, closed };
                     const ctx: {{pascalCase name}}UnitOfWorkContext = {
                         // plop:repositories
                     };

@@ -1,5 +1,5 @@
 {{plural (camelCase name)}}: createInMemoryPort(stores.{{plural (camelCase name)}}, {
-    ...base,
+    ...portDeps,
     typeName: '{{pascalCase name}}',
     rehydrateAt: rehydrate{{pascalCase name}}At,
 }),

@@ -152,23 +152,22 @@ function createInMemoryPort<Id, T extends VersionedEntity<Id>>(
     store: InMemoryStore<Id, T>,
     options: InMemoryPortOptions<T>,
 ): CrudRepositoryPort<Id, T> {
-    const assertOpen = (): void => {
-        if (options.closed.value) throw new UnitOfWorkClosedError();
+    const assertOpen = (operation: string): void => {
+        if (options.closed.value) throw new UnitOfWorkClosedError(options.typeName, operation);
     };
     return {
-        findById: (id) => {
-            assertOpen();
+        // eslint-disable-next-line @typescript-eslint/require-await -- must stay `async` so assertOpen's synchronous throw becomes a rejection (this method's Promise-typed signature), not an uncaught synchronous throw at the call site.
+        findById: async (id) => {
+            assertOpen('findById');
             const stored = store.committed.get(id);
-            return Promise.resolve(
-                stored === undefined ? undefined : options.rehydrateAt(stored, stored.version),
-            );
+            return stored === undefined ? undefined : options.rehydrateAt(stored, stored.version);
         },
-        add: (entity) => {
-            assertOpen();
+        add: async (entity) => {
+            assertOpen('add');
             return tryAdd(store, entity, options);
         },
-        update: (updated) => {
-            assertOpen();
+        update: async (updated) => {
+            assertOpen('update');
             return tryUpdate(store, updated, options);
         },
     };
@@ -274,29 +273,29 @@ export class FakeSampleUnitOfWork implements SampleUnitOfWork {
         record: (...facts: readonly DomainEventFact[]) => void,
         closed: { readonly value: boolean },
     ): SampleUnitOfWorkContext {
-        const base = { record, closed };
+        const portDeps = { record, closed };
         return {
             // plop:repositories
             announcements: createInMemoryPort(stores.announcements, {
-                ...base,
+                ...portDeps,
                 typeName: 'Announcement',
                 rehydrateAt: rehydrateAnnouncementAt,
             }),
 
             tickets: createInMemoryPort(stores.tickets, {
-                ...base,
+                ...portDeps,
                 typeName: 'Ticket',
                 rehydrateAt: rehydrateTicketAt,
             }),
 
             notes: createInMemoryPort(stores.notes, {
-                ...base,
+                ...portDeps,
                 typeName: 'Note',
                 rehydrateAt: rehydrateNoteAt,
             }),
 
             items: createInMemoryPort(stores.items, {
-                ...base,
+                ...portDeps,
                 typeName: 'Item',
                 rehydrateAt: rehydrateItemAt,
             }),

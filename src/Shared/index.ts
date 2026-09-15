@@ -26,7 +26,8 @@ export { requireClubScope } from './domain/require-club-scope.js';
 export { requireActor } from './domain/require-actor.js';
 export { ScopeMismatchError } from './domain/scope-mismatch-error.js';
 export type { Result } from './application/result.js';
-export type { CrudRepositoryPort } from './application/crud-repository-port.js';
+export type { CrudRepositoryPort } from './application/ports/crud-repository-port.js';
+export type { OutboxAppender } from './application/ports/outbox-appender.js';
 export type { TransactionScope } from './domain/transaction-scope.js';
 export {
     ClubTransactionScope,

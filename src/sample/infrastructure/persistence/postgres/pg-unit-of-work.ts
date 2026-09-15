@@ -34,26 +34,29 @@ import { UnitOfWorkClosedError } from '../../../domain/shared/unit-of-work-close
  */
 function wrapRepositoryPort<Id, T extends { pullEvents(): readonly DomainEventFact[] }>(
     repository: CrudRepositoryPort<Id, T>,
-    record: (...facts: readonly DomainEventFact[]) => void,
-    closed: { readonly value: boolean },
+    options: {
+        readonly record: (...facts: readonly DomainEventFact[]) => void;
+        readonly closed: { readonly value: boolean };
+        readonly typeName: string;
+    },
 ): CrudRepositoryPort<Id, T> {
-    const assertOpen = (): void => {
-        if (closed.value) throw new UnitOfWorkClosedError();
+    const assertOpen = (operation: string): void => {
+        if (options.closed.value) throw new UnitOfWorkClosedError(options.typeName, operation);
     };
     return {
-        findById: (id) => {
-            assertOpen();
+        findById: async (id) => {
+            assertOpen('findById');
             return repository.findById(id);
         },
         add: async (entity) => {
-            assertOpen();
+            assertOpen('add');
             await repository.add(entity);
-            record(...entity.pullEvents());
+            options.record(...entity.pullEvents());
         },
         update: async (entity) => {
-            assertOpen();
+            assertOpen('update');
             await repository.update(entity);
-            record(...entity.pullEvents());
+            options.record(...entity.pullEvents());
         },
     };
 }
@@ -106,15 +109,22 @@ export class PgSampleUnitOfWork implements SampleUnitOfWork {
 
                 const itemRepository = new DrizzleItemRepository(client);
 
+                const portDeps = { record, closed };
                 const ctx: SampleUnitOfWorkContext = {
                     // plop:repositories
-                    announcements: wrapRepositoryPort(announcementRepository, record, closed),
+                    announcements: wrapRepositoryPort(announcementRepository, {
+                        ...portDeps,
+                        typeName: 'Announcement',
+                    }),
 
-                    tickets: wrapRepositoryPort(ticketRepository, record, closed),
+                    tickets: wrapRepositoryPort(ticketRepository, {
+                        ...portDeps,
+                        typeName: 'Ticket',
+                    }),
 
-                    notes: wrapRepositoryPort(noteRepository, record, closed),
+                    notes: wrapRepositoryPort(noteRepository, { ...portDeps, typeName: 'Note' }),
 
-                    items: wrapRepositoryPort(itemRepository, record, closed),
+                    items: wrapRepositoryPort(itemRepository, { ...portDeps, typeName: 'Item' }),
                 };
                 return body(ctx);
             });

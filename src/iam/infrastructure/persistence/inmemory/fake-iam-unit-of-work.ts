@@ -101,9 +101,8 @@ export class FakeIamUnitOfWork implements IamUnitOfWork {
      * not match `incoming`'s — the optimistic-concurrency guard shared by
      * `updateUser` and `updateRoleGrants`. `subject.aggregate`/`subject.id`
      * name the row in the thrown error; `stored` is `undefined` when no row
-     * exists yet. An
-     * assertion function so callers keep `stored` narrowed to defined
-     * afterwards, as the inlined `if` check they replace did.
+     * exists yet. An assertion function so callers keep `stored` narrowed to
+     * defined afterwards, as the inlined `if` check they replace did.
      */
     private assertVersionMatches<T extends { readonly version: number }>(
         subject: { readonly aggregate: 'User' | 'UserRoleGrants'; readonly id: UserId },

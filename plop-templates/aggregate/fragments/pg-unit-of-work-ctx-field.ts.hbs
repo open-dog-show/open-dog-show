@@ -1,1 +1,4 @@
-{{plural (camelCase name)}}: wrapRepositoryPort({{camelCase name}}Repository, record, closed),
+{{plural (camelCase name)}}: wrapRepositoryPort({{camelCase name}}Repository, {
+    ...portDeps,
+    typeName: '{{pascalCase name}}',
+}),

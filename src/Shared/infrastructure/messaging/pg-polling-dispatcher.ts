@@ -169,36 +169,33 @@ export class PgPollingDispatcher {
      */
     private async processOne(): Promise<boolean> {
         return this.withClient(async (client) => {
-            // `seq` / `rawEventId` / `rawType` are captured into the outer scope
-            // — before rehydration — so a failure (including rehydration itself
-            // failing) still carries row context for `OutboxDispatchFailed`.
-            let seq: string | undefined;
-            let rawEventId: string | undefined;
-            let rawType: string | undefined;
+            // Captured into the outer scope — before rehydration — so a failure
+            // (including rehydration itself failing) still carries row context
+            // for `OutboxDispatchFailed`. Set as one object, not three separate
+            // `let`s: `seq`/`eventId`/`type` are only ever known together, so
+            // this lets a single `undefined` check below prove all three are
+            // defined, rather than falling back to an empty-string sentinel for
+            // `eventId`/`type` that could never actually be reached.
+            let selected:
+                | { readonly seq: string; readonly eventId: string; readonly type: string }
+                | undefined;
 
             try {
                 return await runInClientTransaction(client, async (c) => {
                     const row = await this.selectNextRow(c);
                     if (row === undefined) return false; // no eligible row available to this worker
-                    seq = row.seq;
-                    rawEventId = row.event_id;
-                    rawType = row.type;
+                    selected = { seq: row.seq, eventId: row.event_id, type: row.type };
 
                     await this.dispatchRow(c, row);
                     return true;
                 });
             } catch (err) {
-                if (seq === undefined) {
+                if (selected === undefined) {
                     // Failed before (or while) selecting a row — e.g. a connection
                     // fault (TransactionFailed). Not a per-row dispatch failure.
                     throw err;
                 }
-                throw await this.recordDispatchFailure(client, {
-                    seq,
-                    eventId: rawEventId ?? '',
-                    type: rawType ?? '',
-                    cause: err,
-                });
+                throw await this.recordDispatchFailure(client, { ...selected, cause: err });
             }
         });
     }

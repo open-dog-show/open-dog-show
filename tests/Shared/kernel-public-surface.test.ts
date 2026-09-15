@@ -83,12 +83,23 @@ describe('kernel public surface — envelope-event retirement (issue #176)', () 
  * Contract test for the T2 kernel reshape (ADR-0026/0027, issue #186).
  *
  * `ShowId`/`DogId` were plop-generator scaffolding that never belonged in the
- * kernel; `OutboxAppender` and the `OutboxWriter` interface are retired in
- * favour of aggregate roots recording events and a single `PgOutboxWriter`
- * implementation; the in-memory fakes leave the barrel so tests import them
- * by deep path instead.
+ * kernel; the `OutboxWriter` interface is retired in favour of a single
+ * `PgOutboxWriter` implementation; the in-memory fakes leave the barrel so
+ * tests import them by deep path instead. `OutboxAppender` — the port
+ * `PgOutboxWriter` implements — was deleted here too, but that was an
+ * oversight (confirmed by issue #209's review): it left "publish domain
+ * events reliably" with no legible application-layer name. #209 restored it
+ * to `application/ports/` and back onto the kernel's public surface.
  */
 describe('kernel public surface — T2 kernel reshape (issue #186)', () => {
+    it('exports the restored OutboxAppender application port (issue #209)', () => {
+        // Type-only export — enforced by `tsc`, not vitest's runner: if
+        // `OutboxAppender` stopped being exported, this line would fail to
+        // compile and `pnpm typecheck` would catch it.
+        const write: kernel.OutboxAppender['write'] = () => Promise.resolve();
+        expect(typeof write).toBe('function');
+    });
+
     it('does not export ShowId / DogId / asShowId / asDogId', () => {
         expect(kernel).not.toHaveProperty('asShowId');
         expect(kernel).not.toHaveProperty('asDogId');
@@ -98,12 +109,6 @@ describe('kernel public surface — T2 kernel reshape (issue #186)', () => {
         const _dogId: kernel.DogId = null as never;
         expect(_showId).toBeNull();
         expect(_dogId).toBeNull();
-    });
-
-    it('does not export the retired OutboxAppender application port', () => {
-        // @ts-expect-error — OutboxAppender was removed (ADR-0027, issue #186)
-        const _pin: kernel.OutboxAppender = null as never;
-        expect(_pin).toBeNull();
     });
 
     it('does not export the retired OutboxWriter interface', () => {

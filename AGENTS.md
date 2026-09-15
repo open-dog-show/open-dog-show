@@ -135,9 +135,12 @@ Each context (`src/<name>/`) uses aggregate-package + use-case folders:
 `application/<UseCase>/` (Command/Handler/Response), `application/ports/`,
 `application/dto/`; `infrastructure/persistence/{postgres,inmemory}/`, `messaging/`,
 `external/`, `di/`; `interfaces/http/{controllers,requests,responses}/`, `cli/`,
-`events/`. Folders are created only when they have content. In-memory test doubles
-live in `infrastructure/persistence/inmemory/`. Tests live under root `tests/`
-mirroring `src/`.
+`events/`. Folders are created only when they have content. A repository's
+in-memory test double lives in `infrastructure/persistence/inmemory/`; a
+fake for a non-repository port (e.g. `Clock`, `EventIdGenerator`) lives
+beside its real adapter instead (`infrastructure/time/`,
+`infrastructure/identity/`, …) — `persistence/inmemory/` is for repositories
+only. Tests live under root `tests/` mirroring `src/`.
 
 ### Package management
 
