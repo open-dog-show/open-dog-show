@@ -193,6 +193,16 @@ const CONTEXT_ACTIONS = [
     },
     {
         type: 'add',
+        path: 'src/{{dashCase name}}/domain/shared/unit-of-work-closed-error.ts',
+        templateFile: 'plop-templates/context/domain/shared/unit-of-work-closed-error.ts.hbs',
+    },
+    {
+        type: 'add',
+        path: 'src/{{dashCase name}}/domain/shared/duplicate-id-error.ts',
+        templateFile: 'plop-templates/context/domain/shared/duplicate-id-error.ts.hbs',
+    },
+    {
+        type: 'add',
         path: 'src/{{dashCase name}}/application/ports/unit-of-work.ts',
         templateFile: 'plop-templates/context/application/ports/unit-of-work.ts.hbs',
     },
