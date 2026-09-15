@@ -3,4 +3,5 @@ export const {{plural (camelCase name)}}Table = schema.table('{{plural (snakeCas
     clubId: uuid('club_id').notNull(),
     principalId: uuid('user_id').notNull(),
     name: text('name').notNull(),
+    version: integer('version').notNull(),
 });

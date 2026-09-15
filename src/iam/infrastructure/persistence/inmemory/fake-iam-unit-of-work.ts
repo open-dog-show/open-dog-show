@@ -38,7 +38,9 @@ class RollbackTrackedMap<K, V> {
     constructor(private readonly committed: Map<K, V>) {}
 
     remember(id: K): void {
-        if (!this.prior.has(id)) this.prior.set(id, this.committed.get(id));
+        if (!this.prior.has(id) || this.committed.get(id) !== this.written.get(id)) {
+            this.prior.set(id, this.committed.get(id));
+        }
     }
 
     write(id: K, value: V): void {
@@ -230,11 +232,10 @@ export class FakeIamUnitOfWork implements IamUnitOfWork {
 
         try {
             const result = await body(ctx);
-            for (const fact of pendingFacts) {
-                this.recordedEvents.push(
-                    stampDomainEvent(fact, this.eventIdGenerator.generate(), this.clock.now()),
-                );
-            }
+            const stampedEvents = pendingFacts.map((fact) =>
+                stampDomainEvent(fact, this.eventIdGenerator.generate(), this.clock.now()),
+            );
+            this.recordedEvents.push(...stampedEvents);
             return result;
         } catch (error) {
             users.rollback();

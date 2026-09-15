@@ -17,8 +17,10 @@ import { RandomEventIdGenerator } from '../../../../../src/Shared/infrastructure
 import { PgSampleUnitOfWork } from '../../../../../src/sample/infrastructure/persistence/postgres/pg-unit-of-work.js';
 import { Announcement } from '../../../../../src/sample/domain/model/announcement/announcement.js';
 import { asAnnouncementId } from '../../../../../src/sample/domain/shared/domain-ids.js';
+import { ConcurrentModificationError } from '../../../../../src/sample/domain/shared/concurrent-modification-error.js';
 
 const ANNOUNCEMENT_ID = asAnnouncementId('00000000-0000-4000-8000-000000000021');
+const CONCURRENCY_ANNOUNCEMENT_ID = asAnnouncementId('00000000-0000-4000-8000-000000000022');
 
 /**
  * Proves the ADR-0005 `platform` template: no RLS predicate at all — a row
@@ -41,6 +43,9 @@ describe('Announcement (platform scope) — RLS-exempt', () => {
         await unitOfWork.run(PlatformTransactionScope.of(), async (ctx) => {
             await ctx.announcements.add(
                 Announcement.create({ id: ANNOUNCEMENT_ID, name: 'A platform Announcement' }),
+            );
+            await ctx.announcements.add(
+                Announcement.create({ id: CONCURRENCY_ANNOUNCEMENT_ID, name: 'Original name' }),
             );
         });
     }, 120_000);
@@ -77,5 +82,34 @@ describe('Announcement (platform scope) — RLS-exempt', () => {
                 expect(found?.name).toBe('A platform Announcement');
             },
         );
+    });
+
+    it('rejects a stale-version update and leaves the persisted row untouched', async () => {
+        const [first, second] = await unitOfWork.run(PlatformTransactionScope.of(), async (ctx) => {
+            const a = await ctx.announcements.findById(CONCURRENCY_ANNOUNCEMENT_ID);
+            const b = await ctx.announcements.findById(CONCURRENCY_ANNOUNCEMENT_ID);
+            if (a === undefined || b === undefined) throw new Error('fixture setup failed');
+            return [a, b];
+        });
+
+        // The first writer's update succeeds against real Postgres and bumps the stored version.
+        await unitOfWork.run(PlatformTransactionScope.of(), async (ctx) => {
+            first.rename('First writer');
+            await ctx.announcements.update(first);
+        });
+
+        // The second writer still holds the pre-bump version — the Drizzle
+        // `UPDATE ... WHERE version` guard must reject it, not just the fake.
+        second.rename('Second writer');
+        await expect(
+            unitOfWork.run(PlatformTransactionScope.of(), (ctx) =>
+                ctx.announcements.update(second),
+            ),
+        ).rejects.toThrow(ConcurrentModificationError);
+
+        await unitOfWork.run(PlatformTransactionScope.of(), async (ctx) => {
+            const reloaded = await ctx.announcements.findById(CONCURRENCY_ANNOUNCEMENT_ID);
+            expect(reloaded?.name).toBe('First writer');
+        });
     });
 });

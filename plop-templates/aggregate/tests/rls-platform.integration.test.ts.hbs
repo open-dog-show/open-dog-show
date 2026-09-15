@@ -17,8 +17,10 @@ import { RandomEventIdGenerator } from '../../../../../src/Shared/infrastructure
 import { Pg{{pascalCase context}}UnitOfWork } from '../../../../../src/{{dashCase context}}/infrastructure/persistence/postgres/pg-unit-of-work.js';
 import { {{pascalCase name}} } from '../../../../../src/{{dashCase context}}/domain/model/{{dashCase name}}/{{dashCase name}}.js';
 import { as{{pascalCase name}}Id } from '../../../../../src/{{dashCase context}}/domain/shared/domain-ids.js';
+import { ConcurrentModificationError } from '../../../../../src/{{dashCase context}}/domain/shared/concurrent-modification-error.js';
 
 const {{constantCase name}}_ID = as{{pascalCase name}}Id('00000000-0000-4000-8000-000000000021');
+const CONCURRENCY_{{constantCase name}}_ID = as{{pascalCase name}}Id('00000000-0000-4000-8000-000000000022');
 
 /**
  * Proves the ADR-0005 `platform` template: no RLS predicate at all — a row
@@ -41,6 +43,9 @@ describe('{{pascalCase name}} (platform scope) — RLS-exempt', () => {
         await unitOfWork.run(PlatformTransactionScope.of(), async (ctx) => {
             await ctx.{{plural (camelCase name)}}.add(
                 {{pascalCase name}}.create({ id: {{constantCase name}}_ID, name: 'A platform {{pascalCase name}}' }),
+            );
+            await ctx.{{plural (camelCase name)}}.add(
+                {{pascalCase name}}.create({ id: CONCURRENCY_{{constantCase name}}_ID, name: 'Original name' }),
             );
         });
     }, 120_000);
@@ -77,5 +82,32 @@ describe('{{pascalCase name}} (platform scope) — RLS-exempt', () => {
                 expect(found?.name).toBe('A platform {{pascalCase name}}');
             },
         );
+    });
+
+    it('rejects a stale-version update and leaves the persisted row untouched', async () => {
+        const [first, second] = await unitOfWork.run(PlatformTransactionScope.of(), async (ctx) => {
+            const a = await ctx.{{plural (camelCase name)}}.findById(CONCURRENCY_{{constantCase name}}_ID);
+            const b = await ctx.{{plural (camelCase name)}}.findById(CONCURRENCY_{{constantCase name}}_ID);
+            if (a === undefined || b === undefined) throw new Error('fixture setup failed');
+            return [a, b];
+        });
+
+        // The first writer's update succeeds against real Postgres and bumps the stored version.
+        await unitOfWork.run(PlatformTransactionScope.of(), async (ctx) => {
+            first.rename('First writer');
+            await ctx.{{plural (camelCase name)}}.update(first);
+        });
+
+        // The second writer still holds the pre-bump version — the Drizzle
+        // `UPDATE ... WHERE version` guard must reject it, not just the fake.
+        second.rename('Second writer');
+        await expect(
+            unitOfWork.run(PlatformTransactionScope.of(), (ctx) => ctx.{{plural (camelCase name)}}.update(second)),
+        ).rejects.toThrow(ConcurrentModificationError);
+
+        await unitOfWork.run(PlatformTransactionScope.of(), async (ctx) => {
+            const reloaded = await ctx.{{plural (camelCase name)}}.findById(CONCURRENCY_{{constantCase name}}_ID);
+            expect(reloaded?.name).toBe('First writer');
+        });
     });
 });

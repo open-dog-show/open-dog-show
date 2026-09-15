@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS sample.tickets (
   club_id               UUID NOT NULL,
   user_id               UUID NOT NULL,
   item_id UUID NOT NULL REFERENCES sample.items(id),
-  name                  TEXT NOT NULL
+  name                  TEXT NOT NULL,
+  version               INTEGER NOT NULL DEFAULT 1
 );
 
 ALTER TABLE sample.tickets ENABLE ROW LEVEL SECURITY;

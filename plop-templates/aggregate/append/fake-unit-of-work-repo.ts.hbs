@@ -1,1 +1,5 @@
-{{plural (camelCase name)}}: createInMemoryPort(staged.{{plural (camelCase name)}}, record, '{{pascalCase name}}'),
+{{plural (camelCase name)}}: createInMemoryPort(stores.{{plural (camelCase name)}}, {
+    record,
+    typeName: '{{pascalCase name}}',
+    rehydrateAt: rehydrate{{pascalCase name}}At,
+}),

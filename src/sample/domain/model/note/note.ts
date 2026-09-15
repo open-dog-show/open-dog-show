@@ -12,6 +12,9 @@ import type { NoteId } from '../../shared/domain-ids.js';
 import { NoteCreated } from './events/note-created.js';
 import { NoteRenamed } from './events/note-renamed.js';
 
+/** The version every new Note starts at — bumped only by `NoteRepository.update`. */
+const INITIAL_VERSION = 1;
+
 /**
  * A Note — an exhibitor-scoped placeholder aggregate generated
  * by `new:aggregate --scope exhibitor` (ADR-0025/0026/0027).
@@ -25,6 +28,13 @@ import { NoteRenamed } from './events/note-renamed.js';
  * not assignable to `Note` — the type is closed against
  * unvalidated construction. Storage load goes through
  * {@link Note.rehydrate}, which does not record an event.
+ *
+ * `version` is a plain optimistic-concurrency stamp (mirrors IAM's `User`): a
+ * mutator (`rename`) leaves it unchanged — bumping it is
+ * `NoteRepository.update`'s job, at the moment of the write, so a
+ * stale `update` (the stored version has since moved) fails loudly
+ * (`ConcurrentModificationError`) instead of silently overwriting a
+ * concurrent change.
  */
 export class Note extends AggregateRoot {
     // Nominal brand: a bare object literal lacks this private field, so it is
@@ -35,26 +45,33 @@ export class Note extends AggregateRoot {
 
     readonly id: NoteId;
     readonly createdBy: PrincipalId;
+    readonly version: number;
 
     get name(): string {
         return this.#name;
     }
 
-    private constructor(id: NoteId, createdBy: PrincipalId, name: string) {
+    private constructor(input: {
+        readonly id: NoteId;
+        readonly createdBy: PrincipalId;
+        readonly name: string;
+        readonly version: number;
+    }) {
         super();
-        this.id = id;
-        this.createdBy = createdBy;
-        this.#name = name;
+        this.id = input.id;
+        this.createdBy = input.createdBy;
+        this.#name = input.name;
+        this.version = input.version;
     }
 
-    /** Creates a new Note, recording `NoteCreated` scoped to the acting exhibitor. */
+    /** Creates a new Note, recording `NoteCreated` scoped to the acting exhibitor, at version `1`. */
     static create(input: {
         readonly id: NoteId;
         readonly createdBy: PrincipalId;
         readonly name: string;
     }): Note {
         assertNoteName(input.name);
-        const note = new Note(input.id, input.createdBy, input.name);
+        const note = new Note({ ...input, version: INITIAL_VERSION });
         note.record(
             NoteCreated.create(asAggregateId(note.id), ExhibitorEventScope.of(note.createdBy), {
                 name: note.name,
@@ -71,8 +88,9 @@ export class Note extends AggregateRoot {
         readonly id: NoteId;
         readonly createdBy: PrincipalId;
         readonly name: string;
+        readonly version: number;
     }): Note {
-        return new Note(input.id, input.createdBy, input.name);
+        return new Note(input);
     }
 
     /** Renames this Note, recording `NoteRenamed` scoped to the acting exhibitor. */

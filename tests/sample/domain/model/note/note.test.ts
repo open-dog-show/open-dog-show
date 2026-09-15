@@ -22,6 +22,7 @@ describe('Note', () => {
         expect(event?.scope).toEqual(ExhibitorEventScope.of(PRINCIPAL_ID));
         expect(event?.payload).toEqual({ name: 'Original name' });
         expect(note.name).toBe('Original name');
+        expect(note.version).toBe(1);
     });
 
     it('create rejects a blank name', () => {
@@ -35,17 +36,20 @@ describe('Note', () => {
             id: NOTE_ID,
             createdBy: PRINCIPAL_ID,
             name: 'Restored name',
+            version: 3,
         });
 
         expect(note.pullEvents()).toEqual([]);
         expect(note.name).toBe('Restored name');
+        expect(note.version).toBe(3);
     });
 
-    it('rename records NoteRenamed and updates the name', () => {
+    it('rename records NoteRenamed and updates the name, leaving version unchanged', () => {
         const note = Note.rehydrate({
             id: NOTE_ID,
             createdBy: PRINCIPAL_ID,
             name: 'Old name',
+            version: 3,
         });
 
         note.rename('New name');
@@ -55,6 +59,7 @@ describe('Note', () => {
         expect(event?.scope).toEqual(ExhibitorEventScope.of(PRINCIPAL_ID));
         expect(event?.payload).toEqual({ name: 'New name' });
         expect(note.name).toBe('New name');
+        expect(note.version).toBe(3);
     });
 
     it('rename rejects a blank name', () => {
@@ -62,6 +67,7 @@ describe('Note', () => {
             id: NOTE_ID,
             createdBy: PRINCIPAL_ID,
             name: 'Old name',
+            version: 1,
         });
 
         expect(() => {

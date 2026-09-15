@@ -49,10 +49,10 @@ const SKELETON_DISABLE_COMMENTS = [
     "// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's registrations; unused only in a bare context skeleton",
     "// eslint-disable-next-line @typescript-eslint/no-unused-vars -- called by new:aggregate's repositories; unused only in a bare context skeleton",
     "// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's repository instances; unused only in a bare context skeleton",
-    "// eslint-disable-next-line @typescript-eslint/no-unused-vars -- uuid/text are used by new:aggregate's table definitions; unused only in a bare context skeleton",
+    "// eslint-disable-next-line @typescript-eslint/no-unused-vars -- uuid/text/integer are used by new:aggregate's table definitions; unused only in a bare context skeleton",
     "// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's repositories; unused only in a bare context skeleton",
     "// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by new:aggregate's ctx-field wiring; unused only in a bare context skeleton",
-    "/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function -- staged/record are used by new:aggregate's repositories; unused only in a bare context skeleton */",
+    "/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function -- stores/record are used by new:aggregate's repositories; unused only in a bare context skeleton */",
     '/* eslint-enable @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-function */',
 ];
 
@@ -183,6 +183,11 @@ const CONTEXT_ACTIONS = [
         type: 'add',
         path: 'src/{{dashCase name}}/domain/shared/domain-ids.ts',
         templateFile: 'plop-templates/context/domain/shared/domain-ids.ts.hbs',
+    },
+    {
+        type: 'add',
+        path: 'src/{{dashCase name}}/domain/shared/concurrent-modification-error.ts',
+        templateFile: 'plop-templates/context/domain/shared/concurrent-modification-error.ts.hbs',
     },
     {
         type: 'add',
@@ -379,23 +384,33 @@ function buildFakeUnitOfWorkImportAndStateActions() {
     ];
 }
 
-function buildFakeUnitOfWorkStagingActions(scope) {
+function buildFakeUnitOfWorkStoreActions() {
     return [
         {
             type: 'append',
             unique: false,
             path: 'src/{{dashCase context}}/infrastructure/persistence/inmemory/fake-{{dashCase context}}-unit-of-work.ts',
-            pattern: '// plop:staging-methods',
-            templateFile: `${AGG_DIR}/append/fake-unit-of-work-staging-${scope}.ts.hbs`,
+            pattern: '// plop:stores',
+            templateFile: `${AGG_DIR}/append/fake-unit-of-work-store.ts.hbs`,
         },
         {
             type: 'append',
             unique: false,
             path: 'src/{{dashCase context}}/infrastructure/persistence/inmemory/fake-{{dashCase context}}-unit-of-work.ts',
-            pattern: '// plop:staging-init',
-            templateFile: `${AGG_DIR}/append/fake-unit-of-work-staging-property.ts.hbs`,
+            pattern: '// plop:rollback',
+            templateFile: `${AGG_DIR}/append/fake-unit-of-work-rollback.ts.hbs`,
         },
     ];
+}
+
+function buildFakeUnitOfWorkBumpFunctionAction(scope) {
+    return {
+        type: 'append',
+        unique: false,
+        path: 'src/{{dashCase context}}/infrastructure/persistence/inmemory/fake-{{dashCase context}}-unit-of-work.ts',
+        pattern: '// plop:bump-functions',
+        templateFile: `${AGG_DIR}/append/fake-unit-of-work-bump-${scope}.ts.hbs`,
+    };
 }
 
 function buildFakeUnitOfWorkWiringActions() {
@@ -406,13 +421,6 @@ function buildFakeUnitOfWorkWiringActions() {
             path: 'src/{{dashCase context}}/infrastructure/persistence/inmemory/fake-{{dashCase context}}-unit-of-work.ts',
             pattern: '// plop:repositories',
             templateFile: `${AGG_DIR}/append/fake-unit-of-work-repo.ts.hbs`,
-        },
-        {
-            type: 'append',
-            unique: false,
-            path: 'src/{{dashCase context}}/infrastructure/persistence/inmemory/fake-{{dashCase context}}-unit-of-work.ts',
-            pattern: '// plop:commit',
-            templateFile: `${AGG_DIR}/append/fake-unit-of-work-commit.ts.hbs`,
         },
     ];
 }
@@ -528,7 +536,8 @@ function buildAggregateActions(scope) {
         ...buildPersistenceSrcActions(scope),
         ...buildPgUnitOfWorkActions(),
         ...buildFakeUnitOfWorkImportAndStateActions(),
-        ...buildFakeUnitOfWorkStagingActions(scope),
+        ...buildFakeUnitOfWorkStoreActions(),
+        buildFakeUnitOfWorkBumpFunctionAction(scope),
         ...buildFakeUnitOfWorkWiringActions(),
         ...buildMessagingActions(),
         ...buildDiActions(),

@@ -1,0 +1,8 @@
+function rehydrate{{pascalCase name}}At({{camelCase name}}: {{pascalCase name}}, version: number): {{pascalCase name}} {
+    return {{pascalCase name}}.rehydrate({
+        id: {{camelCase name}}.id,
+        createdBy: {{camelCase name}}.createdBy,
+        name: {{camelCase name}}.name,
+        version,
+    });
+}

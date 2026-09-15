@@ -20,6 +20,7 @@ describe('Announcement', () => {
         expect(event?.scope).toEqual(PlatformEventScope.of());
         expect(event?.payload).toEqual({ name: 'Original name' });
         expect(announcement.name).toBe('Original name');
+        expect(announcement.version).toBe(1);
     });
 
     it('create rejects a blank name', () => {
@@ -32,16 +33,19 @@ describe('Announcement', () => {
         const announcement = Announcement.rehydrate({
             id: ANNOUNCEMENT_ID,
             name: 'Restored name',
+            version: 3,
         });
 
         expect(announcement.pullEvents()).toEqual([]);
         expect(announcement.name).toBe('Restored name');
+        expect(announcement.version).toBe(3);
     });
 
-    it('rename records AnnouncementRenamed and updates the name', () => {
+    it('rename records AnnouncementRenamed and updates the name, leaving version unchanged', () => {
         const announcement = Announcement.rehydrate({
             id: ANNOUNCEMENT_ID,
             name: 'Old name',
+            version: 3,
         });
 
         announcement.rename('New name');
@@ -51,12 +55,14 @@ describe('Announcement', () => {
         expect(event?.scope).toEqual(PlatformEventScope.of());
         expect(event?.payload).toEqual({ name: 'New name' });
         expect(announcement.name).toBe('New name');
+        expect(announcement.version).toBe(3);
     });
 
     it('rename rejects a blank name', () => {
         const announcement = Announcement.rehydrate({
             id: ANNOUNCEMENT_ID,
             name: 'Old name',
+            version: 1,
         });
 
         expect(() => {

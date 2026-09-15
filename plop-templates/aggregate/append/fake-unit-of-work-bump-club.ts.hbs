@@ -1,0 +1,9 @@
+function rehydrate{{pascalCase name}}At({{camelCase name}}: {{pascalCase name}}, version: number): {{pascalCase name}} {
+    return {{pascalCase name}}.rehydrate({
+        id: {{camelCase name}}.id,
+        clubId: {{camelCase name}}.clubId,
+        createdBy: {{camelCase name}}.createdBy,
+        name: {{camelCase name}}.name,
+        version,
+    });
+}

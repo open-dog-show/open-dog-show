@@ -11,6 +11,9 @@ import type { AnnouncementId } from '../../shared/domain-ids.js';
 import { AnnouncementCreated } from './events/announcement-created.js';
 import { AnnouncementRenamed } from './events/announcement-renamed.js';
 
+/** The version every new Announcement starts at — bumped only by `AnnouncementRepository.update`. */
+const INITIAL_VERSION = 1;
+
 /**
  * An Announcement — a platform-scoped placeholder aggregate generated
  * by `new:aggregate --scope platform` (ADR-0025/0026/0027).
@@ -24,6 +27,13 @@ import { AnnouncementRenamed } from './events/announcement-renamed.js';
  * `Announcement` — the type is closed against unvalidated
  * construction. Storage load goes through {@link Announcement.rehydrate},
  * which does not record an event.
+ *
+ * `version` is a plain optimistic-concurrency stamp (mirrors IAM's `User`): a
+ * mutator (`rename`) leaves it unchanged — bumping it is
+ * `AnnouncementRepository.update`'s job, at the moment of the write, so a
+ * stale `update` (the stored version has since moved) fails loudly
+ * (`ConcurrentModificationError`) instead of silently overwriting a
+ * concurrent change.
  */
 export class Announcement extends AggregateRoot {
     // Nominal brand: a bare object literal lacks this private field, so it is
@@ -33,21 +43,27 @@ export class Announcement extends AggregateRoot {
     #name: string;
 
     readonly id: AnnouncementId;
+    readonly version: number;
 
     get name(): string {
         return this.#name;
     }
 
-    private constructor(id: AnnouncementId, name: string) {
+    private constructor(input: {
+        readonly id: AnnouncementId;
+        readonly name: string;
+        readonly version: number;
+    }) {
         super();
-        this.id = id;
-        this.#name = name;
+        this.id = input.id;
+        this.#name = input.name;
+        this.version = input.version;
     }
 
-    /** Creates a new Announcement, recording `AnnouncementCreated` scoped platform-wide. */
+    /** Creates a new Announcement, recording `AnnouncementCreated` scoped platform-wide, at version `1`. */
     static create(input: { readonly id: AnnouncementId; readonly name: string }): Announcement {
         assertAnnouncementName(input.name);
-        const announcement = new Announcement(input.id, input.name);
+        const announcement = new Announcement({ ...input, version: INITIAL_VERSION });
         announcement.record(
             AnnouncementCreated.create(asAggregateId(announcement.id), PlatformEventScope.of(), {
                 name: announcement.name,
@@ -60,8 +76,12 @@ export class Announcement extends AggregateRoot {
      * Rehydrates an Announcement from storage. No event is recorded —
      * rehydration replays past state, it does not produce a new fact.
      */
-    static rehydrate(input: { readonly id: AnnouncementId; readonly name: string }): Announcement {
-        return new Announcement(input.id, input.name);
+    static rehydrate(input: {
+        readonly id: AnnouncementId;
+        readonly name: string;
+        readonly version: number;
+    }): Announcement {
+        return new Announcement(input);
     }
 
     /** Renames this Announcement, recording `AnnouncementRenamed` scoped platform-wide. */

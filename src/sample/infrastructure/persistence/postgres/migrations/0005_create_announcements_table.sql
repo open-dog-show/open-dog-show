@@ -5,8 +5,9 @@
 -- data with no single owner. RLS-exempt.
 
 CREATE TABLE IF NOT EXISTS sample.announcements (
-  id    UUID NOT NULL PRIMARY KEY,
-  name  TEXT NOT NULL
+  id       UUID NOT NULL PRIMARY KEY,
+  name     TEXT NOT NULL,
+  version  INTEGER NOT NULL DEFAULT 1
 );
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON sample.announcements TO app_user;
