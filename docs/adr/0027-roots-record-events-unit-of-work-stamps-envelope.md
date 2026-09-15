@@ -31,7 +31,7 @@ status: accepted
 
 - **Roots record facts.** The kernel provides `AggregateRoot` with
   `protected record(event)` and `pullEvents()`. A root constructs an event from domain data
-  only, e.g. `this.record(new ItemRenamed(this.id, name, EventScope.club(this.clubId)))`.
+  only, e.g. `this.record(new ItemRenamed(this.id, name, ClubEventScope.of(this.clubId)))`.
   The event class fixes its `type`.
 - **The unit of work stamps the envelope.** When a use case passes an aggregate to
   `add`/`update`, the Postgres unit of work pulls its events and stamps `eventId` and
@@ -42,9 +42,9 @@ status: accepted
 - **Use cases never touch events.** `ctx.appendEvents` and the use-case
   `Clock`/`EventIdGenerator` dependencies are removed.
 - **`EventScope` carries owner ids again**, as a variant value object in the ADR-0023
-  style: `EventScope.club(clubId)`, `EventScope.exhibitor(principalId)`,
-  `EventScope.platform()`. A hybrid aggregate's events are `club(clubId)`, because ADR-0005
-  gives each row one ownership scope and a wider read predicate.
+  style: `ClubEventScope.of(clubId)`, `ExhibitorEventScope.of(principalId)`,
+  `PlatformEventScope.of()`. A hybrid aggregate's events are `ClubEventScope.of(clubId)`,
+  because ADR-0005 gives each row one ownership scope and a wider read predicate.
 - **The outbox owner columns come from `event.scope`.** `PgOutboxWriter.write` no longer
   takes a `TransactionScope`. `OutboxAppender` and the single-implementation `OutboxWriter`
   interface are removed.

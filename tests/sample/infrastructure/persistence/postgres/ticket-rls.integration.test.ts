@@ -114,6 +114,17 @@ describe('Ticket RLS isolation (hybrid scope)', () => {
         );
     });
 
+    it('records the outbox event with club_id set from the fact scope, not the acting (exhibitor) scope (ADR-0027)', async () => {
+        const { rows } = await harness.superPool.query<{
+            club_id: string | null;
+            user_id: string | null;
+        }>(`SELECT club_id, user_id FROM sample.outbox WHERE aggregate_id = $1`, [TICKET_ID]);
+
+        expect(rows).toHaveLength(1);
+        expect(rows[0]?.club_id).toBe(CLUB_A_ID);
+        expect(rows[0]?.user_id).toBeNull();
+    });
+
     it('CreateTicketHandler resolves the Item owner under a real exhibitor-scoped connection', async () => {
         const handler = new CreateTicketHandler(unitOfWork);
 

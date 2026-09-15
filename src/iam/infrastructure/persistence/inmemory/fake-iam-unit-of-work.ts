@@ -96,6 +96,25 @@ export class FakeIamUnitOfWork implements IamUnitOfWork {
         private readonly eventIdGenerator: EventIdGenerator = new RandomEventIdGenerator(),
     ) {}
 
+    /**
+     * Throws {@link ConcurrentModificationError} when `stored`'s version does
+     * not match `incoming`'s — the optimistic-concurrency guard shared by
+     * `updateUser` and `updateRoleGrants`. `subject.aggregate`/`subject.id`
+     * name the row in the thrown error; `stored` is `undefined` when no row
+     * exists yet. An
+     * assertion function so callers keep `stored` narrowed to defined
+     * afterwards, as the inlined `if` check they replace did.
+     */
+    private assertVersionMatches<T extends { readonly version: number }>(
+        subject: { readonly aggregate: 'User' | 'UserRoleGrants'; readonly id: UserId },
+        stored: T | undefined,
+        incoming: { readonly version: number },
+    ): asserts stored is T {
+        if (stored?.version !== incoming.version) {
+            throw new ConcurrentModificationError(subject.aggregate, subject.id, incoming.version);
+        }
+    }
+
     private findUserByExternalSubject(subject: string): Promise<User | undefined> {
         for (const user of this.users.values()) {
             if (user.externalSubject === subject) return Promise.resolve(user);
@@ -116,9 +135,7 @@ export class FakeIamUnitOfWork implements IamUnitOfWork {
 
     private updateUser(users: RollbackTrackedMap<UserId, User>, user: User): Promise<void> {
         const stored = this.users.get(user.id);
-        if (stored?.version !== user.version) {
-            throw new ConcurrentModificationError('User', user.id, user.version);
-        }
+        this.assertVersionMatches({ aggregate: 'User', id: user.id }, stored, user);
         users.remember(user.id);
         users.write(
             user.id,
@@ -187,9 +204,11 @@ export class FakeIamUnitOfWork implements IamUnitOfWork {
         grants: UserRoleGrants,
     ): Promise<void> {
         const current = this.roleGrants.get(grants.userId);
-        if (current?.version !== grants.version) {
-            throw new ConcurrentModificationError('UserRoleGrants', grants.userId, grants.version);
-        }
+        this.assertVersionMatches(
+            { aggregate: 'UserRoleGrants', id: grants.userId },
+            current,
+            grants,
+        );
         tracker.remember(grants.userId);
         tracker.write(
             grants.userId,

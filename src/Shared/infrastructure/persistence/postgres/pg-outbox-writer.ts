@@ -4,9 +4,10 @@
 import type pg from 'pg';
 import type { DomainEvent } from '../../../domain/domain-event.js';
 import type { EventScope } from '../../../domain/event-scope.js';
-import type { ClubId, PrincipalId } from '../../../domain/domain-ids.js';
+import type { OutboxAppender } from '../../../application/ports/outbox-appender.js';
 import { quoteSchemaIdent } from './schema-ident.js';
 import { OutboxWriteFailed } from './outbox-write-failed.js';
+import { scopeToOwnerColumns, type OwnerColumns } from './owner-columns.js';
 
 /**
  * Derives the outbox owner columns from an event's own {@link EventScope}
@@ -14,34 +15,19 @@ import { OutboxWriteFailed } from './outbox-write-failed.js';
  * transaction that records a `club(clubId)` fact (a hybrid aggregate) still
  * writes that `clubId`, because it comes from the event, not from who was
  * acting when it happened.
+ *
+ * Delegates the nullability normalisation to the shared
+ * {@link scopeToOwnerColumns} (also used by `rls-keys.ts`'s
+ * `scopeToRlsKeys`, from the acting `TransactionScope`).
  */
-function eventOwnerColumns(scope: EventScope): {
-    clubId: ClubId | null;
-    principalId: PrincipalId | null;
-} {
-    switch (scope.kind) {
-        case 'club':
-            return { clubId: scope.clubId, principalId: null };
-        case 'exhibitor':
-            return { clubId: null, principalId: scope.principalId };
-        case 'platform':
-            return { clubId: null, principalId: null };
-        default:
-            // Exhaustiveness guard: a future EventScope variant added without a
-            // case here fails to compile, mirroring rls-keys.ts's scopeToRlsKeys.
-            return assertNever(scope);
-    }
-}
-
-/** Compile-time exhaustiveness check for an unreachable `never` branch. */
-function assertNever(value: never): never {
-    throw new Error(`Unexpected EventScope kind: ${String(value)}`);
+function eventOwnerColumns(scope: EventScope): OwnerColumns {
+    return scopeToOwnerColumns(scope);
 }
 
 /**
  * Writes domain events to a per-schema outbox table within the current
- * PostgreSQL transaction. The sole implementation — no port interface, no
- * fake (ADR-0027): a real Postgres instance is used in tests.
+ * PostgreSQL transaction. The sole implementation of {@link OutboxAppender}
+ * — no fake (ADR-0027): a real Postgres instance is used in tests.
  *
  * Expects a table in `<schema>.outbox` with columns:
  *   `event_id` UUID UNIQUE, `type` TEXT, `occurred_at` TIMESTAMPTZ,
@@ -56,7 +42,7 @@ function assertNever(value: never): never {
  * replays are not idempotent at the outbox, and consumers must tolerate
  * at-least-once delivery regardless.
  */
-export class PgOutboxWriter {
+export class PgOutboxWriter implements OutboxAppender<pg.PoolClient> {
     private readonly quotedSchema: string;
 
     constructor(schema: string) {

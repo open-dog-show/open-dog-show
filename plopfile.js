@@ -7,6 +7,8 @@ import path from 'node:path';
 
 const KEBAB_CASE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 const SCOPES = ['club', 'exhibitor', 'hybrid', 'platform'];
+/** Digit width of a migration filename's `NNNN_*.sql` sequence prefix. */
+const MIGRATION_SEQ_WIDTH = 4;
 
 const kebabValidator = (value) =>
     KEBAB_CASE.test(value) ||
@@ -28,10 +30,10 @@ function computeMigrationSeq(answers) {
     );
     const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.sql')) : [];
     const max = files.reduce((acc, f) => {
-        const n = Number.parseInt(f.slice(0, 4), 10);
+        const n = Number.parseInt(f.slice(0, MIGRATION_SEQ_WIDTH), 10);
         return Number.isNaN(n) ? acc : Math.max(acc, n);
     }, -1);
-    answers.migrationSeq = String(max + 1).padStart(4, '0');
+    answers.migrationSeq = String(max + 1).padStart(MIGRATION_SEQ_WIDTH, '0');
     return `next migration sequence for '${answers.context}': ${answers.migrationSeq}`;
 }
 
@@ -279,7 +281,7 @@ function buildDomainIdsAction() {
         unique: false,
         path: 'src/{{dashCase context}}/domain/shared/domain-ids.ts',
         pattern: '// plop:ids',
-        templateFile: `${AGG_DIR}/append/domain-ids.ts.hbs`,
+        templateFile: `${AGG_DIR}/fragments/domain-ids.ts.hbs`,
     };
 }
 
@@ -300,14 +302,14 @@ function buildApplicationActions(scope) {
             unique: false,
             path: 'src/{{dashCase context}}/application/ports/unit-of-work.ts',
             pattern: '// plop:imports',
-            templateFile: `${AGG_DIR}/append/unit-of-work-import.ts.hbs`,
+            templateFile: `${AGG_DIR}/fragments/unit-of-work-import.ts.hbs`,
         },
         {
             type: 'append',
             unique: false,
             path: 'src/{{dashCase context}}/application/ports/unit-of-work.ts',
             pattern: '// plop:repositories',
-            templateFile: `${AGG_DIR}/append/unit-of-work-context.ts.hbs`,
+            templateFile: `${AGG_DIR}/fragments/unit-of-work-context.ts.hbs`,
         },
     ];
 }
@@ -334,7 +336,7 @@ function buildPersistenceSrcActions(scope) {
             unique: false,
             path: 'src/{{dashCase context}}/infrastructure/persistence/postgres/schema.ts',
             pattern: '// plop:tables',
-            templateFile: `${AGG_DIR}/append/schema-table-${scope}.ts.hbs`,
+            templateFile: `${AGG_DIR}/fragments/schema-table-${scope}.ts.hbs`,
         },
     ];
 }
@@ -346,83 +348,48 @@ function buildPgUnitOfWorkActions() {
             unique: false,
             path: 'src/{{dashCase context}}/infrastructure/persistence/postgres/pg-unit-of-work.ts',
             pattern: '// plop:imports',
-            templateFile: `${AGG_DIR}/append/pg-unit-of-work-import.ts.hbs`,
+            templateFile: `${AGG_DIR}/fragments/pg-unit-of-work-import.ts.hbs`,
         },
         {
             type: 'append',
             unique: false,
             path: 'src/{{dashCase context}}/infrastructure/persistence/postgres/pg-unit-of-work.ts',
             pattern: '// plop:repository-instances',
-            templateFile: `${AGG_DIR}/append/pg-unit-of-work-instance.ts.hbs`,
+            templateFile: `${AGG_DIR}/fragments/pg-unit-of-work-instance.ts.hbs`,
         },
         {
             type: 'append',
             unique: false,
             path: 'src/{{dashCase context}}/infrastructure/persistence/postgres/pg-unit-of-work.ts',
             pattern: '// plop:repositories',
-            templateFile: `${AGG_DIR}/append/pg-unit-of-work-ctx-field.ts.hbs`,
+            templateFile: `${AGG_DIR}/fragments/pg-unit-of-work-ctx-field.ts.hbs`,
         },
     ];
 }
 
-function buildFakeUnitOfWorkImportAndStateActions() {
-    return [
-        {
-            type: 'append',
-            unique: false,
-            path: 'src/{{dashCase context}}/infrastructure/persistence/inmemory/fake-{{dashCase context}}-unit-of-work.ts',
-            pattern: '// plop:imports',
-            templateFile: `${AGG_DIR}/append/fake-unit-of-work-import.ts.hbs`,
-        },
-        {
-            type: 'append',
-            unique: false,
-            path: 'src/{{dashCase context}}/infrastructure/persistence/inmemory/fake-{{dashCase context}}-unit-of-work.ts',
-            pattern: '// plop:state',
-            templateFile: `${AGG_DIR}/append/fake-unit-of-work-state.ts.hbs`,
-        },
+// Every `fake-<context>-unit-of-work.ts` append action for the new
+// aggregate — one entry per marker comment the context skeleton exposes.
+// Previously four functions, split only to stay under the file's
+// max-lines-per-function limit rather than by meaning (they are one list);
+// a marker/template data table keeps it that way as a single function.
+function buildFakeUnitOfWorkActions(scope) {
+    const path =
+        'src/{{dashCase context}}/infrastructure/persistence/inmemory/fake-{{dashCase context}}-unit-of-work.ts';
+    const markers = [
+        ['// plop:imports', 'fake-unit-of-work-import.ts.hbs'],
+        ['// plop:state', 'fake-unit-of-work-state.ts.hbs'],
+        ['// plop:stores', 'fake-unit-of-work-store.ts.hbs'],
+        ['// plop:rollback', 'fake-unit-of-work-rollback.ts.hbs'],
+        ['// plop:bump-functions', `fake-unit-of-work-bump-${scope}.ts.hbs`],
+        ['// plop:repositories', 'fake-unit-of-work-repo.ts.hbs'],
     ];
-}
-
-function buildFakeUnitOfWorkStoreActions() {
-    return [
-        {
-            type: 'append',
-            unique: false,
-            path: 'src/{{dashCase context}}/infrastructure/persistence/inmemory/fake-{{dashCase context}}-unit-of-work.ts',
-            pattern: '// plop:stores',
-            templateFile: `${AGG_DIR}/append/fake-unit-of-work-store.ts.hbs`,
-        },
-        {
-            type: 'append',
-            unique: false,
-            path: 'src/{{dashCase context}}/infrastructure/persistence/inmemory/fake-{{dashCase context}}-unit-of-work.ts',
-            pattern: '// plop:rollback',
-            templateFile: `${AGG_DIR}/append/fake-unit-of-work-rollback.ts.hbs`,
-        },
-    ];
-}
-
-function buildFakeUnitOfWorkBumpFunctionAction(scope) {
-    return {
+    return markers.map(([pattern, templateFile]) => ({
         type: 'append',
         unique: false,
-        path: 'src/{{dashCase context}}/infrastructure/persistence/inmemory/fake-{{dashCase context}}-unit-of-work.ts',
-        pattern: '// plop:bump-functions',
-        templateFile: `${AGG_DIR}/append/fake-unit-of-work-bump-${scope}.ts.hbs`,
-    };
-}
-
-function buildFakeUnitOfWorkWiringActions() {
-    return [
-        {
-            type: 'append',
-            unique: false,
-            path: 'src/{{dashCase context}}/infrastructure/persistence/inmemory/fake-{{dashCase context}}-unit-of-work.ts',
-            pattern: '// plop:repositories',
-            templateFile: `${AGG_DIR}/append/fake-unit-of-work-repo.ts.hbs`,
-        },
-    ];
+        path,
+        pattern,
+        templateFile: `${AGG_DIR}/fragments/${templateFile}`,
+    }));
 }
 
 function buildMessagingActions() {
@@ -432,14 +399,14 @@ function buildMessagingActions() {
             unique: false,
             path: 'src/{{dashCase context}}/infrastructure/messaging/{{dashCase context}}-event-registry.ts',
             pattern: '// plop:imports',
-            templateFile: `${AGG_DIR}/append/event-registry-import.ts.hbs`,
+            templateFile: `${AGG_DIR}/fragments/event-registry-import.ts.hbs`,
         },
         {
             type: 'append',
             unique: false,
             path: 'src/{{dashCase context}}/infrastructure/messaging/{{dashCase context}}-event-registry.ts',
             pattern: '// plop:registrations',
-            templateFile: `${AGG_DIR}/append/event-registry-registration.ts.hbs`,
+            templateFile: `${AGG_DIR}/fragments/event-registry-registration.ts.hbs`,
         },
     ];
 }
@@ -451,21 +418,21 @@ function buildDiActions() {
             unique: false,
             path: 'src/{{dashCase context}}/infrastructure/di/create-{{dashCase context}}-context.ts',
             pattern: '// plop:imports',
-            templateFile: `${AGG_DIR}/append/create-context-import.ts.hbs`,
+            templateFile: `${AGG_DIR}/fragments/create-context-import.ts.hbs`,
         },
         {
             type: 'append',
             unique: false,
             path: 'src/{{dashCase context}}/infrastructure/di/create-{{dashCase context}}-context.ts',
             pattern: '// plop:usecases-type',
-            templateFile: `${AGG_DIR}/append/create-context-usecases-type.ts.hbs`,
+            templateFile: `${AGG_DIR}/fragments/create-context-usecases-type.ts.hbs`,
         },
         {
             type: 'append',
             unique: false,
             path: 'src/{{dashCase context}}/infrastructure/di/create-{{dashCase context}}-context.ts',
             pattern: '// plop:usecases-instances',
-            templateFile: `${AGG_DIR}/append/create-context-usecases-instance.ts.hbs`,
+            templateFile: `${AGG_DIR}/fragments/create-context-usecases-instance.ts.hbs`,
         },
     ];
 }
@@ -477,7 +444,7 @@ function buildPublicSurfaceActions() {
             unique: false,
             path: 'src/{{dashCase context}}/index.ts',
             pattern: '// plop:exports',
-            templateFile: `${AGG_DIR}/append/index-export.ts.hbs`,
+            templateFile: `${AGG_DIR}/fragments/index-export.ts.hbs`,
         },
     ];
 }
@@ -535,10 +502,7 @@ function buildAggregateActions(scope) {
         ...buildApplicationActions(scope),
         ...buildPersistenceSrcActions(scope),
         ...buildPgUnitOfWorkActions(),
-        ...buildFakeUnitOfWorkImportAndStateActions(),
-        ...buildFakeUnitOfWorkStoreActions(),
-        buildFakeUnitOfWorkBumpFunctionAction(scope),
-        ...buildFakeUnitOfWorkWiringActions(),
+        ...buildFakeUnitOfWorkActions(scope),
         ...buildMessagingActions(),
         ...buildDiActions(),
         ...buildPublicSurfaceActions(),

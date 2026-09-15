@@ -4,6 +4,7 @@
 import {
     stampDomainEvent,
     type Clock,
+    type CrudRepositoryPort,
     type DomainEvent,
     type DomainEventFact,
     type EventIdGenerator,
@@ -16,6 +17,8 @@ import type {
     SampleUnitOfWorkContext,
 } from '../../../application/ports/unit-of-work.js';
 import { ConcurrentModificationError } from '../../../domain/shared/concurrent-modification-error.js';
+import { DuplicateIdError } from '../../../domain/shared/duplicate-id-error.js';
+import { UnitOfWorkClosedError } from '../../../domain/shared/unit-of-work-closed-error.js';
 // plop:imports
 import { Announcement } from '../../../domain/model/announcement/announcement.js';
 import type { AnnouncementId } from '../../../domain/shared/domain-ids.js';
@@ -28,12 +31,6 @@ import type { NoteId } from '../../../domain/shared/domain-ids.js';
 
 import { Item } from '../../../domain/model/item/item.js';
 import type { ItemId } from '../../../domain/shared/domain-ids.js';
-
-interface InMemoryCrudPort<Id, T> {
-    findById(id: Id): Promise<T | undefined>;
-    add(entity: T): Promise<void>;
-    update(entity: T): Promise<void>;
-}
 
 interface VersionedEntity<Id> {
     readonly id: Id;
@@ -84,17 +81,21 @@ interface InMemoryStore<Id, T> {
 
 /**
  * `createInMemoryPort`'s per-aggregate wiring: `typeName` names the aggregate
- * for {@link ConcurrentModificationError}'s message, and `rehydrateAt`
+ * for {@link ConcurrentModificationError}'s message, `rehydrateAt`
  * rehydrates a fresh instance at a given version from the aggregate-specific
- * fields — used both to hand a `findById` caller a defensive copy (every
+ * fields (used both to hand a `findById` caller a defensive copy — every
  * generated aggregate mutates in place, so two readers must never share a
- * live instance) and to bump the stored version on a successful write, since
- * this helper has no generic way to construct either itself.
+ * live instance — and to bump the stored version on a successful write,
+ * since this helper has no generic way to construct either itself), and
+ * `closed` is shared across every aggregate's port for one `run` call so a
+ * `ctx` that escaped it throws {@link UnitOfWorkClosedError} (#188) instead
+ * of touching state from an attempt that already finished.
  */
 interface InMemoryPortOptions<T> {
     readonly record: (...facts: readonly DomainEventFact[]) => void;
     readonly typeName: string;
     readonly rehydrateAt: (entity: T, version: number) => T;
+    readonly closed: { readonly value: boolean };
 }
 
 function tryAdd<Id, T extends VersionedEntity<Id>>(
@@ -103,7 +104,7 @@ function tryAdd<Id, T extends VersionedEntity<Id>>(
     options: InMemoryPortOptions<T>,
 ): Promise<void> {
     if (store.committed.has(entity.id)) {
-        return Promise.reject(new Error(`Duplicate ${options.typeName} id: ${String(entity.id)}`));
+        return Promise.reject(new DuplicateIdError(options.typeName, String(entity.id)));
     }
     const facts = entity.pullEvents();
     store.tracker.remember(entity.id);
@@ -139,7 +140,7 @@ function tryUpdate<Id, T extends VersionedEntity<Id>>(
 }
 
 /**
- * Builds an in-memory {@link InMemoryCrudPort} over `store` — the single
+ * Builds an in-memory {@link CrudRepositoryPort} over `store` — the single
  * find/duplicate-check/update shape shared by every aggregate's fake
  * repository, instead of repeated per aggregate. `findById` hands out a
  * fresh copy (via `rehydrateAt`) rather than the stored instance itself:
@@ -150,16 +151,26 @@ function tryUpdate<Id, T extends VersionedEntity<Id>>(
 function createInMemoryPort<Id, T extends VersionedEntity<Id>>(
     store: InMemoryStore<Id, T>,
     options: InMemoryPortOptions<T>,
-): InMemoryCrudPort<Id, T> {
+): CrudRepositoryPort<Id, T> {
+    const assertOpen = (): void => {
+        if (options.closed.value) throw new UnitOfWorkClosedError();
+    };
     return {
         findById: (id) => {
+            assertOpen();
             const stored = store.committed.get(id);
             return Promise.resolve(
                 stored === undefined ? undefined : options.rehydrateAt(stored, stored.version),
             );
         },
-        add: (entity) => tryAdd(store, entity, options),
-        update: (updated) => tryUpdate(store, updated, options),
+        add: (entity) => {
+            assertOpen();
+            return tryAdd(store, entity, options);
+        },
+        update: (updated) => {
+            assertOpen();
+            return tryUpdate(store, updated, options);
+        },
     };
 }
 
@@ -212,7 +223,9 @@ function rehydrateItemAt(item: Item, version: number): Item {
  * wrote (tracked per key by {@link RollbackTrackedMap}), rather than
  * restoring a whole-collection snapshot that could clobber an unrelated key
  * some other, already-committed attempt wrote to in the meantime (ADR-0027:
- * "a rolled-back attempt writes no rows").
+ * "a rolled-back attempt writes no rows"). Once `run` resolves, `ctx` is
+ * closed (#188) — a caller that let it escape gets
+ * {@link UnitOfWorkClosedError} on any further use.
  */
 export class FakeSampleUnitOfWork implements SampleUnitOfWork {
     readonly recordedEvents: DomainEvent[] = [];
@@ -259,29 +272,31 @@ export class FakeSampleUnitOfWork implements SampleUnitOfWork {
     private buildContext(
         stores: ReturnType<FakeSampleUnitOfWork['buildStores']>,
         record: (...facts: readonly DomainEventFact[]) => void,
+        closed: { readonly value: boolean },
     ): SampleUnitOfWorkContext {
+        const base = { record, closed };
         return {
             // plop:repositories
             announcements: createInMemoryPort(stores.announcements, {
-                record,
+                ...base,
                 typeName: 'Announcement',
                 rehydrateAt: rehydrateAnnouncementAt,
             }),
 
             tickets: createInMemoryPort(stores.tickets, {
-                record,
+                ...base,
                 typeName: 'Ticket',
                 rehydrateAt: rehydrateTicketAt,
             }),
 
             notes: createInMemoryPort(stores.notes, {
-                record,
+                ...base,
                 typeName: 'Note',
                 rehydrateAt: rehydrateNoteAt,
             }),
 
             items: createInMemoryPort(stores.items, {
-                record,
+                ...base,
                 typeName: 'Item',
                 rehydrateAt: rehydrateItemAt,
             }),
@@ -308,8 +323,9 @@ export class FakeSampleUnitOfWork implements SampleUnitOfWork {
             pendingFacts.push(...facts);
         };
 
+        const closed = { value: false };
         const stores = this.buildStores();
-        const ctx = this.buildContext(stores, record);
+        const ctx = this.buildContext(stores, record, closed);
 
         try {
             const result = await body(ctx);
@@ -321,6 +337,8 @@ export class FakeSampleUnitOfWork implements SampleUnitOfWork {
         } catch (error) {
             this.rollbackStores(stores);
             throw error;
+        } finally {
+            closed.value = true;
         }
     }
 }
