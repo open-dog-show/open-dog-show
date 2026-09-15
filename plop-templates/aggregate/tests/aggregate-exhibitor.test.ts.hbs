@@ -25,6 +25,7 @@ describe('{{pascalCase name}}', () => {
         expect(event?.scope).toEqual(ExhibitorEventScope.of(PRINCIPAL_ID));
         expect(event?.payload).toEqual({ name: 'Original name' });
         expect({{camelCase name}}.name).toBe('Original name');
+        expect({{camelCase name}}.version).toBe(1);
     });
 
     it('create rejects a blank name', () => {
@@ -38,17 +39,20 @@ describe('{{pascalCase name}}', () => {
             id: {{constantCase name}}_ID,
             createdBy: PRINCIPAL_ID,
             name: 'Restored name',
+            version: 3,
         });
 
         expect({{camelCase name}}.pullEvents()).toEqual([]);
         expect({{camelCase name}}.name).toBe('Restored name');
+        expect({{camelCase name}}.version).toBe(3);
     });
 
-    it('rename records {{pascalCase name}}Renamed and updates the name', () => {
+    it('rename records {{pascalCase name}}Renamed and updates the name, leaving version unchanged', () => {
         const {{camelCase name}} = {{pascalCase name}}.rehydrate({
             id: {{constantCase name}}_ID,
             createdBy: PRINCIPAL_ID,
             name: 'Old name',
+            version: 3,
         });
 
         {{camelCase name}}.rename('New name');
@@ -58,6 +62,7 @@ describe('{{pascalCase name}}', () => {
         expect(event?.scope).toEqual(ExhibitorEventScope.of(PRINCIPAL_ID));
         expect(event?.payload).toEqual({ name: 'New name' });
         expect({{camelCase name}}.name).toBe('New name');
+        expect({{camelCase name}}.version).toBe(3);
     });
 
     it('rename rejects a blank name', () => {
@@ -65,6 +70,7 @@ describe('{{pascalCase name}}', () => {
             id: {{constantCase name}}_ID,
             createdBy: PRINCIPAL_ID,
             name: 'Old name',
+            version: 1,
         });
 
         expect(() => { {{camelCase name}}.rename(''); }).toThrow(Invalid{{pascalCase name}}NameError);

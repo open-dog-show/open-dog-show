@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type pg from 'pg';
 import { asClubId, asPrincipalId } from '../../../../Shared/index.js';
 import {
@@ -10,6 +10,7 @@ import {
     as{{pascalCase parent}}Id,
     type {{pascalCase name}}Id,
 } from '../../../domain/shared/domain-ids.js';
+import { ConcurrentModificationError } from '../../../domain/shared/concurrent-modification-error.js';
 import { {{plural (camelCase name)}}Table } from './schema.js';
 import { {{pascalCase name}} } from '../../../domain/model/{{dashCase name}}/{{dashCase name}}.js';
 import type { {{pascalCase name}}Repository } from '../../../domain/model/{{dashCase name}}/{{dashCase name}}-repository.js';
@@ -36,6 +37,7 @@ export class Drizzle{{pascalCase name}}Repository implements {{pascalCase name}}
                       createdBy: asPrincipalId(row.principalId),
                       {{camelCase parent}}Id: as{{pascalCase parent}}Id(row.{{camelCase parent}}Id),
                       name: row.name,
+                      version: row.version,
                   });
         } catch (cause) {
             // E3: wrap the raw drizzle/pg exception at the boundary.
@@ -51,19 +53,31 @@ export class Drizzle{{pascalCase name}}Repository implements {{pascalCase name}}
                 principalId: {{camelCase name}}.createdBy,
                 {{camelCase parent}}Id: {{camelCase name}}.{{camelCase parent}}Id,
                 name: {{camelCase name}}.name,
+                version: {{camelCase name}}.version,
             });
         } catch (cause) {
             throw new {{pascalCase name}}PersistenceFailed('adding {{a (dashCase name)}} {{dashCase name}}', cause);
         }
     }
 
+    /** @throws {ConcurrentModificationError} when the stored version no longer matches `{{camelCase name}}.version`. */
     async update({{camelCase name}}: {{pascalCase name}}): Promise<void> {
         try {
-            await this.drizzle
+            const matchedRows = await this.drizzle
                 .update({{plural (camelCase name)}}Table)
-                .set({ name: {{camelCase name}}.name })
-                .where(eq({{plural (camelCase name)}}Table.id, {{camelCase name}}.id));
+                .set({ name: {{camelCase name}}.name, version: {{camelCase name}}.version + 1 })
+                .where(
+                    and(
+                        eq({{plural (camelCase name)}}Table.id, {{camelCase name}}.id),
+                        eq({{plural (camelCase name)}}Table.version, {{camelCase name}}.version),
+                    ),
+                )
+                .returning({ id: {{plural (camelCase name)}}Table.id });
+            if (matchedRows.length === 0) {
+                throw new ConcurrentModificationError('{{pascalCase name}}', {{camelCase name}}.id, {{camelCase name}}.version);
+            }
         } catch (cause) {
+            if (cause instanceof ConcurrentModificationError) throw cause;
             throw new {{pascalCase name}}PersistenceFailed('updating {{a (dashCase name)}} {{dashCase name}}', cause);
         }
     }

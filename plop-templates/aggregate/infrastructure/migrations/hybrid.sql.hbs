@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS {{snakeCase context}}.{{plural (snakeCase name)}} (
   club_id               UUID NOT NULL,
   user_id               UUID NOT NULL,
   {{snakeCase parent}}_id UUID NOT NULL REFERENCES {{snakeCase context}}.{{plural (snakeCase parent)}}(id),
-  name                  TEXT NOT NULL
+  name                  TEXT NOT NULL,
+  version               INTEGER NOT NULL DEFAULT 1
 );
 
 ALTER TABLE {{snakeCase context}}.{{plural (snakeCase name)}} ENABLE ROW LEVEL SECURITY;

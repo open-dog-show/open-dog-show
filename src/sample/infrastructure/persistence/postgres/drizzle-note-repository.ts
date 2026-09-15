@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type pg from 'pg';
 import { asPrincipalId } from '../../../../Shared/index.js';
 import { asNoteId, type NoteId } from '../../../domain/shared/domain-ids.js';
+import { ConcurrentModificationError } from '../../../domain/shared/concurrent-modification-error.js';
 import { notesTable } from './schema.js';
 import { Note } from '../../../domain/model/note/note.js';
 import type { NoteRepository } from '../../../domain/model/note/note-repository.js';
@@ -27,6 +28,7 @@ export class DrizzleNoteRepository implements NoteRepository {
                       id: asNoteId(row.id),
                       createdBy: asPrincipalId(row.principalId),
                       name: row.name,
+                      version: row.version,
                   });
         } catch (cause) {
             // E3: wrap the raw drizzle/pg exception at the boundary.
@@ -40,19 +42,26 @@ export class DrizzleNoteRepository implements NoteRepository {
                 id: note.id,
                 principalId: note.createdBy,
                 name: note.name,
+                version: note.version,
             });
         } catch (cause) {
             throw new NotePersistenceFailed('adding a note', cause);
         }
     }
 
+    /** @throws {ConcurrentModificationError} when the stored version no longer matches `note.version`. */
     async update(note: Note): Promise<void> {
         try {
-            await this.drizzle
+            const matchedRows = await this.drizzle
                 .update(notesTable)
-                .set({ name: note.name })
-                .where(eq(notesTable.id, note.id));
+                .set({ name: note.name, version: note.version + 1 })
+                .where(and(eq(notesTable.id, note.id), eq(notesTable.version, note.version)))
+                .returning({ id: notesTable.id });
+            if (matchedRows.length === 0) {
+                throw new ConcurrentModificationError('Note', note.id, note.version);
+            }
         } catch (cause) {
+            if (cause instanceof ConcurrentModificationError) throw cause;
             throw new NotePersistenceFailed('updating a note', cause);
         }
     }

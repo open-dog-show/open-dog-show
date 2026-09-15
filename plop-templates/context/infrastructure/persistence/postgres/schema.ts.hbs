@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- uuid/text are used by new:aggregate's table definitions; unused only in a bare context skeleton
-import { pgSchema, uuid, text } from 'drizzle-orm/pg-core';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- uuid/text/integer are used by new:aggregate's table definitions; unused only in a bare context skeleton
+import { pgSchema, uuid, text, integer } from 'drizzle-orm/pg-core';
 
 export const schema = pgSchema('{{snakeCase name}}');
 

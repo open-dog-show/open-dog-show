@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type pg from 'pg';
 import { asClubId, asPrincipalId } from '../../../../Shared/index.js';
 import { asTicketId, asItemId, type TicketId } from '../../../domain/shared/domain-ids.js';
+import { ConcurrentModificationError } from '../../../domain/shared/concurrent-modification-error.js';
 import { ticketsTable } from './schema.js';
 import { Ticket } from '../../../domain/model/ticket/ticket.js';
 import type { TicketRepository } from '../../../domain/model/ticket/ticket-repository.js';
@@ -32,6 +33,7 @@ export class DrizzleTicketRepository implements TicketRepository {
                       createdBy: asPrincipalId(row.principalId),
                       itemId: asItemId(row.itemId),
                       name: row.name,
+                      version: row.version,
                   });
         } catch (cause) {
             // E3: wrap the raw drizzle/pg exception at the boundary.
@@ -47,19 +49,28 @@ export class DrizzleTicketRepository implements TicketRepository {
                 principalId: ticket.createdBy,
                 itemId: ticket.itemId,
                 name: ticket.name,
+                version: ticket.version,
             });
         } catch (cause) {
             throw new TicketPersistenceFailed('adding a ticket', cause);
         }
     }
 
+    /** @throws {ConcurrentModificationError} when the stored version no longer matches `ticket.version`. */
     async update(ticket: Ticket): Promise<void> {
         try {
-            await this.drizzle
+            const matchedRows = await this.drizzle
                 .update(ticketsTable)
-                .set({ name: ticket.name })
-                .where(eq(ticketsTable.id, ticket.id));
+                .set({ name: ticket.name, version: ticket.version + 1 })
+                .where(
+                    and(eq(ticketsTable.id, ticket.id), eq(ticketsTable.version, ticket.version)),
+                )
+                .returning({ id: ticketsTable.id });
+            if (matchedRows.length === 0) {
+                throw new ConcurrentModificationError('Ticket', ticket.id, ticket.version);
+            }
         } catch (cause) {
+            if (cause instanceof ConcurrentModificationError) throw cause;
             throw new TicketPersistenceFailed('updating a ticket', cause);
         }
     }

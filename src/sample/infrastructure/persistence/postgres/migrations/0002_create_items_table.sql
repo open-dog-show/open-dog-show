@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS sample.items (
   id       UUID NOT NULL PRIMARY KEY,
   club_id  UUID NOT NULL,
   user_id  UUID NOT NULL,
-  name     TEXT NOT NULL
+  name     TEXT NOT NULL,
+  version  INTEGER NOT NULL DEFAULT 1
 );
 
 ALTER TABLE sample.items ENABLE ROW LEVEL SECURITY;

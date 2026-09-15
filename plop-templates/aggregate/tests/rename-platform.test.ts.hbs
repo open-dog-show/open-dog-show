@@ -3,15 +3,20 @@
 
 import { describe, it, expect } from 'vitest';
 import { PlatformTransactionScope } from '../../../../src/Shared/index.js';
+import type { {{pascalCase context}}UnitOfWork } from '../../../../src/{{dashCase context}}/application/ports/unit-of-work.js';
 import { Fake{{pascalCase context}}UnitOfWork } from '../../../../src/{{dashCase context}}/infrastructure/persistence/inmemory/fake-{{dashCase context}}-unit-of-work.js';
 import { Create{{pascalCase name}}Handler } from '../../../../src/{{dashCase context}}/application/create-{{dashCase name}}/create-{{dashCase name}}.js';
 import { Rename{{pascalCase name}}Handler } from '../../../../src/{{dashCase context}}/application/rename-{{dashCase name}}/rename-{{dashCase name}}.js';
 import {
+    {{pascalCase name}},
     {{pascalCase name}}NotFoundError,
     Invalid{{pascalCase name}}NameError,
 } from '../../../../src/{{dashCase context}}/domain/model/{{dashCase name}}/{{dashCase name}}.js';
+import { as{{pascalCase name}}Id } from '../../../../src/{{dashCase context}}/domain/shared/domain-ids.js';
+import { ConcurrentModificationError } from '../../../../src/{{dashCase context}}/domain/shared/concurrent-modification-error.js';
 
 const SCOPE = PlatformTransactionScope.of();
+const {{constantCase name}}_ID = as{{pascalCase name}}Id('00000000-0000-4000-8000-000000000021');
 
 describe('Rename{{pascalCase name}}Handler', () => {
     it('renames an existing {{pascalCase name}}', async () => {
@@ -57,5 +62,87 @@ describe('Rename{{pascalCase name}}Handler', () => {
         );
 
         expect(result).toEqual({ ok: false, error: expect.any(Invalid{{pascalCase name}}NameError) as Invalid{{pascalCase name}}NameError });
+    });
+
+    it('propagates ConcurrentModificationError as a throw when a concurrent rename raced this one (E4)', async () => {
+        const unitOfWork = new Fake{{pascalCase context}}UnitOfWork();
+        await new Create{{pascalCase name}}Handler(unitOfWork).execute(
+            { id: '00000000-0000-4000-8000-000000000021', name: 'Old name' },
+            SCOPE,
+        );
+
+        // A concurrent writer renames first, bumping the stored version.
+        await new Rename{{pascalCase name}}Handler(unitOfWork).execute(
+            { id: '00000000-0000-4000-8000-000000000021', name: 'First rename' },
+            SCOPE,
+        );
+
+        // A raced unit of work whose `findById` returns a deliberately stale
+        // (pre-bump) copy, so the handler's own `update` call collides with
+        // the version already bumped above — the failure must propagate out
+        // of `execute` as a throw, not a `Result` failure (E4).
+        const staleUnitOfWork: {{pascalCase context}}UnitOfWork = {
+            run: (scope, body) =>
+                unitOfWork.run(scope, (ctx) =>
+                    body({
+                        ...ctx,
+                        {{plural (camelCase name)}}: {
+                            ...ctx.{{plural (camelCase name)}},
+                            findById: () =>
+                                Promise.resolve(
+                                    {{pascalCase name}}.rehydrate({
+                                        id: {{constantCase name}}_ID,
+                                        name: 'Old name',
+                                        version: 1,
+                                    }),
+                                ),
+                        },
+                    }),
+                ),
+        };
+
+        await expect(
+            new Rename{{pascalCase name}}Handler(staleUnitOfWork).execute(
+                { id: '00000000-0000-4000-8000-000000000021', name: 'Second rename' },
+                SCOPE,
+            ),
+        ).rejects.toThrow(ConcurrentModificationError);
+    });
+
+    it('rejects the losing writer when two run() calls genuinely overlap', async () => {
+        const unitOfWork = new Fake{{pascalCase context}}UnitOfWork();
+        await new Create{{pascalCase name}}Handler(unitOfWork).execute(
+            { id: '00000000-0000-4000-8000-000000000021', name: 'Old name' },
+            SCOPE,
+        );
+
+        let releaseFirstWriter!: () => void;
+        const secondWriterCommitted = new Promise<void>((resolve) => {
+            releaseFirstWriter = resolve;
+        });
+
+        // The first `run()` reads, then suspends mid-transaction — genuinely
+        // overlapping with a second `run()` that reads the same still-version-1
+        // row and commits before the first resumes to write its own, now stale,
+        // change. A whole-collection snapshot taken at the start of each `run()`
+        // (the design this replaces) could not detect this: the first writer's
+        // own snapshot would still show version 1 when it finally writes.
+        const firstWriter = unitOfWork.run(SCOPE, async (ctx) => {
+            const {{camelCase name}} = await ctx.{{plural (camelCase name)}}.findById({{constantCase name}}_ID);
+            if ({{camelCase name}} === undefined) throw new Error('fixture setup failed');
+            await secondWriterCommitted;
+            {{camelCase name}}.rename('First writer (stale)');
+            await ctx.{{plural (camelCase name)}}.update({{camelCase name}});
+        });
+
+        await unitOfWork.run(SCOPE, async (ctx) => {
+            const {{camelCase name}} = await ctx.{{plural (camelCase name)}}.findById({{constantCase name}}_ID);
+            if ({{camelCase name}} === undefined) throw new Error('fixture setup failed');
+            {{camelCase name}}.rename('Second writer');
+            await ctx.{{plural (camelCase name)}}.update({{camelCase name}});
+        });
+        releaseFirstWriter();
+
+        await expect(firstWriter).rejects.toThrow(ConcurrentModificationError);
     });
 });

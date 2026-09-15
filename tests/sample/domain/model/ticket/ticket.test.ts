@@ -30,6 +30,7 @@ describe('Ticket', () => {
         expect(event?.payload).toEqual({ name: 'Original name' });
         expect(ticket.name).toBe('Original name');
         expect(ticket.itemId).toBe(ITEM_ID);
+        expect(ticket.version).toBe(1);
     });
 
     it('create rejects a blank name', () => {
@@ -51,19 +52,22 @@ describe('Ticket', () => {
             createdBy: PRINCIPAL_ID,
             itemId: ITEM_ID,
             name: 'Restored name',
+            version: 3,
         });
 
         expect(ticket.pullEvents()).toEqual([]);
         expect(ticket.name).toBe('Restored name');
+        expect(ticket.version).toBe(3);
     });
 
-    it('rename records TicketRenamed scoped to the owning Club', () => {
+    it('rename records TicketRenamed scoped to the owning Club, leaving version unchanged', () => {
         const ticket = Ticket.rehydrate({
             id: TICKET_ID,
             clubId: CLUB_ID,
             createdBy: PRINCIPAL_ID,
             itemId: ITEM_ID,
             name: 'Old name',
+            version: 3,
         });
 
         ticket.rename('New name');
@@ -73,6 +77,7 @@ describe('Ticket', () => {
         expect(event?.scope).toEqual(ClubEventScope.of(CLUB_ID));
         expect(event?.payload).toEqual({ name: 'New name' });
         expect(ticket.name).toBe('New name');
+        expect(ticket.version).toBe(3);
     });
 
     it('rename rejects a blank name', () => {
@@ -82,6 +87,7 @@ describe('Ticket', () => {
             createdBy: PRINCIPAL_ID,
             itemId: ITEM_ID,
             name: 'Old name',
+            version: 1,
         });
 
         expect(() => {

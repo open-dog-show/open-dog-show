@@ -24,6 +24,7 @@ describe('Item', () => {
         expect(event?.scope).toEqual(ClubEventScope.of(CLUB_ID));
         expect(event?.payload).toEqual({ name: 'Original name' });
         expect(item.name).toBe('Original name');
+        expect(item.version).toBe(1);
     });
 
     it('create rejects a blank name', () => {
@@ -43,18 +44,21 @@ describe('Item', () => {
             clubId: CLUB_ID,
             createdBy: PRINCIPAL_ID,
             name: 'Restored name',
+            version: 3,
         });
 
         expect(item.pullEvents()).toEqual([]);
         expect(item.name).toBe('Restored name');
+        expect(item.version).toBe(3);
     });
 
-    it('rename records ItemRenamed and updates the name', () => {
+    it('rename records ItemRenamed and updates the name, leaving version unchanged', () => {
         const item = Item.rehydrate({
             id: ITEM_ID,
             clubId: CLUB_ID,
             createdBy: PRINCIPAL_ID,
             name: 'Old name',
+            version: 3,
         });
 
         item.rename('New name');
@@ -64,6 +68,7 @@ describe('Item', () => {
         expect(event?.scope).toEqual(ClubEventScope.of(CLUB_ID));
         expect(event?.payload).toEqual({ name: 'New name' });
         expect(item.name).toBe('New name');
+        expect(item.version).toBe(3);
     });
 
     it('rename rejects a blank name', () => {
@@ -72,6 +77,7 @@ describe('Item', () => {
             clubId: CLUB_ID,
             createdBy: PRINCIPAL_ID,
             name: 'Old name',
+            version: 1,
         });
 
         expect(() => {

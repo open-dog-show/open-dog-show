@@ -7,7 +7,8 @@
 CREATE TABLE IF NOT EXISTS sample.notes (
   id       UUID NOT NULL PRIMARY KEY,
   user_id  UUID NOT NULL,
-  name     TEXT NOT NULL
+  name     TEXT NOT NULL,
+  version  INTEGER NOT NULL DEFAULT 1
 );
 
 ALTER TABLE sample.notes ENABLE ROW LEVEL SECURITY;
