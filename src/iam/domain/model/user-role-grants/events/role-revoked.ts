@@ -35,7 +35,7 @@ export interface RoleRevokedPayload {
  * Modelled as a **class event** implementing {@link DomainEventFact}
  * (ADR-0027): the `type` field is fixed to {@link ROLE_REVOKED_TYPE}; the
  * payload is the typed {@link RoleRevokedPayload}. Recorded with
- * `EventScope.platform()` — `User`/role-grant data is platform-owned
+ * `PlatformEventScope.of()` — `User`/role-grant data is platform-owned
  * (ADR-0005), regardless of which Club a `ShowSecretary` grant named.
  * Carries no `eventId` / `occurredAt` — those are envelope fields the unit
  * of work stamps on afterwards. A private `#brand` field makes the class

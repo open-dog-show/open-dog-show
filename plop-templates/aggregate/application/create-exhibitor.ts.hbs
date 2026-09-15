@@ -39,17 +39,18 @@ export class Create{{pascalCase name}}Handler {
         scope: TransactionScope,
     ): Promise<Result<Create{{pascalCase name}}Response, Invalid{{pascalCase name}}NameError>> {
         const createdBy = requireActor(scope);
+        // This construct-then-save shape repeats near-identically across the
+        // 4 scope variants of every create-*.ts.hbs template — tracked in
+        // #216 (four-scope template duplication), not fixed here.
+        // create-hybrid.ts.hbs is the one variant that keeps validation
+        // inside the transaction instead — see its createInTransaction doc
+        // comment for why.
+        let {{camelCase name}}: {{pascalCase name}};
         try {
-            return await this.unitOfWork.run<
-                Result<Create{{pascalCase name}}Response, Invalid{{pascalCase name}}NameError>
-            >(scope, async (ctx) => {
-                const {{camelCase name}} = {{pascalCase name}}.create({
-                    id: as{{pascalCase name}}Id(command.id),
-                    createdBy,
-                    name: command.name,
-                });
-                await ctx.{{plural (camelCase name)}}.add({{camelCase name}});
-                return { ok: true, value: { id: {{camelCase name}}.id, name: {{camelCase name}}.name } };
+            {{camelCase name}} = {{pascalCase name}}.create({
+                id: as{{pascalCase name}}Id(command.id),
+                createdBy,
+                name: command.name,
             });
         } catch (error) {
             if (error instanceof Invalid{{pascalCase name}}NameError) {
@@ -57,5 +58,9 @@ export class Create{{pascalCase name}}Handler {
             }
             throw error;
         }
+        await this.unitOfWork.run(scope, async (ctx) => {
+            await ctx.{{plural (camelCase name)}}.add({{camelCase name}});
+        });
+        return { ok: true, value: { id: {{camelCase name}}.id, name: {{camelCase name}}.name } };
     }
 }

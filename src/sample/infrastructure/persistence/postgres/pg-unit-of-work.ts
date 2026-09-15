@@ -1,14 +1,13 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type pg from 'pg';
 import {
     withOutboxTransaction,
-    type Clock,
+    type CrudRepositoryPort,
     type DomainEventFact,
-    type EventIdGenerator,
-    type PgOutboxWriter,
+    type OutboxTransactionDeps,
     type TransactionScope,
+    UnitOfWorkGate,
 } from '../../../../Shared/index.js';
 // plop:imports
 import { DrizzleAnnouncementRepository } from './drizzle-announcement-repository.js';
@@ -23,32 +22,44 @@ import type {
     SampleUnitOfWork,
     SampleUnitOfWorkContext,
 } from '../../../application/ports/unit-of-work.js';
+import { UnitOfWorkClosedError } from '../../../domain/shared/unit-of-work-closed-error.js';
 
-interface CrudRepositoryPort<Id, T> {
-    findById(id: Id): Promise<T | undefined>;
-    add(entity: T): Promise<void>;
-    update(entity: T): Promise<void>;
+/** {@link UnitOfWorkGate}'s error factory for this context. */
+function buildUnitOfWorkClosedError(aggregate: string, operation: string): UnitOfWorkClosedError {
+    return new UnitOfWorkClosedError(aggregate, operation);
 }
 
 /**
  * Wraps a repository's `add`/`update` so each pulls and forwards the
  * aggregate's recorded facts to `record` (ADR-0027) — the single place this
  * context translates "saved" into "events queued for the outbox", shared by
- * every aggregate's port instead of repeated per aggregate.
+ * every aggregate's port instead of repeated per aggregate. Every method
+ * first calls `gate.assertOpen` so a `ctx` that escaped its `run` callback
+ * (#188) throws {@link UnitOfWorkClosedError} instead of touching a
+ * connection/transaction that no longer belongs to it.
  */
 function wrapRepositoryPort<Id, T extends { pullEvents(): readonly DomainEventFact[] }>(
     repository: CrudRepositoryPort<Id, T>,
-    record: (...facts: readonly DomainEventFact[]) => void,
+    options: {
+        readonly record: (...facts: readonly DomainEventFact[]) => void;
+        readonly gate: UnitOfWorkGate;
+        readonly typeName: string;
+    },
 ): CrudRepositoryPort<Id, T> {
     return {
-        findById: (id) => repository.findById(id),
+        findById: async (id) => {
+            options.gate.assertOpen(options.typeName, 'findById');
+            return repository.findById(id);
+        },
         add: async (entity) => {
+            options.gate.assertOpen(options.typeName, 'add');
             await repository.add(entity);
-            record(...entity.pullEvents());
+            options.record(...entity.pullEvents());
         },
         update: async (entity) => {
+            options.gate.assertOpen(options.typeName, 'update');
             await repository.update(entity);
-            record(...entity.pullEvents());
+            options.record(...entity.pullEvents());
         },
     };
 }
@@ -64,19 +75,16 @@ function wrapRepositoryPort<Id, T extends { pullEvents(): readonly DomainEventFa
  * recorded domain facts to the outbox before commit (or rolls back on error).
  * Saving an aggregate through its repository's `add`/`update` pulls and
  * stamps its recorded events (ADR-0027) — the application layer never touches
- * events, `pg`, `pg.PoolClient`, or `withOutboxTransaction`.
+ * events, `pg`, `pg.PoolClient`, or `withOutboxTransaction`. Once `run`
+ * resolves, `ctx` is closed (#188) — a caller that let it escape gets
+ * {@link UnitOfWorkClosedError} on any further use.
  *
  * Constructed once at the composition root with a `pg.Pool`, a
  * `PgOutboxWriter`, and the `Clock` / `EventIdGenerator` ports used to stamp
  * event envelopes; injected into use-case classes.
  */
 export class PgSampleUnitOfWork implements SampleUnitOfWork {
-    private readonly deps: {
-        readonly pool: pg.Pool;
-        readonly writer: PgOutboxWriter;
-        readonly clock: Clock;
-        readonly eventIdGenerator: EventIdGenerator;
-    };
+    private readonly deps: OutboxTransactionDeps;
 
     /**
      * @param deps.pool - The PostgreSQL connection pool (app role, RLS-enforced).
@@ -84,12 +92,7 @@ export class PgSampleUnitOfWork implements SampleUnitOfWork {
      * @param deps.clock - Stamps `occurredAt` on events pulled from a saved aggregate.
      * @param deps.eventIdGenerator - Stamps `eventId` on events pulled from a saved aggregate.
      */
-    constructor(deps: {
-        readonly pool: pg.Pool;
-        readonly writer: PgOutboxWriter;
-        readonly clock: Clock;
-        readonly eventIdGenerator: EventIdGenerator;
-    }) {
+    constructor(deps: OutboxTransactionDeps) {
         this.deps = deps;
     }
 
@@ -97,27 +100,39 @@ export class PgSampleUnitOfWork implements SampleUnitOfWork {
         scope: TransactionScope,
         body: (ctx: SampleUnitOfWorkContext) => Promise<T>,
     ): Promise<T> {
-        return withOutboxTransaction({ ...this.deps, scope }, async (client, record) => {
-            // plop:repository-instances
-            const announcementRepository = new DrizzleAnnouncementRepository(client);
+        const gate = new UnitOfWorkGate(buildUnitOfWorkClosedError);
+        try {
+            return await withOutboxTransaction({ ...this.deps, scope }, async (client, record) => {
+                // plop:repository-instances
+                const announcementRepository = new DrizzleAnnouncementRepository(client);
 
-            const ticketRepository = new DrizzleTicketRepository(client);
+                const ticketRepository = new DrizzleTicketRepository(client);
 
-            const noteRepository = new DrizzleNoteRepository(client);
+                const noteRepository = new DrizzleNoteRepository(client);
 
-            const itemRepository = new DrizzleItemRepository(client);
+                const itemRepository = new DrizzleItemRepository(client);
 
-            const ctx: SampleUnitOfWorkContext = {
-                // plop:repositories
-                announcements: wrapRepositoryPort(announcementRepository, record),
+                const portDeps = { record, gate };
+                const ctx: SampleUnitOfWorkContext = {
+                    // plop:repositories
+                    announcements: wrapRepositoryPort(announcementRepository, {
+                        ...portDeps,
+                        typeName: 'Announcement',
+                    }),
 
-                tickets: wrapRepositoryPort(ticketRepository, record),
+                    tickets: wrapRepositoryPort(ticketRepository, {
+                        ...portDeps,
+                        typeName: 'Ticket',
+                    }),
 
-                notes: wrapRepositoryPort(noteRepository, record),
+                    notes: wrapRepositoryPort(noteRepository, { ...portDeps, typeName: 'Note' }),
 
-                items: wrapRepositoryPort(itemRepository, record),
-            };
-            return body(ctx);
-        });
+                    items: wrapRepositoryPort(itemRepository, { ...portDeps, typeName: 'Item' }),
+                };
+                return body(ctx);
+            });
+        } finally {
+            gate.close();
+        }
     }
 }

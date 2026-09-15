@@ -100,9 +100,9 @@ export class UnknownMinimumGradeReferenceError extends DomainError {
  * is immutable once resolved, so — unlike `RoleGrant`/`User`/`Entry` — it has
  * no instance mutators.
  *
- * **Resolution is the validating factory (ADR-0029).** So consumers never
- * re-check them, three cross-references are validated as the snapshot is
- * composed: every {@link ClassDefinition.gradeScaleId} resolves to a {@link
+ * **Resolution is the validating factory (ADR-0029).** Three cross-references
+ * are validated as the snapshot is composed, so consumers never re-check
+ * them: every {@link ClassDefinition.gradeScaleId} resolves to a {@link
  * GradeScale} ({@link UnknownGradeScaleReferenceError}); every id in {@link
  * ClassDefinition.awardTypeIds} resolves to an {@link AwardType} ({@link
  * UnknownAwardTypeReferenceError}); and every award type's `minimumGradeId`

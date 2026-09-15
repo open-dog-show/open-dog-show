@@ -30,7 +30,7 @@ import { RoleRevoked } from './events/role-revoked.js';
  * to enforce the "no duplicate grant" invariant transactionally. Here, the
  * per-role grant methods and {@link revoke} are instance methods that decide
  * *whether* the change is allowed and record the resulting fact
- * (`RoleGranted`/`RoleRevoked`, both `EventScope.platform()` — role-grant
+ * (`RoleGranted`/`RoleRevoked`, both `PlatformEventScope.of()` — role-grant
  * data is platform-owned regardless of which Club a `ShowSecretary` grant
  * names, ADR-0005).
  *

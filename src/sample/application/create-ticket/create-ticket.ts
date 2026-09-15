@@ -77,6 +77,16 @@ export class CreateTicketHandler {
         }
     }
 
+    /**
+     * Reads the referenced Item inside the same transaction that writes the
+     * new Ticket, so "a Ticket's owner is its Item's Club" can be enforced
+     * without trusting a caller-supplied `clubId` (see
+     * {@link CreateTicketCommand}). Only the Ticket aggregate is written —
+     * the Item read is unlocked, so a concurrent rename of the Item's owning
+     * Club between this read and commit is possible in principle; that
+     * staleness window is accepted rather than guarded against, since the
+     * read gives no stronger guarantee regardless of scope.
+     */
     private async createInTransaction(
         ctx: SampleUnitOfWorkContext,
         command: CreateTicketCommand,

@@ -3,11 +3,11 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import type pg from 'pg';
-import { PgPollingDispatcher } from '../../../../../src/Shared/infrastructure/persistence/postgres/pg-polling-dispatcher.js';
-import { OutboxDispatchFailed } from '../../../../../src/Shared/infrastructure/persistence/postgres/outbox-dispatch-failed.js';
-import { DomainEventRehydrationRegistry } from '../../../../../src/Shared/infrastructure/messaging/domain-event-codec.js';
-import type { DomainEventFact } from '../../../../../src/Shared/domain/domain-event.js';
-import { asEventType } from '../../../../../src/Shared/domain/domain-event-type.js';
+import { PgPollingDispatcher } from '../../../../src/Shared/infrastructure/messaging/pg-polling-dispatcher.js';
+import { OutboxDispatchFailed } from '../../../../src/Shared/infrastructure/messaging/outbox-dispatch-failed.js';
+import { DomainEventRehydrationRegistry } from '../../../../src/Shared/infrastructure/messaging/domain-event-rehydration-registry.js';
+import type { DomainEventFact } from '../../../../src/Shared/domain/domain-event.js';
+import { asEventType } from '../../../../src/Shared/domain/domain-event-type.js';
 
 /** Quarantine threshold shared by the dispatcher's `maxAttempts` and a seeded poison-pill row's `attempts`, so the two stay in lockstep. */
 const MAX_ATTEMPTS = 5;
@@ -104,7 +104,14 @@ function recordAttempt(states: readonly RowState[], seq: string, failRecording: 
     }
     const state = findBySeq(states, seq);
     if (state) state.attempts += 1;
-    return { rows: [{ attempts: state?.attempts ?? 0 }] };
+    return { rows: state ? [{ attempts: state.attempts }] : [] };
+}
+
+function countQuarantined(states: readonly RowState[], maxAttempts: number) {
+    const count = states.filter(
+        (s) => s.dispatchedAt === undefined && s.attempts >= maxAttempts,
+    ).length;
+    return { rows: [{ count: String(count) }] };
 }
 
 /**
@@ -132,6 +139,9 @@ function fakePool(
             if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rows: [] };
             if (sql.startsWith('SELECT seq')) {
                 return selectNextRowValidated(sql, states, params[0] as number);
+            }
+            if (sql.startsWith('SELECT COUNT')) {
+                return countQuarantined(states, params[0] as number);
             }
             if (sql.includes('SET dispatched_at'))
                 return markDispatched(states, params[0] as string);
@@ -254,16 +264,16 @@ describe('PgPollingDispatcher — OutboxDispatchFailed', () => {
         expect(caught).toBeInstanceOf(OutboxDispatchFailed);
         const err = caught as OutboxDispatchFailed;
         // The recording query itself failed, so `attempts` could not be read
-        // back and defaults to 0 — but the original handler failure AND the
-        // recording failure are both preserved on `cause`, not discarded.
-        expect(err.attempts).toBe(0);
+        // back and stays `undefined` — but the original handler failure AND
+        // the recording failure are both preserved on `cause`, not discarded.
+        expect(err.attempts).toBeUndefined();
         expect(err.cause).toMatchObject({
             error: 'handler blew up',
             recordingError: 'recording query failed',
         });
     });
 
-    it('returns 0 without throwing when there is no pending row', async () => {
+    it('returns dispatched: 0, quarantined: 0 without throwing when there is no pending row', async () => {
         const dispatcher = new PgPollingDispatcher({
             pool: fakePool([]),
             schema: 'sample',
@@ -271,7 +281,7 @@ describe('PgPollingDispatcher — OutboxDispatchFailed', () => {
             registry: registryFor((fact) => fact),
         });
 
-        await expect(dispatcher.poll()).resolves.toBe(0);
+        await expect(dispatcher.poll()).resolves.toEqual({ dispatched: 0, quarantined: 0 });
     });
 });
 
@@ -298,9 +308,9 @@ describe('PgPollingDispatcher — poison-pill quarantine, handler timeout, multi
             registry: registryFor((fact) => fact),
         });
 
-        const dispatchedCount = await dispatcher.poll();
+        const result = await dispatcher.poll();
 
-        expect(dispatchedCount).toBe(1);
+        expect(result).toEqual({ dispatched: 1, quarantined: 1 });
         // The quarantined row (attempts === maxAttempts) was never handed to
         // the handler — only the eligible row was.
         expect(handledAggregateIds).toEqual(['entry-2']);
@@ -378,9 +388,9 @@ describe('PgPollingDispatcher — poison-pill quarantine, handler timeout, multi
             registry: registryFor((fact) => fact),
         });
 
-        const dispatchedCount = await dispatcher.poll(10);
+        const result = await dispatcher.poll(10);
 
-        expect(dispatchedCount).toBe(3);
+        expect(result).toEqual({ dispatched: 3, quarantined: 0 });
         expect(handledAggregateIds).toEqual(['entry-1', 'entry-2', 'entry-3']);
         for (const state of rows) {
             expect(state.dispatchedAt).toBeInstanceOf(Date);

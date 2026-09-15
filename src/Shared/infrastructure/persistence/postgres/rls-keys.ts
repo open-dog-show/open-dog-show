@@ -3,6 +3,7 @@
 
 import type { ClubId, PrincipalId } from '../../../domain/domain-ids.js';
 import type { TransactionScope } from '../../../domain/transaction-scope.js';
+import { scopeToOwnerColumns } from './owner-columns.js';
 
 /**
  * The pair of RLS session keys derived from a {@link TransactionScope}.
@@ -28,33 +29,19 @@ export interface RlsKeys {
 }
 
 /**
- * Maps a {@link TransactionScope} to its RLS key pair, centralising the
- * nullability normalisation:
+ * Maps a {@link TransactionScope} to its RLS key pair:
  *
  * - `club`      → both `clubId` and `principalId` are set.
  * - `exhibitor` → only `principalId` is set; `clubId` is `null`.
  * - `platform`  → both are `null` (no Club or user isolation).
  *
+ * Delegates the nullability normalisation to the shared
+ * {@link scopeToOwnerColumns} (also used by `pg-outbox-writer.ts`'s
+ * `eventOwnerColumns`, from the event's own `EventScope`).
+ *
  * Used by the RLS session-variable setter in `with-transaction.ts`. Internal
  * — not part of the kernel's public surface.
  */
 export function scopeToRlsKeys(scope: TransactionScope): RlsKeys {
-    switch (scope.kind) {
-        case 'club':
-            return { clubId: scope.clubId, principalId: scope.principalId };
-        case 'exhibitor':
-            return { clubId: null, principalId: scope.principalId };
-        case 'platform':
-            return { clubId: null, principalId: null };
-        default:
-            // Exhaustiveness guard: a future TransactionScope variant added
-            // without a case here fails to compile (assertNever rejects the
-            // narrowed non-never type), rather than silently returning undefined.
-            return assertNever(scope);
-    }
-}
-
-/** Compile-time exhaustiveness check for an unreachable `never` branch. */
-function assertNever(value: never): never {
-    throw new Error(`Unexpected TransactionScope kind: ${String(value)}`);
+    return scopeToOwnerColumns(scope);
 }

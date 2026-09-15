@@ -7,7 +7,11 @@
  * the row's `seq`, `eventId`, `type`, and the `attempts` count after this
  * failure was recorded, so a caller can tell a routine retry (`attempts`
  * below the dispatcher's `maxAttempts`) from a just-quarantined poison pill
- * (`attempts` at or above it).
+ * (`attempts` at or above it). `attempts` is `undefined` when it could not be
+ * determined — the best-effort recording query itself failed (see
+ * `cause.recordingError`), or the row vanished before the `UPDATE` could
+ * apply — distinct from a genuine first failure, where a real post-increment
+ * `attempts` is always at least 1.
  *
  * The original failure's message is preserved on `cause`; when the
  * best-effort `attempts`/`last_error` recording itself fails, that failure is
@@ -38,18 +42,18 @@ export class OutboxDispatchFailed extends Error {
     readonly seq: string;
     readonly eventId: string;
     readonly type: string;
-    readonly attempts: number;
+    readonly attempts: number | undefined;
 
     constructor(params: {
         readonly seq: string;
         readonly eventId: string;
         readonly type: string;
-        readonly attempts: number;
+        readonly attempts: number | undefined;
         readonly cause: unknown;
         readonly recordingError?: unknown;
     }) {
         super(
-            `Outbox dispatch failed for event '${params.eventId}' (type '${params.type}', attempt ${String(params.attempts)})`,
+            `Outbox dispatch failed for event '${params.eventId}' (type '${params.type}', attempt ${params.attempts === undefined ? 'unknown' : String(params.attempts)})`,
             {
                 cause: {
                     error:

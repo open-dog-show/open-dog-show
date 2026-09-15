@@ -13,11 +13,10 @@ import type { Grade } from '../../model/effective-ruleset/entities/grade-scale.j
  * its class's grade scale — see {@link meetsAwardRequirements}).
  */
 export function resolveGrade(
-    gradeId: GradeId | undefined,
+    gradeId: GradeId,
     gradeScaleId: GradeScaleId,
     ruleset: EffectiveRuleset,
 ): Grade | undefined {
-    if (gradeId === undefined) return undefined;
     return ruleset.gradeScale(gradeScaleId)?.grade(gradeId);
 }
 

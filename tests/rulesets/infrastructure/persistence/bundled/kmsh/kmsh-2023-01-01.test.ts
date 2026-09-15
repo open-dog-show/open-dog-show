@@ -13,6 +13,7 @@ import {
     fci20270101,
     FCI_AWARD_BOB,
     FCI_AWARD_BOS,
+    FCI_CLASS_MINOR_PUPPY,
 } from '../../../../../../src/rulesets/infrastructure/persistence/bundled/fci/index.js';
 import { EffectiveRuleset } from '../../../../../../src/rulesets/domain/model/effective-ruleset/effective-ruleset.js';
 import { asEffectiveRulesetId } from '../../../../../../src/rulesets/domain/shared/domain-ids.js';
@@ -28,7 +29,7 @@ describe('kmsh20230101 — structure', () => {
 
     it('overrides Minor Puppy class with fromAgeMonths=3 (KMSH ART.23)', () => {
         const cls = findOrFail(
-            kmsh20230101.classDefinitions.find((c) => c.id === 'minor-puppy'),
+            kmsh20230101.classDefinitions.find((c) => c.id === FCI_CLASS_MINOR_PUPPY),
             'minor-puppy',
         );
         expect(cls.fromAgeMonths).toBe(3);

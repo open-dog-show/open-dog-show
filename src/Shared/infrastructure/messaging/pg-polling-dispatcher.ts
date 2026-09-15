@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type pg from 'pg';
-import type { DomainEvent } from '../../../domain/domain-event.js';
+import type { DomainEvent } from '../../domain/domain-event.js';
 import {
     rehydrateDomainEvent,
     type DomainEventRehydrationRegistry,
-} from '../../messaging/domain-event-codec.js';
-import { quoteSchemaIdent } from './schema-ident.js';
-import { runInClientTransaction } from './with-transaction.js';
-import { TransactionFailed } from './transaction-failed.js';
+} from './domain-event-rehydration-registry.js';
+import { quoteSchemaIdent } from '../persistence/postgres/schema-ident.js';
+import { runInClientTransaction } from '../persistence/postgres/with-transaction.js';
+import { TransactionFailed } from '../persistence/postgres/transaction-failed.js';
 import { OutboxDispatchFailed } from './outbox-dispatch-failed.js';
 
 /**
@@ -60,9 +60,13 @@ export type EventHandler = (event: DomainEvent, signal: AbortSignal) => Promise<
  *   transaction rolls back); rows whose `attempts` reach `maxAttempts` are
  *   skipped (quarantined) so later rows are not starved.
  * - **Handler timeout:** `handlerTimeoutMs` bounds each handler call (0 = no
- *   timeout); on timeout the handler's `AbortSignal` is aborted and the call is
- *   treated as a handler failure (attempt incremented). The row lock is held
- *   until the handler settles, so a timed-out handler must honour the signal.
+ *   timeout); on timeout the handler's `AbortSignal` is aborted, but the
+ *   dispatcher then simply awaits the handler call as normal — a handler
+ *   that ignores the signal and later resolves is still marked
+ *   `dispatched_at` with no attempt increment. The row lock is held until the
+ *   handler settles, so a timed-out handler must honour the signal both to
+ *   fail promptly and to release the lock. (Tracked as a real failure mode in
+ *   #210 — not yet enforced here.)
  * - On a per-row failure (handler error, or an unregistered event type) `poll`
  *   rethrows {@link OutboxDispatchFailed} — the batch does not continue past a
  *   failing row, so rows after it are left pending too. A failure before any
@@ -112,11 +116,16 @@ export class PgPollingDispatcher {
      * in its own transaction.  Stops early when no more pending rows exist.
      * If a row's handler throws, `poll` rethrows immediately after rolling
      * back that row's transaction; remaining rows are left for a subsequent
-     * poll cycle.
+     * poll cycle, and `quarantined` is not computed for this cycle.
      *
-     * @returns the number of events dispatched in this cycle.
+     * @returns `dispatched` — the number of events dispatched in this cycle;
+     *   `quarantined` — the number of pending rows currently at
+     *   `maxAttempts`, excluded from `selectNextRow`'s predicate and
+     *   otherwise invisible to a caller.
      */
-    async poll(batchSize: number = DEFAULT_DISPATCH_BATCH_SIZE): Promise<number> {
+    async poll(
+        batchSize: number = DEFAULT_DISPATCH_BATCH_SIZE,
+    ): Promise<{ readonly dispatched: number; readonly quarantined: number }> {
         let dispatched = 0;
 
         for (let i = 0; i < batchSize; i++) {
@@ -127,7 +136,25 @@ export class PgPollingDispatcher {
             dispatched++;
         }
 
-        return dispatched;
+        const quarantined = await this.countQuarantinedRows();
+        return { dispatched, quarantined };
+    }
+
+    /**
+     * Counts pending rows currently excluded from dispatch by
+     * {@link selectNextRow}'s `attempts < maxAttempts` predicate — poison
+     * pills quarantined after repeated handler failures.
+     */
+    private async countQuarantinedRows(): Promise<number> {
+        return this.withClient(async (client) => {
+            const res = await client.query<{ count: string }>(
+                `SELECT COUNT(*) AS count
+                 FROM ${this.quotedSchema}.outbox
+                 WHERE dispatched_at IS NULL AND attempts >= $1`,
+                [this.maxAttempts],
+            );
+            return Number(res.rows[0]?.count ?? 0);
+        });
     }
 
     /**
@@ -142,36 +169,33 @@ export class PgPollingDispatcher {
      */
     private async processOne(): Promise<boolean> {
         return this.withClient(async (client) => {
-            // `seq` / `rawEventId` / `rawType` are captured into the outer scope
-            // — before rehydration — so a failure (including rehydration itself
-            // failing) still carries row context for `OutboxDispatchFailed`.
-            let seq: string | undefined;
-            let rawEventId: string | undefined;
-            let rawType: string | undefined;
+            // Captured into the outer scope — before rehydration — so a failure
+            // (including rehydration itself failing) still carries row context
+            // for `OutboxDispatchFailed`. Set as one object, not three separate
+            // `let`s: `seq`/`eventId`/`type` are only ever known together, so
+            // this lets a single `undefined` check below prove all three are
+            // defined, rather than falling back to an empty-string sentinel for
+            // `eventId`/`type` that could never actually be reached.
+            let selected:
+                | { readonly seq: string; readonly eventId: string; readonly type: string }
+                | undefined;
 
             try {
                 return await runInClientTransaction(client, async (c) => {
                     const row = await this.selectNextRow(c);
                     if (row === undefined) return false; // no eligible row available to this worker
-                    seq = row.seq;
-                    rawEventId = row.event_id;
-                    rawType = row.type;
+                    selected = { seq: row.seq, eventId: row.event_id, type: row.type };
 
                     await this.dispatchRow(c, row);
                     return true;
                 });
             } catch (err) {
-                if (seq === undefined) {
+                if (selected === undefined) {
                     // Failed before (or while) selecting a row — e.g. a connection
                     // fault (TransactionFailed). Not a per-row dispatch failure.
                     throw err;
                 }
-                throw await this.recordDispatchFailure(client, {
-                    seq,
-                    eventId: rawEventId ?? '',
-                    type: rawType ?? '',
-                    cause: err,
-                });
+                throw await this.recordDispatchFailure(client, { ...selected, cause: err });
             }
         });
     }
@@ -243,7 +267,7 @@ export class PgPollingDispatcher {
         },
     ): Promise<OutboxDispatchFailed> {
         const { seq, eventId, type, cause } = failure;
-        let attempts = 0;
+        let attempts: number | undefined;
         let recordingError: unknown;
         try {
             attempts = await runInClientTransaction(client, async (c) => {
@@ -254,7 +278,12 @@ export class PgPollingDispatcher {
                      RETURNING attempts`,
                     [seq, String(cause)],
                 );
-                return rows[0]?.attempts ?? 0;
+                // `rows[0]` is absent only if the row vanished between
+                // selection and this UPDATE — distinct from a genuine first
+                // failure, where a real post-increment `attempts` is always
+                // at least 1. Leave `attempts` `undefined` rather than
+                // defaulting to `0`, which would read as "not yet failed".
+                return rows[0]?.attempts;
             });
         } catch (recErr) {
             recordingError = recErr;
