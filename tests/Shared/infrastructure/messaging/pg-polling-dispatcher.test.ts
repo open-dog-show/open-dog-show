@@ -120,6 +120,23 @@ function countQuarantined(states: readonly RowState[], maxAttempts: number) {
     return { rows: [{ count: String(count) }] };
 }
 
+/** Routes one fake query by matching the SQL fragments {@link fakePool}'s doc describes. Kept out of the `query` closure so its branch count doesn't count against the closure's own complexity budget. */
+function routeFakeQuery(
+    sql: string,
+    params: readonly unknown[],
+    context: { readonly states: readonly RowState[]; readonly failRecording: boolean },
+) {
+    const { states, failRecording } = context;
+    if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rows: [] };
+    if (sql.startsWith('SELECT seq'))
+        return selectNextRowValidated(sql, states, params[0] as number);
+    if (sql.startsWith('SELECT COUNT')) return countQuarantined(states, params[0] as number);
+    if (sql.includes('SET dispatched_at')) return markDispatched(states, params[0] as string);
+    if (sql.includes('SET attempts')) return claimAttempt(states, params[0] as string);
+    if (sql.includes('SET last_error')) return recordLastError(failRecording);
+    return { rows: [] };
+}
+
 /**
  * A `pg.Pool` fake that serves `states` through the dispatcher's real query
  * sequence, without a database:
@@ -139,23 +156,6 @@ function countQuarantined(states: readonly RowState[], maxAttempts: number) {
  * `options.failRecording` makes that `SET last_error` query itself reject,
  * simulating the best-effort `last_error` recording transaction failing.
  */
-/** Routes one fake query by matching the SQL fragments {@link fakePool}'s doc describes. Kept out of the `query` closure so its branch count doesn't count against the closure's own complexity budget. */
-function routeFakeQuery(
-    sql: string,
-    params: readonly unknown[],
-    context: { readonly states: readonly RowState[]; readonly failRecording: boolean },
-) {
-    const { states, failRecording } = context;
-    if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rows: [] };
-    if (sql.startsWith('SELECT seq'))
-        return selectNextRowValidated(sql, states, params[0] as number);
-    if (sql.startsWith('SELECT COUNT')) return countQuarantined(states, params[0] as number);
-    if (sql.includes('SET dispatched_at')) return markDispatched(states, params[0] as string);
-    if (sql.includes('SET attempts')) return claimAttempt(states, params[0] as string);
-    if (sql.includes('SET last_error')) return recordLastError(failRecording);
-    return { rows: [] };
-}
-
 function fakePool(
     states: readonly RowState[],
     options?: { readonly failRecording?: boolean },
