@@ -433,6 +433,72 @@ describe('PgPollingDispatcher — poison-pill quarantine, handler timeout, multi
         }
     });
 
+    it("lets a second dispatcher instance claim and run the same row while the first instance's handler is still in flight (widened redelivery window, #210)", async () => {
+        vi.useFakeTimers();
+        try {
+            const state = rowState();
+            const states = [state];
+            let releaseFirstHandler: (() => void) | undefined;
+            const firstHandlerCalls: string[] = [];
+            const secondHandlerCalls: string[] = [];
+
+            const first = new PgPollingDispatcher({
+                pool: fakePool(states),
+                schema: 'sample',
+                handlerTimeoutMs: 0,
+                handler: (event) => {
+                    firstHandlerCalls.push(String(event.aggregateId));
+                    // Held open — never resolves on its own — so the second
+                    // instance's poll runs while this handler is still in
+                    // flight.
+                    return new Promise<void>((resolve) => {
+                        releaseFirstHandler = resolve;
+                    });
+                },
+                registry: registryFor((fact) => fact),
+            });
+            const second = new PgPollingDispatcher({
+                pool: fakePool(states),
+                schema: 'sample',
+                handlerTimeoutMs: 0,
+                handler: (event) => {
+                    secondHandlerCalls.push(String(event.aggregateId));
+                    return Promise.resolve();
+                },
+                registry: registryFor((fact) => fact),
+            });
+
+            const firstPollPromise = first.poll();
+            // No real timer is armed (handlerTimeoutMs: 0) — this just
+            // flushes the microtask chain (claim transaction, then the
+            // handler call) up to the point where the handler's promise is
+            // pending.
+            await vi.advanceTimersByTimeAsync(0);
+            expect(firstHandlerCalls).toEqual(['entry-1']);
+            // The claim transaction already committed and released the row's
+            // lock; dispatched_at is still NULL — exactly the window the
+            // class doc now describes.
+            expect(state.attempts).toBe(1);
+            expect(state.dispatchedAt).toBeUndefined();
+
+            const secondResult = await second.poll();
+
+            expect(secondResult).toEqual({ dispatched: 1, quarantined: 0 });
+            expect(secondHandlerCalls).toEqual(['entry-1']);
+            expect(state.dispatchedAt).toBeInstanceOf(Date);
+            expect(state.attempts).toBe(2);
+
+            // The first instance's handler is still pending throughout the
+            // above — only now let it resolve, proving its own poll()
+            // completes independently of the second instance's.
+            releaseFirstHandler?.();
+            await firstPollPromise;
+            expect(state.dispatchCount).toBe(2);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('dispatches every row of a multi-row poll, marking each dispatched exactly once', async () => {
         const rows = [
             rowState({

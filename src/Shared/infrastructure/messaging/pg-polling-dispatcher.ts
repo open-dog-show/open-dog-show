@@ -10,7 +10,7 @@ import {
 import { quoteSchemaIdent } from '../persistence/postgres/schema-ident.js';
 import { runInClientTransaction } from '../persistence/postgres/with-transaction.js';
 import { TransactionFailed } from '../persistence/postgres/transaction-failed.js';
-import { OutboxDispatchFailed } from './outbox-dispatch-failed.js';
+import { OutboxDispatchFailed, type OutboxRowFailureContext } from './outbox-dispatch-failed.js';
 
 /**
  * Default number of pending outbox rows one {@link PgPollingDispatcher.poll}
@@ -54,10 +54,15 @@ export type EventHandler = (event: DomainEvent, signal: AbortSignal) => Promise<
  *   is released and `dispatched_at` is still `NULL`, so a second dispatcher's
  *   poll can select and run the handler on the same row for the rest of the
  *   first instance's handler call — a wider redelivery window than the
- *   previous design, which held the lock for the handler's whole run, but
- *   one the same handler idempotency this class already requires covers. In
- *   exchange, a crash between claim-commit and the handler settling leaves
- *   the row pending with its `attempts` already counted, not stuck locked.
+ *   previous design, which held the lock for the handler's whole run. This
+ *   window permits genuinely *concurrent* re-delivery, not only sequential
+ *   retry after a crash: the `event.eventId` idempotency this class already
+ *   requires (see {@link EventHandler}) must itself be safe under two
+ *   overlapping calls, not merely safe to re-run once the first one finished
+ *   — a handler whose idempotency check is a non-atomic read-then-write is
+ *   not automatically safe here. In exchange, a crash between claim-commit
+ *   and the handler settling leaves the row pending with its `attempts`
+ *   already counted, not stuck locked.
  * - `dispatched_at` is set on success, in a second short transaction after the
  *   handler resolves.
  * - Delivery is at-least-once; the handler is expected to be idempotent on
@@ -80,9 +85,13 @@ export type EventHandler = (event: DomainEvent, signal: AbortSignal) => Promise<
  *   {@link OutboxDispatchFailed} — the batch does not continue past a
  *   failing row, so rows after it are left pending too. A failure while
  *   claiming a row, or while marking a row dispatched after its handler
- *   already succeeded (e.g. a connection fault), propagates unwrapped
- *   instead — typically {@link TransactionFailed} — since it is not
- *   attributable to the handler and so not a per-row dispatch failure.
+ *   already succeeded, propagates unwrapped instead, since it is not
+ *   attributable to the handler and so not a per-row dispatch failure:
+ *   {@link TransactionFailed} for a pool-connect or claim-transaction
+ *   `BEGIN`/`COMMIT` failure, the raw driver error otherwise — a query
+ *   failure inside the claim transaction body, or in
+ *   {@link executeAutocommit}'s single-statement writes, is deliberately
+ *   left unwrapped (see {@link runInClientTransaction}).
  */
 export class PgPollingDispatcher {
     private readonly pool: pg.Pool;
@@ -275,7 +284,11 @@ export class PgPollingDispatcher {
      * aborting `controller`'s signal when the timer fires so a cooperating
      * handler can cancel its in-flight work — and so a handler that ignores
      * the signal and later resolves still loses the race, producing a
-     * failure here rather than a silently-late success.
+     * failure here rather than a silently-late success. `handlerCall` is
+     * already running by the time it's passed in here — the timer and abort
+     * listener arm at this method's own entry, a few synchronous statements
+     * after the handler call started, so only work the handler does after
+     * its own first `await` is actually bounded by this clock.
      */
     private async raceAgainstTimeout(
         handlerCall: Promise<void>,
@@ -307,14 +320,22 @@ export class PgPollingDispatcher {
      * transaction and the handler call itself.
      */
     private async markDispatched(seq: string): Promise<void> {
-        await this.execute(
+        await this.executeAutocommit(
             `UPDATE ${this.quotedSchema}.outbox SET dispatched_at = NOW() WHERE seq = $1`,
             [seq],
         );
     }
 
-    /** Checks out a client, fires one autocommitting statement, and releases it — the shared shape behind {@link markDispatched} and {@link recordDispatchFailure}'s write. */
-    private async execute(sql: string, params: readonly unknown[]): Promise<void> {
+    /**
+     * Checks out a client, fires one statement outside any transaction
+     * (autocommitting), and releases the client — the shared shape behind
+     * {@link markDispatched} and {@link recordDispatchFailure}'s write. Unlike
+     * {@link claimNextRow}, a failure here is never wrapped as
+     * {@link TransactionFailed} — only `pool.connect()` itself is; the query
+     * propagates as whatever the driver throws (see the class doc's failure
+     * bullet).
+     */
+    private async executeAutocommit(sql: string, params: readonly unknown[]): Promise<void> {
         await this.withClient((client) => client.query(sql, params as unknown[]));
     }
 
@@ -327,17 +348,13 @@ export class PgPollingDispatcher {
      * returned on the built {@link OutboxDispatchFailed}'s `cause.recordingError`
      * rather than discarded.
      */
-    private async recordDispatchFailure(failure: {
-        readonly seq: string;
-        readonly eventId: string;
-        readonly type: string;
-        readonly attempts: number;
-        readonly cause: unknown;
-    }): Promise<OutboxDispatchFailed> {
+    private async recordDispatchFailure(
+        failure: OutboxRowFailureContext & { readonly cause: unknown },
+    ): Promise<OutboxDispatchFailed> {
         const { seq, eventId, type, attempts, cause } = failure;
         let recordingError: unknown;
         try {
-            await this.execute(
+            await this.executeAutocommit(
                 `UPDATE ${this.quotedSchema}.outbox SET last_error = $2 WHERE seq = $1`,
                 [seq, String(cause)],
             );

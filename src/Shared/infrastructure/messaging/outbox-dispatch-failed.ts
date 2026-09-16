@@ -37,20 +37,33 @@ function describeUnstringifiedCause(value: unknown): string {
     }
 }
 
+/**
+ * The row-identifying fields a dispatch failure carries — `seq`, `eventId`,
+ * `type`, and `attempts` — factored into one type so {@link OutboxDispatchFailed}'s
+ * constructor and `PgPollingDispatcher.recordDispatchFailure`'s parameter
+ * share it instead of two independently-declared shapes that must be kept in
+ * sync by hand (see #210's ticket-review: this is exactly what made the
+ * `attempts` type narrowing a three-site manual edit).
+ */
+export interface OutboxRowFailureContext {
+    readonly seq: string;
+    readonly eventId: string;
+    readonly type: string;
+    readonly attempts: number;
+}
+
 export class OutboxDispatchFailed extends Error {
     readonly seq: string;
     readonly eventId: string;
     readonly type: string;
     readonly attempts: number;
 
-    constructor(params: {
-        readonly seq: string;
-        readonly eventId: string;
-        readonly type: string;
-        readonly attempts: number;
-        readonly cause: unknown;
-        readonly recordingError?: unknown;
-    }) {
+    constructor(
+        params: OutboxRowFailureContext & {
+            readonly cause: unknown;
+            readonly recordingError?: unknown;
+        },
+    ) {
         super(
             `Outbox dispatch failed for event '${params.eventId}' (type '${params.type}', attempt ${String(params.attempts)})`,
             {
