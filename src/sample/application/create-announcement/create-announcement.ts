@@ -37,16 +37,17 @@ export class CreateAnnouncementHandler {
         command: CreateAnnouncementCommand,
         scope: TransactionScope,
     ): Promise<Result<CreateAnnouncementResponse, InvalidAnnouncementNameError>> {
+        // This construct-then-save shape repeats near-identically across the
+        // 4 scope variants of every create-*.ts.hbs template — tracked in
+        // #216 (four-scope template duplication), not fixed here.
+        // create-hybrid.ts.hbs is the one variant that keeps validation
+        // inside the transaction instead — see its createInTransaction doc
+        // comment for why.
+        let announcement: Announcement;
         try {
-            return await this.unitOfWork.run<
-                Result<CreateAnnouncementResponse, InvalidAnnouncementNameError>
-            >(scope, async (ctx) => {
-                const announcement = Announcement.create({
-                    id: asAnnouncementId(command.id),
-                    name: command.name,
-                });
-                await ctx.announcements.add(announcement);
-                return { ok: true, value: { id: announcement.id, name: announcement.name } };
+            announcement = Announcement.create({
+                id: asAnnouncementId(command.id),
+                name: command.name,
             });
         } catch (error) {
             if (error instanceof InvalidAnnouncementNameError) {
@@ -54,5 +55,9 @@ export class CreateAnnouncementHandler {
             }
             throw error;
         }
+        await this.unitOfWork.run(scope, async (ctx) => {
+            await ctx.announcements.add(announcement);
+        });
+        return { ok: true, value: { id: announcement.id, name: announcement.name } };
     }
 }

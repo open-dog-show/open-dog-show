@@ -50,10 +50,10 @@ status: accepted
 > **Amended 2026-09-11 by [ADR-0027](0027-roots-record-events-unit-of-work-stamps-envelope.md)
 > (#184):** `EventScope` carries owner ids again, so the outbox's `club_id`/`user_id`
 > can be filled from the event rather than from the acting `TransactionScope`. Its variants
-> now differ in fields (`club(clubId)` / `exhibitor(principalId)` / `platform()`), so
-> the "different shape, separate classes" rule applies. `EventScope` becomes a class-based
-> **variant value object** like `TransactionScope`, reversing the (EventScope, #173)
-> amendment above. `RoleScope` is unaffected.
+> now differ in fields (`ClubEventScope.of(clubId)` / `ExhibitorEventScope.of(principalId)` /
+> `PlatformEventScope.of()`), so the "different shape, separate classes" rule applies. `EventScope`
+> becomes a class-based **variant value object** like `TransactionScope`, reversing the
+> (EventScope, #173) amendment above. `RoleScope` is unaffected.
 >
 > This supersedes the `EventScope` bullet under Decision, the "wire/DB form of `EventScope` stays the `kind`
 > string" paragraph, and the matching Consequences bullet. The wire form is `scope` plus the flattened owner

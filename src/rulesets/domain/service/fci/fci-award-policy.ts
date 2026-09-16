@@ -16,12 +16,8 @@ import type {
     AwardValidationResult,
     ProposedAwardAssignment,
 } from '../award-policy/award-policy.js';
-import type {
-    CandidateStream,
-    ClassPlacement,
-    JudgingScopeResults,
-    StreamCandidate,
-} from '../award-policy/judging-scope-results.js';
+import type { ClassPlacement, JudgingScopeResults } from '../award-policy/judging-scope-results.js';
+import type { CandidateStream, StreamCandidate } from '../award-policy/candidate-stream.js';
 import { meetsAwardRequirements } from './meets-award-requirements.js';
 import { resolveGradePairOnSharedScale } from './grade-comparison.js';
 

@@ -20,7 +20,7 @@ import { buildIamEventRehydrationRegistry } from '../../../../src/iam/infrastruc
 import type {
     DomainEventRehydrationRegistry,
     DomainEventRehydrator,
-} from '../../../../src/Shared/infrastructure/messaging/domain-event-codec.js';
+} from '../../../../src/Shared/infrastructure/messaging/domain-event-rehydration-registry.js';
 import type { EventType } from '../../../../src/Shared/index.js';
 
 const AGGREGATE_ID = asAggregateId('user-alice');

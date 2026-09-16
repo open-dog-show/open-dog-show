@@ -32,15 +32,17 @@ import {
 import { RulesetLayerEdition } from '../../../../../src/rulesets/domain/model/ruleset-layer-edition/ruleset-layer-edition.js';
 import { EffectiveRuleset } from '../../../../../src/rulesets/domain/model/effective-ruleset/effective-ruleset.js';
 import {
-    StreamCandidate,
-    AwardFeederStream,
-    ClassFeederStream,
     PerSexJudgingScopeResults,
     HigherScopeJudgingScopeResults,
     ClassPlacement,
-    type CandidateStream,
     type JudgingScopeResults,
 } from '../../../../../src/rulesets/domain/service/award-policy/judging-scope-results.js';
+import {
+    StreamCandidate,
+    AwardFeederStream,
+    ClassFeederStream,
+    type CandidateStream,
+} from '../../../../../src/rulesets/domain/service/award-policy/candidate-stream.js';
 import type { ProposedAwardAssignment } from '../../../../../src/rulesets/domain/service/award-policy/award-policy.js';
 import { LocalDate } from '../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
 import {

@@ -37,10 +37,11 @@ export interface UserAttributes {
  * `field` discriminates which required claim was rejected — `sub` (the
  * external subject) or `email`. {@link AuthenticateHandler} catches this and
  * returns it as a `Result` failure (alongside {@link UserSuspendedError}), so
- * callers branch on the `Result` rather than handling a rejected promise; the
- * composition root / API boundary maps that failure to an auth response. A
- * blank `displayName` is *not* rejected (it is cosmetic) and never produces
- * this error.
+ * callers branch on the `Result` rather than handling a rejected promise; a
+ * future outermost boundary handler (the `apps/api` composition root scoped
+ * by ADR-0021, not yet built — see `apps/README.md`) will map that failure to
+ * an auth response. A blank `displayName` is *not* rejected (it is cosmetic)
+ * and never produces this error.
  */
 export class InvalidProviderClaimsError extends DomainError {
     readonly field: 'sub' | 'email';

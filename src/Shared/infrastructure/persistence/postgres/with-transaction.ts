@@ -133,6 +133,21 @@ export async function withTransaction<T>(
 }
 
 /**
+ * Dependencies {@link withOutboxTransaction} needs to open a transaction and
+ * atomically write recorded domain facts to the outbox: the connection pool,
+ * the schema-scoped outbox writer, and the `Clock`/`EventIdGenerator` ports
+ * used to stamp each recorded fact's envelope. A context's own unit-of-work
+ * implementation holds this same bundle — built once at the composition root
+ * and reused across every `run` call — and adds `scope` per call.
+ */
+export interface OutboxTransactionDeps {
+    readonly pool: pg.Pool;
+    readonly writer: PgOutboxWriter;
+    readonly clock: Clock;
+    readonly eventIdGenerator: EventIdGenerator;
+}
+
+/**
  * Opens a PostgreSQL transaction, sets the RLS session variables from `scope`,
  * runs `fn`, then atomically writes any recorded domain facts via `writer`
  * before committing (or rolls back on error).
@@ -149,13 +164,7 @@ export async function withTransaction<T>(
  * persisted.
  */
 export async function withOutboxTransaction<T>(
-    deps: {
-        readonly pool: pg.Pool;
-        readonly scope: TransactionScope;
-        readonly writer: PgOutboxWriter;
-        readonly clock: Clock;
-        readonly eventIdGenerator: EventIdGenerator;
-    },
+    deps: OutboxTransactionDeps & { readonly scope: TransactionScope },
     fn: (
         client: pg.PoolClient,
         record: (...facts: readonly DomainEventFact[]) => void,

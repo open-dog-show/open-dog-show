@@ -79,6 +79,16 @@ export class Create{{pascalCase name}}Handler {
         }
     }
 
+    /**
+     * Reads the referenced {{pascalCase parent}} inside the same transaction that writes the
+     * new {{pascalCase name}}, so "a {{pascalCase name}}'s owner is its {{pascalCase parent}}'s Club" can be enforced
+     * without trusting a caller-supplied `clubId` (see
+     * {@link Create{{pascalCase name}}Command}). Only the {{pascalCase name}} aggregate is written —
+     * the {{pascalCase parent}} read is unlocked, so a concurrent rename of the {{pascalCase parent}}'s owning
+     * Club between this read and commit is possible in principle; that
+     * staleness window is accepted rather than guarded against, since the
+     * read gives no stronger guarantee regardless of scope.
+     */
     private async createInTransaction(
         ctx: {{pascalCase context}}UnitOfWorkContext,
         command: Create{{pascalCase name}}Command,
