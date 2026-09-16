@@ -33,44 +33,49 @@ const DEFAULT_HANDLER_TIMEOUT_MS = 30_000;
  * delivery is at-least-once — a crash after handler success but before
  * `dispatched_at` is committed causes redelivery.  The `signal` is aborted when
  * `handlerTimeoutMs` elapses so the handler can cancel in-flight work; the
- * dispatch transaction holds the row lock until the handler settles.
+ * handler runs outside any transaction or row lock, so a handler that ignores
+ * the signal only delays that row's own retry, not other rows or the claim
+ * transaction.
  */
 export type EventHandler = (event: DomainEvent, signal: AbortSignal) => Promise<void>;
 
 /**
  * Reads pending outbox rows and delivers them to an {@link EventHandler}.
  *
- * - Each row is processed in its own transaction so a handler failure marks
- *   only that row for retry — already-dispatched rows in the same batch are
- *   not rolled back.
+ * - Each row goes through three independent steps: claim (select the row and
+ *   increment `attempts`, in one short transaction), run the handler (outside
+ *   any transaction or row lock), then record the outcome (`dispatched_at` on
+ *   success, `last_error` on failure, each in its own short transaction). The
+ *   handler never runs inside the row's lock, so an arbitrary downstream unit
+ *   of work it opens is never nested inside the dispatcher's own transaction.
  * - `FOR UPDATE SKIP LOCKED` prevents concurrent dispatcher instances from
- *   processing the same row simultaneously **while it is locked**. The lock is
- *   released on `ROLLBACK` (a handler failure) before the separate
- *   attempts/`last_error` recording transaction commits, so a narrow window
- *   exists in which a second dispatcher can select and re-run the same
- *   still-`attempts`-stale row before that recording commits — an extra
- *   redelivery beyond ordinary at-least-once, tolerated by the same handler
- *   idempotency the delivery guarantee below already requires.
- * - `dispatched_at` is set on success.
+ *   processing the same row simultaneously **while it is claimed**. The claim
+ *   transaction commits (incrementing `attempts`) before the handler runs, so
+ *   a second dispatcher cannot select the same row again while this one's
+ *   handler is in flight — unlike a lock held for the handler's duration, this
+ *   also means a crash between claim-commit and the handler settling leaves
+ *   the row pending with its `attempts` already counted, not stuck locked.
+ * - `dispatched_at` is set on success, in a second short transaction after the
+ *   handler resolves.
  * - Delivery is at-least-once; the handler is expected to be idempotent on
  *   `event.eventId`.
  * - **Poison-pill handling:** a handler that keeps failing is not retried
- *   forever. Each failure increments the row's `attempts` and records
- *   `last_error` (in a separate short transaction after the dispatch
- *   transaction rolls back); rows whose `attempts` reach `maxAttempts` are
- *   skipped (quarantined) so later rows are not starved.
+ *   forever. `attempts` is incremented at claim time — before the handler
+ *   runs — so it counts every claimed try, not just failures; a failure also
+ *   records `last_error` (in its own short transaction). Rows whose
+ *   `attempts` reach `maxAttempts` are skipped (quarantined) so later rows
+ *   are not starved.
  * - **Handler timeout:** `handlerTimeoutMs` bounds each handler call (0 = no
- *   timeout); on timeout the handler's `AbortSignal` is aborted, but the
- *   dispatcher then simply awaits the handler call as normal — a handler
- *   that ignores the signal and later resolves is still marked
- *   `dispatched_at` with no attempt increment. The row lock is held until the
- *   handler settles, so a timed-out handler must honour the signal both to
- *   fail promptly and to release the lock. (Tracked as a real failure mode in
- *   #210 — not yet enforced here.)
- * - On a per-row failure (handler error, or an unregistered event type) `poll`
- *   rethrows {@link OutboxDispatchFailed} — the batch does not continue past a
- *   failing row, so rows after it are left pending too. A failure before any
- *   row was selected (e.g. a connection fault) propagates as
+ *   timeout) by racing it against a rejection armed by the timeout timer —
+ *   not just aborting the signal and awaiting the handler as normal — so a
+ *   handler that ignores the signal and later resolves still produces a
+ *   recorded failure instead of a silently-late success. The timer also
+ *   aborts the handler's `AbortSignal` so a cooperating handler can cancel
+ *   its in-flight work.
+ * - On a per-row failure (handler error, timeout, or an unregistered event
+ *   type) `poll` rethrows {@link OutboxDispatchFailed} — the batch does not
+ *   continue past a failing row, so rows after it are left pending too. A
+ *   failure while claiming a row (e.g. a connection fault) propagates as
  *   {@link TransactionFailed} instead — it is not a per-row dispatch failure.
  */
 export class PgPollingDispatcher {
@@ -112,11 +117,11 @@ export class PgPollingDispatcher {
     }
 
     /**
-     * Performs one poll cycle: processes up to `batchSize` pending rows, each
-     * in its own transaction.  Stops early when no more pending rows exist.
-     * If a row's handler throws, `poll` rethrows immediately after rolling
-     * back that row's transaction; remaining rows are left for a subsequent
-     * poll cycle, and `quarantined` is not computed for this cycle.
+     * Performs one poll cycle: processes up to `batchSize` pending rows.
+     * Stops early when no more pending rows exist. If a row fails to
+     * dispatch, `poll` rethrows immediately; remaining rows are left for a
+     * subsequent poll cycle, and `quarantined` is not computed for this
+     * cycle.
      *
      * @returns `dispatched` — the number of events dispatched in this cycle;
      *   `quarantined` — the number of pending rows currently at
@@ -158,46 +163,34 @@ export class PgPollingDispatcher {
     }
 
     /**
-     * Processes a single pending outbox row in its own transaction:
+     * Processes a single pending outbox row across its three independent
+     * steps — claim, run handler, record outcome. Returns `true` when a row
+     * was dispatched, `false` when no pending row was found (so {@link poll}
+     * can stop the loop early).
      *
-     *   SELECT … `FOR UPDATE SKIP LOCKED` `LIMIT 1` → handler →
-     *   `dispatched_at` UPDATE → commit.
-     *
-     * On handler error the transaction rolls back and the row stays pending for
-     * the next poll cycle.  Returns `true` when a row was dispatched, `false`
-     * when no pending row was found (so {@link poll} can stop the loop early).
+     * A failure while claiming (e.g. a connection fault) propagates as-is —
+     * no row was durably claimed, so it is not a per-row dispatch failure.
+     * Once claimed, any failure (handler error, timeout, or unregistered
+     * event type) is recorded and rethrown as {@link OutboxDispatchFailed}.
      */
     private async processOne(): Promise<boolean> {
-        return this.withClient(async (client) => {
-            // Captured into the outer scope — before rehydration — so a failure
-            // (including rehydration itself failing) still carries row context
-            // for `OutboxDispatchFailed`. Set as one object, not three separate
-            // `let`s: `seq`/`eventId`/`type` are only ever known together, so
-            // this lets a single `undefined` check below prove all three are
-            // defined, rather than falling back to an empty-string sentinel for
-            // `eventId`/`type` that could never actually be reached.
-            let selected:
-                | { readonly seq: string; readonly eventId: string; readonly type: string }
-                | undefined;
+        const claimed = await this.claimNextRow();
+        if (claimed === undefined) return false;
 
-            try {
-                return await runInClientTransaction(client, async (c) => {
-                    const row = await this.selectNextRow(c);
-                    if (row === undefined) return false; // no eligible row available to this worker
-                    selected = { seq: row.seq, eventId: row.event_id, type: row.type };
-
-                    await this.dispatchRow(c, row);
-                    return true;
-                });
-            } catch (err) {
-                if (selected === undefined) {
-                    // Failed before (or while) selecting a row — e.g. a connection
-                    // fault (TransactionFailed). Not a per-row dispatch failure.
-                    throw err;
-                }
-                throw await this.recordDispatchFailure(client, { ...selected, cause: err });
-            }
-        });
+        const { row, attempts } = claimed;
+        try {
+            await this.runHandler(row);
+        } catch (cause) {
+            throw await this.recordDispatchFailure({
+                seq: row.seq,
+                eventId: row.event_id,
+                type: row.type,
+                attempts,
+                cause,
+            });
+        }
+        await this.markDispatched(row.seq);
+        return true;
     }
 
     /**
@@ -207,7 +200,7 @@ export class PgPollingDispatcher {
      * next available row instead of stopping the poll early; skipping
      * `attempts >= maxAttempts` quarantines poison pills so a
      * permanently-failing row cannot starve later rows. Must be called inside
-     * the dispatch transaction (`processOne`'s `runInClientTransaction`).
+     * the claim transaction ({@link claimNextRow}'s `runInClientTransaction`).
      */
     private async selectNextRow(client: pg.PoolClient): Promise<OutboxRowRaw | undefined> {
         const res = await client.query<OutboxRowRaw>(
@@ -223,68 +216,113 @@ export class PgPollingDispatcher {
     }
 
     /**
-     * Rehydrates `row` and delivers it to the handler, then marks it
-     * dispatched. Aborts the handler on `handlerTimeoutMs`; the row lock is
-     * held until the handler settles, so a timed-out handler must honour the
-     * signal to release it promptly.
+     * Selects and locks the next eligible pending row and increments its
+     * `attempts`, committing before the handler ever runs — so the row is
+     * durably counted as claimed, and its lock released, as soon as this
+     * short transaction commits. Returns `undefined` when no row is
+     * available to this worker.
      */
-    private async dispatchRow(client: pg.PoolClient, row: OutboxRowRaw): Promise<void> {
-        const event = this.rowToEvent(row);
-        const controller = new AbortController();
-        const timer =
-            this.handlerTimeoutMs > 0
-                ? setTimeout(() => {
-                      controller.abort();
-                  }, this.handlerTimeoutMs)
-                : undefined;
-        try {
-            await this.handler(event, controller.signal);
-        } finally {
-            if (timer !== undefined) clearTimeout(timer);
-        }
-        await client.query(
-            `UPDATE ${this.quotedSchema}.outbox SET dispatched_at = NOW() WHERE seq = $1`,
-            [row.seq],
+    private async claimNextRow(): Promise<
+        { readonly row: OutboxRowRaw; readonly attempts: number } | undefined
+    > {
+        return this.withClient((client) =>
+            runInClientTransaction(client, async (c) => {
+                const row = await this.selectNextRow(c);
+                if (row === undefined) return undefined;
+
+                const { rows } = await c.query<{ attempts: number }>(
+                    `UPDATE ${this.quotedSchema}.outbox
+                     SET attempts = attempts + 1
+                     WHERE seq = $1
+                     RETURNING attempts`,
+                    [row.seq],
+                );
+                const attempts = rows[0]?.attempts;
+                if (attempts === undefined) {
+                    // `selectNextRow` just locked this exact row inside this
+                    // same transaction — it cannot have vanished before this
+                    // UPDATE runs.
+                    throw new Error(`outbox row ${row.seq} vanished during claim`);
+                }
+                return { row, attempts };
+            }),
         );
     }
 
     /**
-     * Records a per-row dispatch failure (handler error, or an unregistered
-     * event type) — the dispatch transaction already rolled back, so this
-     * runs in a separate short transaction that increments `attempts` and
-     * sets `last_error`, eventually quarantining a poison pill. A failure in
+     * Rehydrates `row` and delivers it to the handler, racing the call
+     * against a rejection armed by `handlerTimeoutMs` (0 = no timeout) so a
+     * handler that ignores the aborted signal and later resolves still
+     * produces a failure here, rather than a silently-late success. Runs
+     * outside any transaction or row lock — the row was already claimed by
+     * {@link claimNextRow}.
+     */
+    private async runHandler(row: OutboxRowRaw): Promise<void> {
+        const event = this.rowToEvent(row);
+        const controller = new AbortController();
+        if (this.handlerTimeoutMs <= 0) {
+            await this.handler(event, controller.signal);
+            return;
+        }
+
+        const timedOut = new Promise<never>((_resolve, reject) => {
+            controller.signal.addEventListener('abort', () => {
+                reject(
+                    new Error(
+                        `handler timed out after ${String(this.handlerTimeoutMs)}ms for event '${row.event_id}' (type '${row.type}')`,
+                    ),
+                );
+            });
+        });
+        const timer = setTimeout(() => {
+            controller.abort();
+        }, this.handlerTimeoutMs);
+        try {
+            await Promise.race([this.handler(event, controller.signal), timedOut]);
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+
+    /**
+     * Marks `seq` dispatched, in its own short transaction after the handler
+     * has already resolved successfully — decoupled from both the claim
+     * transaction and the handler call itself.
+     */
+    private async markDispatched(seq: string): Promise<void> {
+        await this.withClient((client) =>
+            client.query(
+                `UPDATE ${this.quotedSchema}.outbox SET dispatched_at = NOW() WHERE seq = $1`,
+                [seq],
+            ),
+        );
+    }
+
+    /**
+     * Records a per-row dispatch failure (handler error, timeout, or an
+     * unregistered event type) by setting `last_error` — `attempts` was
+     * already incremented at claim time, so recording a failure only needs
+     * to record the message, in its own short transaction. A failure in
      * *this* recording is not silently swallowed — it is captured and
      * returned on the built {@link OutboxDispatchFailed}'s `cause.recordingError`
      * rather than discarded.
      */
-    private async recordDispatchFailure(
-        client: pg.PoolClient,
-        failure: {
-            readonly seq: string;
-            readonly eventId: string;
-            readonly type: string;
-            readonly cause: unknown;
-        },
-    ): Promise<OutboxDispatchFailed> {
-        const { seq, eventId, type, cause } = failure;
-        let attempts: number | undefined;
+    private async recordDispatchFailure(failure: {
+        readonly seq: string;
+        readonly eventId: string;
+        readonly type: string;
+        readonly attempts: number;
+        readonly cause: unknown;
+    }): Promise<OutboxDispatchFailed> {
+        const { seq, eventId, type, attempts, cause } = failure;
         let recordingError: unknown;
         try {
-            attempts = await runInClientTransaction(client, async (c) => {
-                const { rows } = await c.query<{ attempts: number }>(
-                    `UPDATE ${this.quotedSchema}.outbox
-                     SET attempts = attempts + 1, last_error = $2
-                     WHERE seq = $1
-                     RETURNING attempts`,
+            await this.withClient((client) =>
+                client.query(
+                    `UPDATE ${this.quotedSchema}.outbox SET last_error = $2 WHERE seq = $1`,
                     [seq, String(cause)],
-                );
-                // `rows[0]` is absent only if the row vanished between
-                // selection and this UPDATE — distinct from a genuine first
-                // failure, where a real post-increment `attempts` is always
-                // at least 1. Leave `attempts` `undefined` rather than
-                // defaulting to `0`, which would read as "not yet failed".
-                return rows[0]?.attempts;
-            });
+                ),
+            );
         } catch (recErr) {
             recordingError = recErr;
         }
@@ -296,7 +334,7 @@ export class PgPollingDispatcher {
      * Checks out a client from the pool, runs `body` on it, and always returns
      * the client to the pool — even when `body` throws — so no client is leaked.
      * The transaction lifecycle (`BEGIN`/`COMMIT`/`ROLLBACK`) stays in `body`
-     * because {@link processOne} needs `FOR UPDATE SKIP LOCKED` mid-transaction.
+     * because {@link claimNextRow} needs `FOR UPDATE SKIP LOCKED` mid-transaction.
      */
     private async withClient<T>(body: (client: pg.PoolClient) => Promise<T>): Promise<T> {
         let client: pg.PoolClient;

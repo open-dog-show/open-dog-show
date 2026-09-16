@@ -98,13 +98,19 @@ function markDispatched(states: readonly RowState[], seq: string) {
     return { rows: [] };
 }
 
-function recordAttempt(states: readonly RowState[], seq: string, failRecording: boolean) {
-    if (failRecording) {
-        throw new Error('recording query failed');
-    }
+/** Models the claim-time `SET attempts = attempts + 1 ... RETURNING attempts` — runs before the handler, regardless of outcome. */
+function claimAttempt(states: readonly RowState[], seq: string) {
     const state = findBySeq(states, seq);
     if (state) state.attempts += 1;
     return { rows: state ? [{ attempts: state.attempts }] : [] };
+}
+
+/** Models the failure-recording `SET last_error` — runs only after the handler fails; attempts was already bumped by {@link claimAttempt}. */
+function recordLastError(failRecording: boolean) {
+    if (failRecording) {
+        throw new Error('recording query failed');
+    }
+    return { rows: [] };
 }
 
 function countQuarantined(states: readonly RowState[], maxAttempts: number) {
@@ -122,34 +128,44 @@ function countQuarantined(states: readonly RowState[], maxAttempts: number) {
  *   attempts < $1` — a row already dispatched, or at `maxAttempts`, is
  *   skipped — and returns the lowest-`seq` eligible row, mirroring `ORDER BY
  *   seq LIMIT 1`.
- * - `UPDATE … SET dispatched_at` and `SET attempts` mutate the matching
- *   `RowState` in place so a test can assert on it after `poll()` settles.
+ * - The claim transaction's `SET attempts = attempts + 1 ... RETURNING
+ *   attempts` (matched by `RETURNING attempts`) always bumps the matching
+ *   `RowState`, before the handler ever runs.
+ * - `UPDATE … SET dispatched_at` mutates the matching `RowState` on success.
+ * - The failure path's `SET last_error` (matched by `last_error` without
+ *   `RETURNING`) does not touch `attempts` — it was already bumped at claim
+ *   time.
  *
- * `options.failRecording` makes the `SET attempts` query itself reject,
- * simulating the best-effort attempts/`last_error` recording transaction
- * failing.
+ * `options.failRecording` makes that `SET last_error` query itself reject,
+ * simulating the best-effort `last_error` recording transaction failing.
  */
+/** Routes one fake query by matching the SQL fragments {@link fakePool}'s doc describes. Kept out of the `query` closure so its branch count doesn't count against the closure's own complexity budget. */
+function routeFakeQuery(
+    sql: string,
+    params: readonly unknown[],
+    context: { readonly states: readonly RowState[]; readonly failRecording: boolean },
+) {
+    const { states, failRecording } = context;
+    if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rows: [] };
+    if (sql.startsWith('SELECT seq'))
+        return selectNextRowValidated(sql, states, params[0] as number);
+    if (sql.startsWith('SELECT COUNT')) return countQuarantined(states, params[0] as number);
+    if (sql.includes('SET dispatched_at')) return markDispatched(states, params[0] as string);
+    if (sql.includes('SET attempts')) return claimAttempt(states, params[0] as string);
+    if (sql.includes('SET last_error')) return recordLastError(failRecording);
+    return { rows: [] };
+}
+
 function fakePool(
     states: readonly RowState[],
     options?: { readonly failRecording?: boolean },
 ): pg.Pool {
     const client = {
-        query: (text: string, params: readonly unknown[] = []) => {
-            const sql = text.trim();
-            if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rows: [] };
-            if (sql.startsWith('SELECT seq')) {
-                return selectNextRowValidated(sql, states, params[0] as number);
-            }
-            if (sql.startsWith('SELECT COUNT')) {
-                return countQuarantined(states, params[0] as number);
-            }
-            if (sql.includes('SET dispatched_at'))
-                return markDispatched(states, params[0] as string);
-            if (sql.includes('SET attempts')) {
-                return recordAttempt(states, params[0] as string, options?.failRecording === true);
-            }
-            return { rows: [] };
-        },
+        query: (text: string, params: readonly unknown[] = []) =>
+            routeFakeQuery(text.trim(), params, {
+                states,
+                failRecording: options?.failRecording === true,
+            }),
         release: () => undefined,
     };
     return { connect: () => Promise.resolve(client) } as unknown as pg.Pool;
@@ -244,7 +260,7 @@ describe('PgPollingDispatcher — OutboxDispatchFailed', () => {
         await expect(dispatcher.poll()).rejects.not.toBeInstanceOf(OutboxDispatchFailed);
     });
 
-    it('preserves a failure in the best-effort attempts/last_error recording as cause.recordingError, rather than swallowing it', async () => {
+    it('preserves a failure in the best-effort last_error recording as cause.recordingError, rather than swallowing it', async () => {
         const dispatcher = new PgPollingDispatcher({
             pool: fakePool([rowState()], { failRecording: true }),
             schema: 'sample',
@@ -263,10 +279,12 @@ describe('PgPollingDispatcher — OutboxDispatchFailed', () => {
 
         expect(caught).toBeInstanceOf(OutboxDispatchFailed);
         const err = caught as OutboxDispatchFailed;
-        // The recording query itself failed, so `attempts` could not be read
-        // back and stays `undefined` — but the original handler failure AND
-        // the recording failure are both preserved on `cause`, not discarded.
-        expect(err.attempts).toBeUndefined();
+        // `attempts` was already incremented at claim time, before the
+        // handler ran — so it is known regardless of whether the later
+        // `last_error` recording (this test's simulated failure) succeeds.
+        // Both the original handler failure AND the recording failure are
+        // preserved on `cause`, not discarded.
+        expect(err.attempts).toBe(1);
         expect(err.cause).toMatchObject({
             error: 'handler blew up',
             recordingError: 'recording query failed',
@@ -352,6 +370,43 @@ describe('PgPollingDispatcher — poison-pill quarantine, handler timeout, multi
             expect(receivedSignal?.aborted).toBe(true);
             // Row stays pending for retry, not marked dispatched.
             expect(state.dispatchedAt).toBeUndefined();
+            expect(state.attempts).toBe(1);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('treats handlerTimeoutMs as a real dispatch failure even when the handler ignores its AbortSignal and resolves later (#210)', async () => {
+        vi.useFakeTimers();
+        try {
+            const state = rowState();
+            let resolveHandler: (() => void) | undefined;
+
+            const dispatcher = new PgPollingDispatcher({
+                pool: fakePool([state]),
+                schema: 'sample',
+                handlerTimeoutMs: HANDLER_TIMEOUT_MS,
+                // Ignores the AbortSignal entirely — never rejects on abort,
+                // only resolves once the test explicitly tells it to.
+                handler: () =>
+                    new Promise<void>((resolve) => {
+                        resolveHandler = resolve;
+                    }),
+                registry: registryFor((fact) => fact),
+            });
+
+            const pollPromise = dispatcher.poll();
+            const failed = expect(pollPromise).rejects.toBeInstanceOf(OutboxDispatchFailed);
+            await vi.advanceTimersByTimeAsync(HANDLER_TIMEOUT_MS);
+            await failed;
+
+            // The handler only resolves now — well after the timeout already
+            // failed the dispatch — proving a non-cooperating handler's late
+            // success cannot turn a timed-out dispatch back into one.
+            resolveHandler?.();
+
+            expect(state.dispatchedAt).toBeUndefined();
+            expect(state.dispatchCount).toBe(0);
             expect(state.attempts).toBe(1);
         } finally {
             vi.useRealTimers();
