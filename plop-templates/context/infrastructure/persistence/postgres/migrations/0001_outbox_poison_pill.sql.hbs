@@ -4,11 +4,11 @@
 -- Poison-pill handling for the transactional outbox (ADR-0006).
 --
 -- A handler that permanently throws would otherwise be retried forever (the
--- dispatch transaction rolls back, the row stays pending, the next poll selects
--- it again), starving every later row. `attempts` counts consecutive handler
--- failures and `last_error` records the most recent failure message; the
--- dispatcher skips rows whose `attempts` have reached the configured maximum,
--- turning a poison pill into a skipped (quarantined) row instead of an infinite
--- retry loop.
+-- row stays pending, the next poll selects it again), starving every later
+-- row. `attempts` is incremented each time the dispatcher claims the row —
+-- before the handler runs — and `last_error` records the most recent failure
+-- message; the dispatcher skips rows whose `attempts` have reached the
+-- configured maximum, turning a poison pill into a skipped (quarantined) row
+-- instead of an infinite retry loop.
 ALTER TABLE {{snakeCase name}}.outbox ADD COLUMN IF NOT EXISTS attempts INT NOT NULL DEFAULT 0;
 ALTER TABLE {{snakeCase name}}.outbox ADD COLUMN IF NOT EXISTS last_error TEXT;
