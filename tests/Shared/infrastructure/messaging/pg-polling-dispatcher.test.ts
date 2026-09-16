@@ -98,15 +98,32 @@ function markDispatched(states: readonly RowState[], seq: string) {
     return { rows: [] };
 }
 
-/** Models the claim-time `SET attempts = attempts + 1 ... RETURNING attempts` — runs before the handler, regardless of outcome. */
-function claimAttempt(states: readonly RowState[], seq: string) {
+/**
+ * Models the claim-time `SET attempts = attempts + 1 ... RETURNING
+ * attempts` — runs before the handler, regardless of outcome. Guarded
+ * behind `RETURNING attempts` so a production query that drops it (leaving
+ * the claim step unable to read back the count) fails the test instead of
+ * the fake silently supplying the missing behaviour itself.
+ */
+function claimAttempt(sql: string, states: readonly RowState[], seq: string) {
+    if (!sql.includes('RETURNING attempts')) {
+        throw new Error('fake expected `RETURNING attempts` in the claim UPDATE');
+    }
     const state = findBySeq(states, seq);
     if (state) state.attempts += 1;
     return { rows: state ? [{ attempts: state.attempts }] : [] };
 }
 
-/** Models the failure-recording `SET last_error` — runs only after the handler fails; attempts was already bumped by {@link claimAttempt}. */
-function recordLastError(failRecording: boolean) {
+/**
+ * Models the failure-recording `SET last_error` — runs only after the
+ * handler fails; `attempts` was already bumped by {@link claimAttempt}.
+ * Guarded behind the *absence* of `RETURNING`, so a production query that
+ * conflates this with the claim UPDATE above fails the test.
+ */
+function recordLastError(sql: string, failRecording: boolean) {
+    if (sql.includes('RETURNING')) {
+        throw new Error('fake did not expect `RETURNING` in the last_error UPDATE');
+    }
     if (failRecording) {
         throw new Error('recording query failed');
     }
@@ -132,8 +149,8 @@ function routeFakeQuery(
         return selectNextRowValidated(sql, states, params[0] as number);
     if (sql.startsWith('SELECT COUNT')) return countQuarantined(states, params[0] as number);
     if (sql.includes('SET dispatched_at')) return markDispatched(states, params[0] as string);
-    if (sql.includes('SET attempts')) return claimAttempt(states, params[0] as string);
-    if (sql.includes('SET last_error')) return recordLastError(failRecording);
+    if (sql.includes('SET attempts')) return claimAttempt(sql, states, params[0] as string);
+    if (sql.includes('SET last_error')) return recordLastError(sql, failRecording);
     return { rows: [] };
 }
 
@@ -334,6 +351,9 @@ describe('PgPollingDispatcher — poison-pill quarantine, handler timeout, multi
         expect(handledAggregateIds).toEqual(['entry-2']);
         expect(quarantined.dispatchedAt).toBeUndefined();
         expect(eligible.dispatchedAt).toBeInstanceOf(Date);
+        // `attempts` is bumped at claim time, before the handler ever runs —
+        // a successful dispatch still leaves it at 1, not 0.
+        expect(eligible.attempts).toBe(1);
     });
 
     it('aborts the handler via its AbortSignal on handlerTimeoutMs, and does not mark the row dispatched', async () => {
@@ -450,6 +470,8 @@ describe('PgPollingDispatcher — poison-pill quarantine, handler timeout, multi
         for (const state of rows) {
             expect(state.dispatchedAt).toBeInstanceOf(Date);
             expect(state.dispatchCount).toBe(1);
+            // Claimed once each, before their handlers ran.
+            expect(state.attempts).toBe(1);
         }
     });
 });

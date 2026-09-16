@@ -49,11 +49,14 @@ export type EventHandler = (event: DomainEvent, signal: AbortSignal) => Promise<
  *   handler never runs inside the row's lock, so an arbitrary downstream unit
  *   of work it opens is never nested inside the dispatcher's own transaction.
  * - `FOR UPDATE SKIP LOCKED` prevents concurrent dispatcher instances from
- *   processing the same row simultaneously **while it is claimed**. The claim
- *   transaction commits (incrementing `attempts`) before the handler runs, so
- *   a second dispatcher cannot select the same row again while this one's
- *   handler is in flight — unlike a lock held for the handler's duration, this
- *   also means a crash between claim-commit and the handler settling leaves
+ *   selecting the same row simultaneously **only for the brief claim
+ *   transaction**: once it commits (incrementing `attempts`) the row's lock
+ *   is released and `dispatched_at` is still `NULL`, so a second dispatcher's
+ *   poll can select and run the handler on the same row for the rest of the
+ *   first instance's handler call — a wider redelivery window than the
+ *   previous design, which held the lock for the handler's whole run, but
+ *   one the same handler idempotency this class already requires covers. In
+ *   exchange, a crash between claim-commit and the handler settling leaves
  *   the row pending with its `attempts` already counted, not stuck locked.
  * - `dispatched_at` is set on success, in a second short transaction after the
  *   handler resolves.
@@ -72,11 +75,14 @@ export type EventHandler = (event: DomainEvent, signal: AbortSignal) => Promise<
  *   recorded failure instead of a silently-late success. The timer also
  *   aborts the handler's `AbortSignal` so a cooperating handler can cancel
  *   its in-flight work.
- * - On a per-row failure (handler error, timeout, or an unregistered event
- *   type) `poll` rethrows {@link OutboxDispatchFailed} — the batch does not
- *   continue past a failing row, so rows after it are left pending too. A
- *   failure while claiming a row (e.g. a connection fault) propagates as
- *   {@link TransactionFailed} instead — it is not a per-row dispatch failure.
+ * - On a failure attributable to the handler call itself (a handler error,
+ *   a timeout, or an unregistered event type) `poll` rethrows
+ *   {@link OutboxDispatchFailed} — the batch does not continue past a
+ *   failing row, so rows after it are left pending too. A failure while
+ *   claiming a row, or while marking a row dispatched after its handler
+ *   already succeeded (e.g. a connection fault), propagates unwrapped
+ *   instead — typically {@link TransactionFailed} — since it is not
+ *   attributable to the handler and so not a per-row dispatch failure.
  */
 export class PgPollingDispatcher {
     private readonly pool: pg.Pool;
@@ -250,12 +256,9 @@ export class PgPollingDispatcher {
     }
 
     /**
-     * Rehydrates `row` and delivers it to the handler, racing the call
-     * against a rejection armed by `handlerTimeoutMs` (0 = no timeout) so a
-     * handler that ignores the aborted signal and later resolves still
-     * produces a failure here, rather than a silently-late success. Runs
-     * outside any transaction or row lock — the row was already claimed by
-     * {@link claimNextRow}.
+     * Rehydrates `row` and delivers it to the handler, bounded by
+     * `handlerTimeoutMs` (0 = no timeout). Runs outside any transaction or
+     * row lock — the row was already claimed by {@link claimNextRow}.
      */
     private async runHandler(row: OutboxRowRaw): Promise<void> {
         const event = this.rowToEvent(row);
@@ -264,8 +267,22 @@ export class PgPollingDispatcher {
             await this.handler(event, controller.signal);
             return;
         }
+        await this.raceAgainstTimeout(this.handler(event, controller.signal), controller, row);
+    }
 
-        const timedOut = new Promise<never>((_resolve, reject) => {
+    /**
+     * Races `handlerCall` against a rejection armed by `handlerTimeoutMs`,
+     * aborting `controller`'s signal when the timer fires so a cooperating
+     * handler can cancel its in-flight work — and so a handler that ignores
+     * the signal and later resolves still loses the race, producing a
+     * failure here rather than a silently-late success.
+     */
+    private async raceAgainstTimeout(
+        handlerCall: Promise<void>,
+        controller: AbortController,
+        row: OutboxRowRaw,
+    ): Promise<void> {
+        const timeoutRejection = new Promise<never>((_resolve, reject) => {
             controller.signal.addEventListener('abort', () => {
                 reject(
                     new Error(
@@ -278,7 +295,7 @@ export class PgPollingDispatcher {
             controller.abort();
         }, this.handlerTimeoutMs);
         try {
-            await Promise.race([this.handler(event, controller.signal), timedOut]);
+            await Promise.race([handlerCall, timeoutRejection]);
         } finally {
             clearTimeout(timer);
         }
@@ -290,12 +307,15 @@ export class PgPollingDispatcher {
      * transaction and the handler call itself.
      */
     private async markDispatched(seq: string): Promise<void> {
-        await this.withClient((client) =>
-            client.query(
-                `UPDATE ${this.quotedSchema}.outbox SET dispatched_at = NOW() WHERE seq = $1`,
-                [seq],
-            ),
+        await this.execute(
+            `UPDATE ${this.quotedSchema}.outbox SET dispatched_at = NOW() WHERE seq = $1`,
+            [seq],
         );
+    }
+
+    /** Checks out a client, fires one autocommitting statement, and releases it — the shared shape behind {@link markDispatched} and {@link recordDispatchFailure}'s write. */
+    private async execute(sql: string, params: readonly unknown[]): Promise<void> {
+        await this.withClient((client) => client.query(sql, params as unknown[]));
     }
 
     /**
@@ -317,11 +337,9 @@ export class PgPollingDispatcher {
         const { seq, eventId, type, attempts, cause } = failure;
         let recordingError: unknown;
         try {
-            await this.withClient((client) =>
-                client.query(
-                    `UPDATE ${this.quotedSchema}.outbox SET last_error = $2 WHERE seq = $1`,
-                    [seq, String(cause)],
-                ),
+            await this.execute(
+                `UPDATE ${this.quotedSchema}.outbox SET last_error = $2 WHERE seq = $1`,
+                [seq, String(cause)],
             );
         } catch (recErr) {
             recordingError = recErr;
