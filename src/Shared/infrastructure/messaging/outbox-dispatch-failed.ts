@@ -3,20 +3,21 @@
 
 /**
  * Thrown by `PgPollingDispatcher.poll` when a row fails to dispatch — a
- * handler error, or a row whose `type` has no registered rehydrator. Carries
- * the row's `seq`, `eventId`, `type`, and the `attempts` count after this
- * failure was recorded, so a caller can tell a routine retry (`attempts`
+ * handler error, a handler-timeout, or a row whose `type` has no registered
+ * rehydrator. Carries the row's `seq`, `eventId`, `type`, and the `attempts`
+ * count as of this failure, so a caller can tell a routine retry (`attempts`
  * below the dispatcher's `maxAttempts`) from a just-quarantined poison pill
- * (`attempts` at or above it). `attempts` is `undefined` when it could not be
- * determined — the best-effort recording query itself failed (see
- * `cause.recordingError`), or the row vanished before the `UPDATE` could
- * apply — distinct from a genuine first failure, where a real post-increment
- * `attempts` is always at least 1.
+ * (`attempts` at or above it). `attempts` is incremented at claim time —
+ * before the handler ever runs — so it is always known by the time a handler
+ * failure reaches here, independently of whether the best-effort
+ * `last_error` recording below succeeds. See
+ * `0001_outbox_poison_pill.sql`'s own comment for the canonical statement of
+ * why `attempts` counts claims, not only failures.
  *
  * The original failure's message is preserved on `cause`; when the
- * best-effort `attempts`/`last_error` recording itself fails, that failure is
- * preserved too — via `cause.recordingError` — rather than silently
- * discarded, so no failure information is lost.
+ * best-effort `last_error` recording itself fails, that failure is preserved
+ * too — via `cause.recordingError` — rather than silently discarded, so no
+ * failure information is lost.
  */
 // `recordingError` is caught from a best-effort write and may be anything;
 // stringify each primitive kind explicitly rather than falling through to
@@ -38,22 +39,35 @@ function describeUnstringifiedCause(value: unknown): string {
     }
 }
 
+/**
+ * The row-identifying fields a dispatch failure carries — `seq`, `eventId`,
+ * `type`, and `attempts` — factored into one type so {@link OutboxDispatchFailed}'s
+ * constructor and `PgPollingDispatcher.recordDispatchFailure`'s parameter
+ * share it instead of two independently-declared shapes that must be kept in
+ * sync by hand (see #210's ticket-review: this is exactly what made the
+ * `attempts` type narrowing a three-site manual edit).
+ */
+export interface OutboxRowFailureContext {
+    readonly seq: string;
+    readonly eventId: string;
+    readonly type: string;
+    readonly attempts: number;
+}
+
 export class OutboxDispatchFailed extends Error {
     readonly seq: string;
     readonly eventId: string;
     readonly type: string;
-    readonly attempts: number | undefined;
+    readonly attempts: number;
 
-    constructor(params: {
-        readonly seq: string;
-        readonly eventId: string;
-        readonly type: string;
-        readonly attempts: number | undefined;
-        readonly cause: unknown;
-        readonly recordingError?: unknown;
-    }) {
+    constructor(
+        params: OutboxRowFailureContext & {
+            readonly cause: unknown;
+            readonly recordingError?: unknown;
+        },
+    ) {
         super(
-            `Outbox dispatch failed for event '${params.eventId}' (type '${params.type}', attempt ${params.attempts === undefined ? 'unknown' : String(params.attempts)})`,
+            `Outbox dispatch failed for event '${params.eventId}' (type '${params.type}', attempt ${String(params.attempts)})`,
             {
                 cause: {
                     error:

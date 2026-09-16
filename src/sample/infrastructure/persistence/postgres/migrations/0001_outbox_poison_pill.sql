@@ -4,11 +4,20 @@
 -- Poison-pill handling for the transactional outbox (ADR-0006).
 --
 -- A handler that permanently throws would otherwise be retried forever (the
--- dispatch transaction rolls back, the row stays pending, the next poll selects
--- it again), starving every later row. `attempts` counts consecutive handler
--- failures and `last_error` records the most recent failure message; the
--- dispatcher skips rows whose `attempts` have reached the configured maximum,
--- turning a poison pill into a skipped (quarantined) row instead of an infinite
--- retry loop.
+-- row stays pending, the next poll selects it again), starving every later
+-- row. `attempts` is incremented each time the dispatcher claims the row —
+-- before the handler runs, regardless of whether it goes on to succeed or
+-- fail — so it counts claims, not only failures; a successful dispatch still
+-- leaves `attempts` at 1, not 0 (harmless: `dispatched_at` already excludes
+-- the row from being claimed again). `last_error` records the most recent
+-- failure message; the dispatcher skips rows whose `attempts` have reached
+-- the configured maximum, turning a poison pill into a skipped (quarantined)
+-- row instead of an infinite retry loop.
+--
+-- This file is generated (ADR-0025) from
+-- plop-templates/context/infrastructure/persistence/postgres/migrations/0001_outbox_poison_pill.sql.hbs
+-- — edit the template, not this file. `pnpm regen:sample` regenerates it, and
+-- CI's `Sample regeneration` job diffs the two, so a hand-edit here alone
+-- fails the build instead of silently drifting from the template.
 ALTER TABLE sample.outbox ADD COLUMN IF NOT EXISTS attempts INT NOT NULL DEFAULT 0;
 ALTER TABLE sample.outbox ADD COLUMN IF NOT EXISTS last_error TEXT;
