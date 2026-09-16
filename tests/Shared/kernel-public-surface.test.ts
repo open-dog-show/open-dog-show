@@ -75,3 +75,54 @@ describe('kernel public surface — envelope-event retirement (issue #176)', () 
         expect(_pin).toBeNull();
     });
 });
+
+/**
+ * Contract test for the T2 kernel reshape (ADR-0026/0027, issue #186).
+ *
+ * `ShowId`/`DogId` were plop-generator scaffolding that never belonged in the
+ * kernel; `OutboxAppender` and the `OutboxWriter` interface are retired in
+ * favour of aggregate roots recording events and a single `PgOutboxWriter`
+ * implementation; the in-memory fakes leave the barrel so tests import them
+ * by deep path instead.
+ */
+describe('kernel public surface — T2 kernel reshape (issue #186)', () => {
+    it('does not export ShowId / DogId / asShowId / asDogId', () => {
+        expect(kernel).not.toHaveProperty('asShowId');
+        expect(kernel).not.toHaveProperty('asDogId');
+        // @ts-expect-error — ShowId was removed from the kernel (issue #186)
+        const _showId: kernel.ShowId = null as never;
+        // @ts-expect-error — DogId was removed from the kernel (issue #186)
+        const _dogId: kernel.DogId = null as never;
+        expect(_showId).toBeNull();
+        expect(_dogId).toBeNull();
+    });
+
+    it('does not export the retired OutboxAppender application port', () => {
+        // @ts-expect-error — OutboxAppender was removed (ADR-0027, issue #186)
+        const _pin: kernel.OutboxAppender = null as never;
+        expect(_pin).toBeNull();
+    });
+
+    it('does not export the retired OutboxWriter interface', () => {
+        // @ts-expect-error — OutboxWriter was removed; PgOutboxWriter is the sole impl (ADR-0027, issue #186)
+        const _pin: kernel.OutboxWriter = null as never;
+        expect(_pin).toBeNull();
+    });
+
+    it('does not export FakeClock / FakeEventIdGenerator from the barrel', () => {
+        expect(kernel).not.toHaveProperty('FakeClock');
+        expect(kernel).not.toHaveProperty('FakeEventIdGenerator');
+    });
+
+    it('exports AggregateRoot, ScopeMismatchError, requireClubScope, requireActor', () => {
+        expect(kernel).toHaveProperty('AggregateRoot');
+        expect(kernel).toHaveProperty('ScopeMismatchError');
+        expect(kernel).toHaveProperty('requireClubScope');
+        expect(kernel).toHaveProperty('requireActor');
+    });
+
+    it('exports TransactionFailed and OutboxDispatchFailed', () => {
+        expect(kernel).toHaveProperty('TransactionFailed');
+        expect(kernel).toHaveProperty('OutboxDispatchFailed');
+    });
+});

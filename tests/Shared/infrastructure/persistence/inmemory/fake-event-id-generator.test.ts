@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, expectTypeOf, it } from 'vitest';
-import { FakeEventIdGenerator } from '../../../src/Shared/infrastructure/fake-event-id-generator.js';
-import type { EventId } from '../../../src/Shared/domain/domain-ids.js';
+import { FakeEventIdGenerator } from '../../../../../src/Shared/infrastructure/persistence/inmemory/fake-event-id-generator.js';
+import type { EventId } from '../../../../../src/Shared/domain/domain-ids.js';
 
 describe('FakeEventIdGenerator', () => {
     it('returns deterministic UUIDs starting from seed 1', () => {

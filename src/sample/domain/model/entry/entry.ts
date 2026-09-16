@@ -2,28 +2,35 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import {
-    DomainError,
+    AggregateRoot,
+    asAggregateId,
+    ClubEventScope,
     type ClubId,
     type PrincipalId,
-    type TransactionScope,
 } from '../../../../Shared/index.js';
 import type { EntryId, ShowId } from '../../shared/domain-ids.js';
+import { EntrySubmitted } from './events/entry-submitted.js';
 
 /**
  * An Entry — a dog submitted to a Show by an exhibitor, owned by a Club.
  *
- * Modelled as a class aggregate (ADR-0022/0024): the "an Entry is Club-owned"
- * invariant is enforced by a validating factory — {@link Entry.submit} — that
- * derives the owning `ClubId` and acting `PrincipalId` from a `club`
- * {@link TransactionScope} and rejects any other scope kind
- * ({@link InvalidTransactionScopeError}). A private `#brand` field makes the
- * class **nominal** so a bare `{ id, clubId, … }` object literal (the TS
- * structural-literal leak a `private constructor` cannot block on its own) is
- * not assignable to `Entry` — the type is closed against unvalidated
- * construction (mirrors `RoleGrant` / `LocalDate`). Storage load goes through
- * {@link Entry.rehydrate}, the one other construction path.
+ * Modelled as a class aggregate (ADR-0022/0024) extending {@link AggregateRoot}
+ * (ADR-0027): {@link Entry.submit} takes the owning `ClubId` and the acting
+ * `PrincipalId` (`createdBy`) as typed inputs rather than deriving them from a
+ * `TransactionScope` (ADR-0026) — an Entry is a **hybrid** aggregate: the
+ * owning Club comes from the Show being entered, not from who is acting, so an
+ * Exhibitor acting cross-Club can still submit an Entry owned by the Show's
+ * Club. `submit` records the `EntrySubmitted` fact itself, scoped to the
+ * owning Club (a hybrid aggregate's events are always `club(clubId)` —
+ * ADR-0027). A private `#brand` field makes the class **nominal** so a bare
+ * `{ id, clubId, … }` object literal (the TS structural-literal leak a
+ * `private constructor` cannot block on its own) is not assignable to `Entry`
+ * — the type is closed against unvalidated construction (mirrors `RoleGrant` /
+ * `LocalDate`). Storage load goes through {@link Entry.rehydrate}, the one
+ * other construction path (it does not record an event — only a fresh
+ * submission does).
  */
-export class Entry {
+export class Entry extends AggregateRoot {
     // Nominal brand: a bare object literal lacks this private field, so it is
     // not assignable to `Entry` — closes the structural-literal leak.
     // eslint-disable-next-line no-unused-private-class-members -- intentional nominal brand; exists for compile-time type pinning, not runtime use.
@@ -31,83 +38,73 @@ export class Entry {
 
     readonly id: EntryId;
     readonly clubId: ClubId;
-    readonly principalId: PrincipalId;
+    readonly createdBy: PrincipalId;
     readonly showId: ShowId;
     readonly dogName: string;
 
     private constructor(
         id: EntryId,
         clubId: ClubId,
-        principalId: PrincipalId,
+        createdBy: PrincipalId,
         showId: ShowId,
         dogName: string,
     ) {
+        super();
         this.id = id;
         this.clubId = clubId;
-        this.principalId = principalId;
+        this.createdBy = createdBy;
         this.showId = showId;
         this.dogName = dogName;
     }
 
     /**
-     * Submit an {@link Entry} under `scope`.
-     *
-     * An Entry is Club-owned, so only a `club` scope (which carries both the
-     * owning `ClubId` and the acting `PrincipalId`) is accepted; an `exhibitor`
-     * or `platform` scope has no Club to attribute the Entry to and throws
-     * {@link InvalidTransactionScopeError}. Keeping this rule in the aggregate
-     * factory means the "Entry is Club-owned" invariant cannot be bypassed by
-     * an application layer that builds an `Entry` literal directly.
+     * Submit an Entry, recording `EntrySubmitted` scoped to the owning Club
+     * (`input.clubId`) — an Entry is Club-owned regardless of which scope the
+     * acting principal (`input.createdBy`) submitted it under (ADR-0026).
      */
-    static submit(scope: TransactionScope, input: EntryInput): Entry {
-        if (scope.kind !== 'club') {
-            throw new InvalidTransactionScopeError(
-                scope.kind,
-                `An Entry is Club-owned; received a '${scope.kind}' scope with no Club to attribute it to`,
-            );
-        }
-        return new Entry(input.id, scope.clubId, scope.principalId, input.showId, input.dogName);
+    static submit(input: EntryInput): Entry {
+        const entry = new Entry(
+            input.id,
+            input.clubId,
+            input.createdBy,
+            input.showId,
+            input.dogName,
+        );
+        entry.record(
+            EntrySubmitted.create(asAggregateId(entry.id), ClubEventScope.of(entry.clubId), {
+                dogName: entry.dogName,
+            }),
+        );
+        return entry;
     }
 
     /**
      * Rehydrates an {@link Entry} from storage. The owning `ClubId` and acting
      * `PrincipalId` are supplied directly (a stored row carries them as
-     * columns), so — unlike {@link Entry.submit} — no `TransactionScope` is
-     * consumed. The `#brand` field forces repositories onto this path instead
-     * of building an `Entry` literal (V2).
+     * columns). No event is recorded — rehydration replays past state, it
+     * does not produce a new fact. The `#brand` field forces repositories
+     * onto this path instead of building an `Entry` literal (V2).
      */
     static rehydrate(input: {
         readonly id: EntryId;
         readonly clubId: ClubId;
-        readonly principalId: PrincipalId;
+        readonly createdBy: PrincipalId;
         readonly showId: ShowId;
         readonly dogName: string;
     }): Entry {
-        return new Entry(input.id, input.clubId, input.principalId, input.showId, input.dogName);
+        return new Entry(input.id, input.clubId, input.createdBy, input.showId, input.dogName);
     }
 }
 
 /**
- * Thrown when {@link Entry.submit} receives a {@link TransactionScope} whose
- * kind it cannot accept. `received` names the offending scope kind, so callers
- * can discriminate this failure by type.
- */
-export class InvalidTransactionScopeError extends DomainError {
-    readonly received: TransactionScope['kind'];
-
-    constructor(received: TransactionScope['kind'], message: string) {
-        super(message, { received });
-        this.received = received;
-    }
-}
-
-/**
- * Inputs to {@link Entry.submit} that are not derivable from the transaction
- * scope — the Entry's own id, the Show it is submitted to, and the dog's call
- * name. The owning Club and acting principal come from the `club` scope.
+ * Inputs to {@link Entry.submit}: the Entry's own id, the Show it is submitted
+ * to, the dog's call name, the owning Club (`clubId` — the Show's Club, not
+ * necessarily the actor's), and the acting principal (`createdBy`).
  */
 export interface EntryInput {
     readonly id: EntryId;
+    readonly clubId: ClubId;
+    readonly createdBy: PrincipalId;
     readonly showId: ShowId;
     readonly dogName: string;
 }

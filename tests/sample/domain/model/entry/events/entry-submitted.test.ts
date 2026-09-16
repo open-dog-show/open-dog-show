@@ -4,115 +4,68 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import {
     asAggregateId,
-    asEventId,
+    asClubId,
     asEventType,
-    EventScope,
-    FakeClock,
-    FakeEventIdGenerator,
-    type Clock,
-    type DomainEvent,
-    type EventIdGenerator,
+    ClubEventScope,
+    PlatformEventScope,
+    type DomainEventFact,
 } from '../../../../../../src/Shared/index.js';
 import {
     EntrySubmitted,
     ENTRY_SUBMITTED_TYPE,
 } from '../../../../../../src/sample/domain/model/entry/events/entry-submitted.js';
 
-const FIXED_DATE = new Date('2026-08-01T12:00:00.000Z');
-const FIXED_ID = '00000000-0000-4000-8000-000000000001';
+const CLUB_ID = asClubId('00000000-0000-4000-8000-000000000001');
 
-const clock: Clock = new FakeClock(FIXED_DATE);
-const eventIdGenerator: EventIdGenerator = new FakeEventIdGenerator();
-
-describe('EntrySubmitted.from', () => {
-    it('defaults eventId and occurredAt to the injected Clock / EventIdGenerator', () => {
-        const event = EntrySubmitted.from(
-            {
-                scope: EventScope.club(),
-                aggregateId: asAggregateId('entry-1'),
-                payload: { dogName: 'Fido' },
-            },
-            { clock, eventIdGenerator },
-        );
+describe('EntrySubmitted.create', () => {
+    it('constructs the fact from domain data only — no Clock/EventIdGenerator ports', () => {
+        const event = EntrySubmitted.create(asAggregateId('entry-1'), ClubEventScope.of(CLUB_ID), {
+            dogName: 'Fido',
+        });
 
         expect(event).toBeInstanceOf(EntrySubmitted);
-        expect(event.eventId).toBe(FIXED_ID);
-        expect(event.occurredAt).toStrictEqual(FIXED_DATE);
         expect(event.type).toBe('sample.EntrySubmitted');
         expect(event.scope.kind).toBe('club');
         expect(event.aggregateId).toBe(asAggregateId('entry-1'));
         expect(event.payload).toStrictEqual({ dogName: 'Fido' });
     });
 
-    it('honours explicit eventId / occurredAt overrides (deterministic tests)', () => {
-        const explicitId = asEventId('00000000-0000-4000-8000-000000000099');
-        const explicitDate = new Date('2025-01-01T00:00:00.000Z');
-
-        const event = EntrySubmitted.from(
-            {
-                scope: EventScope.platform(),
-                aggregateId: asAggregateId('entry-1'),
-                payload: { dogName: 'Rex' },
-                eventId: explicitId,
-                occurredAt: explicitDate,
-            },
-            { clock, eventIdGenerator },
-        );
-
-        expect(event.eventId).toBe(explicitId);
-        expect(event.occurredAt).toBe(explicitDate);
-    });
-
-    it('is a DomainEvent', () => {
+    it('is a DomainEventFact', () => {
         expectTypeOf(
-            EntrySubmitted.from(
-                {
-                    scope: EventScope.club(),
-                    aggregateId: asAggregateId('e'),
-                    payload: { dogName: 'Fido' },
-                },
-                { clock, eventIdGenerator },
-            ),
-        ).toMatchTypeOf<DomainEvent>();
+            EntrySubmitted.create(asAggregateId('e'), ClubEventScope.of(CLUB_ID), {
+                dogName: 'Fido',
+            }),
+        ).toMatchTypeOf<DomainEventFact>();
     });
 });
 
 describe('EntrySubmitted.rehydrate', () => {
-    it('rebuilds the class event from a stored envelope without ports', () => {
+    it('rebuilds the class fact from a stored row without ports', () => {
         const event = EntrySubmitted.rehydrate({
-            eventId: asEventId(FIXED_ID),
-            occurredAt: FIXED_DATE,
-            scope: EventScope.club(),
+            scope: PlatformEventScope.of(),
             aggregateId: asAggregateId('entry-1'),
             payload: { dogName: 'Fido' },
         });
 
         expect(event).toBeInstanceOf(EntrySubmitted);
-        expect(event.eventId).toBe(FIXED_ID);
-        expect(event.occurredAt).toBe(FIXED_DATE);
         expect(event.type).toBe('sample.EntrySubmitted');
     });
 
-    it('rehydrates equal-by-field to a freshly emitted event of the same data', () => {
-        const emitted = EntrySubmitted.from(
+    it('rehydrates equal-by-field to a freshly created fact of the same data', () => {
+        const created = EntrySubmitted.create(
+            asAggregateId('entry-1'),
+            ClubEventScope.of(CLUB_ID),
             {
-                scope: EventScope.club(),
-                aggregateId: asAggregateId('entry-1'),
-                payload: { dogName: 'Fido' },
-                eventId: asEventId(FIXED_ID),
-                occurredAt: FIXED_DATE,
+                dogName: 'Fido',
             },
-            { clock, eventIdGenerator },
         );
         const rehydrated = EntrySubmitted.rehydrate({
-            eventId: emitted.eventId,
-            occurredAt: emitted.occurredAt,
-            scope: emitted.scope,
-            aggregateId: emitted.aggregateId,
-            payload: emitted.payload,
+            scope: created.scope,
+            aggregateId: created.aggregateId,
+            payload: created.payload,
         });
 
-        expect(rehydrated).toEqual(emitted);
+        expect(rehydrated).toEqual(created);
     });
 });
 
@@ -122,13 +75,11 @@ describe('EntrySubmitted type + nominal brand', () => {
         expect(ENTRY_SUBMITTED_TYPE).toStrictEqual(asEventType('sample.EntrySubmitted'));
     });
 
-    it('is not assignable from a structural envelope literal (the #brand closes the leak)', () => {
+    it('is not assignable from a structural fact literal (the #brand closes the leak)', () => {
         // @ts-expect-error — Property '#brand' is missing in the object literal.
         const notAnEvent: EntrySubmitted = {
-            eventId: asEventId(FIXED_ID),
             type: asEventType('sample.EntrySubmitted'),
-            occurredAt: FIXED_DATE,
-            scope: EventScope.club(),
+            scope: ClubEventScope.of(CLUB_ID),
             aggregateId: asAggregateId('entry-1'),
             payload: { dogName: 'Fido' },
         };

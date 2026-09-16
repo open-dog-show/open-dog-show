@@ -27,27 +27,29 @@ function asEntrySubmittedPayload(payload: unknown): EntrySubmittedPayload {
  * (ADR-0022 class events, issue #172).
  *
  * Each registered rehydrator constructs the concrete class event from the
- * already-validated envelope fields the kernel codec hands it, narrowing the
- * `payload` from `unknown` to the event's typed shape at this boundary (the
- * codec cannot validate a payload shape it knows nothing about). The returned
- * registry is passed to the polling dispatcher so a stored outbox row is
- * rehydrated back into its class instance — an unregistered type throws
- * instead of falling back to a generic envelope (ADR-0022, #176), so this
- * registry must cover every type the sample context emits.
+ * already-validated fact fields the kernel codec hands it (`type`, `scope`,
+ * `aggregateId`, `payload` — never `eventId`/`occurredAt`, which are
+ * envelope-only fields the codec attaches afterwards, ADR-0027), narrowing
+ * the `payload` from `unknown` to the event's typed shape at this boundary.
+ * The returned registry is passed to the polling dispatcher so a stored
+ * outbox row is rehydrated back into its class instance — an unregistered
+ * type throws instead of falling back to a generic envelope (ADR-0022,
+ * #176), so this registry must cover every type the sample context emits.
  *
- * Lives in the sample context's `infrastructure/di/` because the kernel cannot
- * import a context's event classes — the composition root owns the wiring
- * (ADR-0004 dependencies point inward; contexts never import each other).
+ * Lives in the sample context's `infrastructure/messaging/` (ADR-0021's
+ * 2026-09-11 amendment: event rehydration registries live in
+ * `infrastructure/messaging/`, not `infrastructure/di/`) because the kernel
+ * cannot import a context's event classes — the composition root owns the
+ * wiring (ADR-0004 dependencies point inward; contexts never import each
+ * other).
  */
 export function buildSampleEventRehydrationRegistry(): DomainEventRehydrationRegistry {
     const registry = new DomainEventRehydrationRegistry();
-    registry.register(ENTRY_SUBMITTED_TYPE, (envelope) =>
+    registry.register(ENTRY_SUBMITTED_TYPE, ({ scope, aggregateId, payload }) =>
         EntrySubmitted.rehydrate({
-            eventId: envelope.eventId,
-            occurredAt: envelope.occurredAt,
-            scope: envelope.scope,
-            aggregateId: envelope.aggregateId,
-            payload: asEntrySubmittedPayload(envelope.payload),
+            scope,
+            aggregateId,
+            payload: asEntrySubmittedPayload(payload),
         }),
     );
     return registry;

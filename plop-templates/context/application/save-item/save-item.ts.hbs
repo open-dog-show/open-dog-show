@@ -3,9 +3,8 @@
 
 import {
     asAggregateId,
-    EventScope,
-    type Clock,
-    type EventIdGenerator,
+    ClubEventScope,
+    requireClubScope,
     type TransactionScope,
 } from '../../../Shared/index.js';
 import type { Item } from '../../domain/model/item/item.js';
@@ -14,8 +13,8 @@ import type { ItemUnitOfWork } from '../ports/unit-of-work.js';
 
 /**
  * Inputs to {@link SaveItemUseCase.execute} that are not derivable from the
- * transaction scope. The owning Club and the acting principal come from the
- * `TransactionScope`; everything the caller controls lives here.
+ * transaction scope. The owning Club comes from the `TransactionScope` (via
+ * {@link requireClubScope}); everything the caller controls lives here.
  */
 export interface SaveItemInput {
     /** Aggregate id of the Item to save (upserts on conflict). */
@@ -25,20 +24,14 @@ export interface SaveItemInput {
 }
 
 /**
- * Construct the {@link Item} aggregate from the use-case input and the
- * transaction scope.
+ * Construct the {@link Item} from the use-case input and the owning Club.
  *
- * An Item is Club-owned, so only a `club` scope (which carries both the
- * owning `ClubId` and the acting `PrincipalId`) is accepted; an `exhibitor`
- * or `platform` scope has no Club to attribute the Item to.
+ * An Item is Club-owned outright (not hybrid), so `scope` must itself be a
+ * `club` scope (ADR-0026) — {@link requireClubScope} throws
+ * `ScopeMismatchError` for any other scope kind.
  */
 function toItem(input: SaveItemInput, scope: TransactionScope): Item {
-    if (scope.kind !== 'club') {
-        throw new Error(
-            `SaveItemUseCase requires a club-scoped transaction, received '${scope.kind}'`,
-        );
-    }
-    return { id: input.id, clubId: scope.clubId, name: input.name };
+    return { id: input.id, clubId: requireClubScope(scope), name: input.name };
 }
 
 /**
@@ -51,34 +44,23 @@ function toItem(input: SaveItemInput, scope: TransactionScope): Item {
  * with a fake unit of work and no Docker.
  */
 export class SaveItemUseCase {
-    /**
-     * @param unitOfWork - The per-context unit-of-work port (transaction + repo + outbox).
-     * @param clock - Injected wall-clock port for deterministic event timestamps.
-     * @param eventIdGenerator - Injected id-generator port for deterministic event ids.
-     */
-    constructor(
-        private readonly unitOfWork: ItemUnitOfWork,
-        private readonly clock: Clock,
-        private readonly eventIdGenerator: EventIdGenerator,
-    ) {}
+    /** @param unitOfWork - The per-context unit-of-work port (transaction + repo + outbox). */
+    constructor(private readonly unitOfWork: ItemUnitOfWork) {}
 
     /**
      * Save the Item described by `input` under `scope` and emit the
      * `{{eventContext name}}.ItemSaved` domain event in the same transaction.
+     *
+     * @throws {ScopeMismatchError} when `scope` is not a `club` scope.
      */
     async execute(input: SaveItemInput, scope: TransactionScope): Promise<void> {
+        const item = toItem(input, scope);
         await this.unitOfWork.run(scope, async (ctx) => {
-            const item = toItem(input, scope);
             await ctx.items.save(item);
-            ctx.appendEvents(
-                ItemSaved.from(
-                    {
-                        scope: EventScope.club(),
-                        aggregateId: asAggregateId(item.id),
-                        payload: { name: item.name },
-                    },
-                    { clock: this.clock, eventIdGenerator: this.eventIdGenerator },
-                ),
+            ctx.record(
+                ItemSaved.create(asAggregateId(item.id), ClubEventScope.of(item.clubId), {
+                    name: item.name,
+                }),
             );
         });
     }

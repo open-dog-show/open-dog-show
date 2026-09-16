@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { EventIdGenerator } from '../domain/domain-ports.js';
-import { asEventId, type EventId } from '../domain/domain-ids.js';
+import type { EventIdGenerator } from '../../../domain/domain-ports.js';
+import { asEventId, type EventId } from '../../../domain/domain-ids.js';
 
 /** Fixed width of the trailing 12-digit counter segment in the fake UUID. */
 const UUID_SUFFIX_WIDTH = 12;

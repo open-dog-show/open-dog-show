@@ -1,15 +1,15 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { DomainEvent, TransactionScope } from '../../../Shared/index.js';
+import type { DomainEventFact, TransactionScope } from '../../../Shared/index.js';
 import type { ItemRepository } from '../../domain/model/item/item.js';
 
 /**
- * The repositories and event sink available inside one {{name}} unit of work
+ * The repository and fact recorder available inside one {{name}} unit of work
  * (ADR-0014).
  *
  * The application layer names only these members — never `pg`, `pg.PoolClient`,
- * `OutboxWriter`, or `withOutboxTransaction`. The {@link ItemUnitOfWork}
+ * `PgOutboxWriter`, or `withOutboxTransaction`. The {@link ItemUnitOfWork}
  * implementation owns the transaction boundary and constructs the Drizzle
  * repository inside it.
  */
@@ -17,10 +17,19 @@ export interface ItemUnitOfWorkContext {
     /** The Item repository, transaction-bound by the surrounding unit of work. */
     readonly items: ItemRepository;
     /**
-     * Queues domain events for atomic outbox-write at the end of the unit of
-     * work. Read-only operations simply do not call this.
+     * Records domain facts for atomic outbox-write at the end of the unit of
+     * work — stamped with `eventId` / `occurredAt` by the unit of work.
+     * Read-only operations simply do not call this.
+     *
+     * ADR-0027's target shape is a root recording its own facts
+     * (`this.record(...)`, pulled via `AggregateRoot.pullEvents()`), so a use
+     * case never touches events — see the sample context's `Entry`/
+     * `SaveEntryUseCase` for that shape. `Item` here is still a plain object,
+     * not an `AggregateRoot`, so `SaveItemUseCase` builds the fact and calls
+     * this member itself; bringing the template in line with `Entry`'s shape
+     * is the aggregate-class generator's job (issue #188), not this port.
      */
-    appendEvents(...events: DomainEvent[]): void;
+    record(...facts: readonly DomainEventFact[]): void;
 }
 
 /**
@@ -28,7 +37,7 @@ export interface ItemUnitOfWorkContext {
  *
  * Opens a transaction scoped to `scope` (setting the RLS session variables),
  * constructs the context's repository inside it, runs `body`, then commits —
- * atomically writing any appended domain events to the outbox before commit
+ * atomically writing any recorded domain facts to the outbox before commit
  * (or rolling back on error).
  */
 export interface ItemUnitOfWork {

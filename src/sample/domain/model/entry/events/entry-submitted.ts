@@ -4,11 +4,8 @@
 import {
     asEventType,
     type AggregateId,
-    type Clock,
-    type DomainEvent,
-    type EventId,
-    type EventIdGenerator,
-    EventScope,
+    type DomainEventFact,
+    type EventScope,
     type EventType,
 } from '../../../../../Shared/index.js';
 
@@ -29,100 +26,61 @@ export interface EntrySubmittedPayload {
 /**
  * The fact that an {@link Entry} was submitted to a Show.
  *
- * Modelled as a **class event** implementing {@link DomainEvent} (ADR-0022
- * class events, issue #172): the generic `DomainEvent<TPayload>` envelope +
- * `createDomainEvent` factory are retired (issue #176) now that every real
- * emitter, this one included, is class-per-type. The `type` field is fixed to
- * {@link ENTRY_SUBMITTED_TYPE}; the payload is the typed
- * {@link EntrySubmittedPayload}.
+ * Modelled as a **class event** implementing {@link DomainEventFact} (ADR-0027):
+ * the `type` field is fixed to {@link ENTRY_SUBMITTED_TYPE}; the payload is
+ * the typed {@link EntrySubmittedPayload}. Carries no `eventId` / `occurredAt`
+ * — those are envelope fields the unit of work stamps on afterwards, from
+ * `Clock` / `EventIdGenerator` injected at the composition root, never from
+ * this class or its caller (the aggregate root records facts from domain
+ * data only). A private `#brand` field makes the class **nominal** so a bare
+ * envelope literal is not assignable to `EntrySubmitted`.
  *
- * `Clock` / `EventIdGenerator` are injected into the construction path
- * ({@link EntrySubmitted.from}) so `eventId` and `occurredAt` are deterministic
- * under test and free of hidden I/O at the call site. Explicit `eventId` /
- * `occurredAt` overrides keep the deterministic event-id/timestamp tests
- * working. A private `#brand` field makes the class **nominal** so a bare
- * envelope literal is not assignable to `EntrySubmitted`, and `instanceof` is
- * the reliable runtime discriminator for outbox consumers.
- *
- * Storage rehydration goes through {@link EntrySubmitted.rehydrate} (no ports —
- * the stored `eventId` / `occurredAt` are reused), which the sample context's
- * rehydration registry wires into the outbox codec / polling dispatcher.
+ * Storage rehydration goes through {@link EntrySubmitted.rehydrate}, which the
+ * sample context's rehydration registry wires into the outbox codec /
+ * polling dispatcher.
  */
-export class EntrySubmitted implements DomainEvent {
+export class EntrySubmitted implements DomainEventFact {
     // Nominal brand: a bare envelope literal lacks this private field, so it is
-    // not assignable to `EntrySubmitted` — closes the structural-literal leak
-    // and makes `instanceof` the reliable discriminator.
+    // not assignable to `EntrySubmitted` — closes the structural-literal leak.
     // eslint-disable-next-line no-unused-private-class-members -- intentional nominal brand; exists for compile-time type pinning, not runtime use.
     readonly #brand = true;
 
     readonly type = ENTRY_SUBMITTED_TYPE;
-    readonly eventId: EventId;
-    readonly occurredAt: Date;
     readonly scope: EventScope;
     readonly aggregateId: AggregateId;
     readonly payload: EntrySubmittedPayload;
 
     private constructor(
-        eventId: EventId,
-        occurredAt: Date,
         scope: EventScope,
         aggregateId: AggregateId,
         payload: EntrySubmittedPayload,
     ) {
-        this.eventId = eventId;
-        this.occurredAt = occurredAt;
         this.scope = scope;
         this.aggregateId = aggregateId;
         this.payload = payload;
     }
 
-    /**
-     * Constructs an {@link EntrySubmitted} for emission, defaulting `eventId`
-     * and `occurredAt` to the injected {@link Clock} / {@link EventIdGenerator}
-     * ports unless overridden (e.g. tests supplying deterministic values).
-     */
-    static from(
-        params: {
-            readonly scope: EventScope;
-            readonly aggregateId: AggregateId;
-            readonly payload: EntrySubmittedPayload;
-            /** Override the generated id (useful in tests). */
-            readonly eventId?: EventId | undefined;
-            /** Override the timestamp (useful in tests). */
-            readonly occurredAt?: Date | undefined;
-        },
-        deps: { readonly clock: Clock; readonly eventIdGenerator: EventIdGenerator },
+    /** Constructs an {@link EntrySubmitted} fact — called by `Entry.submit`. */
+    static create(
+        aggregateId: AggregateId,
+        scope: EventScope,
+        payload: EntrySubmittedPayload,
     ): EntrySubmitted {
-        return new EntrySubmitted(
-            params.eventId ?? deps.eventIdGenerator.generate(),
-            params.occurredAt ?? deps.clock.now(),
-            params.scope,
-            params.aggregateId,
-            params.payload,
-        );
+        return new EntrySubmitted(scope, aggregateId, payload);
     }
 
     /**
-     * Rehydrates an {@link EntrySubmitted} from a stored envelope — the path
-     * the outbox codec / polling dispatcher use via the sample context's
-     * rehydration registry. No ports: the stored `eventId` / `occurredAt` are
-     * reused verbatim. The `payload` is narrowed from `unknown` at this
-     * boundary (the codec cannot validate a payload shape it knows nothing
-     * about).
+     * Rehydrates an {@link EntrySubmitted} fact from a stored row's
+     * already-validated fields — the path the outbox codec / polling
+     * dispatcher use via the sample context's rehydration registry. The
+     * `payload` is narrowed from `unknown` at this boundary (the codec cannot
+     * validate a payload shape it knows nothing about).
      */
-    static rehydrate(envelope: {
-        readonly eventId: EventId;
-        readonly occurredAt: Date;
+    static rehydrate(fact: {
         readonly scope: EventScope;
         readonly aggregateId: AggregateId;
         readonly payload: EntrySubmittedPayload;
     }): EntrySubmitted {
-        return new EntrySubmitted(
-            envelope.eventId,
-            envelope.occurredAt,
-            envelope.scope,
-            envelope.aggregateId,
-            envelope.payload,
-        );
+        return new EntrySubmitted(fact.scope, fact.aggregateId, fact.payload);
     }
 }

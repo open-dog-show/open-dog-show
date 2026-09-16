@@ -2,11 +2,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type pg from 'pg';
-import type { TransactionScope } from '../domain/transaction-scope.js';
-import type { OutboxAppender } from '../application/ports/outbox-appender.js';
-import type { OutboxWriter } from './outbox-writer.js';
-import type { DomainEvent } from '../domain/domain-event.js';
+import type { Clock, EventIdGenerator } from '../../../domain/domain-ports.js';
+import {
+    stampDomainEvent,
+    type DomainEvent,
+    type DomainEventFact,
+} from '../../../domain/domain-event.js';
+import type { TransactionScope } from '../../../domain/transaction-scope.js';
 import { scopeToRlsKeys } from './rls-keys.js';
+import { PgOutboxWriter } from './pg-outbox-writer.js';
+import { TransactionFailed } from './transaction-failed.js';
 
 /**
  * Sets the RLS session variables from `scope` on the given client.
@@ -45,6 +50,10 @@ async function setRlsSessionVars(client: pg.PoolClient, scope: TransactionScope)
  * `client`: `BEGIN` → `body` → `COMMIT`, with a guarded `ROLLBACK` on error
  * (a `ROLLBACK` after a dead connection would otherwise mask the real error).
  *
+ * `BEGIN` and `COMMIT` failures are wrapped as {@link TransactionFailed} (E3);
+ * a `body` error (a business failure or a test's simulated failure) is
+ * deliberately left unwrapped — it is not a transaction-plumbing fault.
+ *
  * The client lifecycle (`connect`/`release`) is owned by the caller — this
  * helper owns only the transaction boundary, so it is shared by
  * {@link withTransaction} (which also sets RLS session vars and manages the
@@ -57,9 +66,13 @@ export async function runInClientTransaction<T>(
 ): Promise<T> {
     try {
         await client.query('BEGIN');
-        const result = await body(client);
-        await client.query('COMMIT');
-        return result;
+    } catch (cause) {
+        throw new TransactionFailed('beginning the transaction', cause);
+    }
+
+    let result: T;
+    try {
+        result = await body(client);
     } catch (err) {
         // ROLLBACK may itself throw when the connection died (the common cause
         // of the original failure); guard it so the real error is preserved.
@@ -70,6 +83,13 @@ export async function runInClientTransaction<T>(
         }
         throw err;
     }
+
+    try {
+        await client.query('COMMIT');
+    } catch (cause) {
+        throw new TransactionFailed('committing the transaction', cause);
+    }
+    return result;
 }
 
 /**
@@ -79,20 +99,32 @@ export async function runInClientTransaction<T>(
  * This is the kernel's single transaction-flow helper for units of work: it
  * owns the connect → {@link runInClientTransaction} (BEGIN → set RLS session
  * vars → `fn` → COMMIT / ROLLBACK) → release flow. {@link withOutboxTransaction}
- * delegates to it, layering the in-memory event accumulator and the atomic
- * outbox write on top by folding them into `fn`. Use this for units of work
- * that do **not** emit domain events; the callback receives only a
- * `pg.PoolClient`.
+ * delegates to it, layering the fact-stamping and the atomic outbox write on
+ * top by folding them into `fn`. Use this for units of work that do **not**
+ * emit domain events; the callback receives only a `pg.PoolClient`.
+ *
+ * `pool.connect()` and setting the RLS session variables are wrapped as
+ * {@link TransactionFailed} (E3), alongside `BEGIN`/`COMMIT` (wrapped by
+ * {@link runInClientTransaction}).
  */
 export async function withTransaction<T>(
     pool: pg.Pool,
     scope: TransactionScope,
     fn: (client: pg.PoolClient) => Promise<T>,
 ): Promise<T> {
-    const client = await pool.connect();
+    let client: pg.PoolClient;
+    try {
+        client = await pool.connect();
+    } catch (cause) {
+        throw new TransactionFailed('connecting to the pool', cause);
+    }
     try {
         return await runInClientTransaction(client, async (c) => {
-            await setRlsSessionVars(c, scope);
+            try {
+                await setRlsSessionVars(c, scope);
+            } catch (cause) {
+                throw new TransactionFailed('setting RLS session variables', cause);
+            }
             return fn(c);
         });
     } finally {
@@ -102,31 +134,42 @@ export async function withTransaction<T>(
 
 /**
  * Opens a PostgreSQL transaction, sets the RLS session variables from `scope`,
- * runs `fn`, then atomically writes any accumulated domain events via `writer`
+ * runs `fn`, then atomically writes any recorded domain facts via `writer`
  * before committing (or rolls back on error).
  *
- * Use this for units of work that emit domain events.  `writer` is required;
- * the callback receives `(client, outbox: OutboxAppender)`.  Events are written
- * to the outbox table in the same transaction, immediately before `COMMIT`.
- * On rollback neither the aggregate change nor the outbox rows are persisted.
+ * Use this for units of work that emit domain events. `fn` receives
+ * `(client, record)`: `record(...facts)` stamps each {@link DomainEventFact}
+ * with a fresh `eventId` / `occurredAt` (from `eventIdGenerator` / `clock`)
+ * and queues the resulting {@link DomainEvent} for the outbox write —
+ * mirroring ADR-0027's "the unit of work pulls events from aggregates,
+ * stamps the envelope" (a context's own unit-of-work implementation calls
+ * `record(...aggregate.pullEvents())` after saving the aggregate). Events are
+ * written to the outbox table in the same transaction, immediately before
+ * `COMMIT`. On rollback neither the aggregate change nor the outbox rows are
+ * persisted.
  */
 export async function withOutboxTransaction<T>(
     pool: pg.Pool,
     scope: TransactionScope,
-    writer: OutboxWriter,
-    fn: (client: pg.PoolClient, outbox: OutboxAppender) => Promise<T>,
+    writer: PgOutboxWriter,
+    clock: Clock,
+    eventIdGenerator: EventIdGenerator,
+    fn: (
+        client: pg.PoolClient,
+        record: (...facts: readonly DomainEventFact[]) => void,
+    ) => Promise<T>,
 ): Promise<T> {
     const pending: DomainEvent[] = [];
-    const appender: OutboxAppender = {
-        append(...events) {
-            pending.push(...events);
-        },
+    const record = (...facts: readonly DomainEventFact[]): void => {
+        for (const fact of facts) {
+            pending.push(stampDomainEvent(fact, eventIdGenerator.generate(), clock.now()));
+        }
     };
 
     return withTransaction(pool, scope, async (client) => {
-        const result = await fn(client, appender);
+        const result = await fn(client, record);
         if (pending.length > 0) {
-            await writer.write(client, pending, scope);
+            await writer.write(client, pending);
         }
         return result;
     });

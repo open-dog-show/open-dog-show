@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, expectTypeOf, it } from 'vitest';
-import type { DomainEvent } from '../../../src/Shared/domain/domain-event.js';
+import {
+    stampDomainEvent,
+    type DomainEvent,
+    type DomainEventFact,
+} from '../../../src/Shared/domain/domain-event.js';
 import type { EventIdGenerator } from '../../../src/Shared/domain/domain-ports.js';
 import {
     asAggregateId,
@@ -11,6 +15,7 @@ import {
     type AggregateId,
     type EventId,
 } from '../../../src/Shared/domain/domain-ids.js';
+import { PlatformEventScope } from '../../../src/Shared/domain/event-scope.js';
 
 describe('EventIdGenerator port', () => {
     it('generate() returns a branded EventId', () => {
@@ -65,6 +70,55 @@ describe('AggregateId brand isolation', () => {
         // @ts-expect-error an AggregateId must not satisfy EventId
         const eventId: EventId = agg;
         expect(eventId).toStrictEqual(asEventId('entry-1'));
+    });
+});
+
+describe('stampDomainEvent', () => {
+    const FIXED_ID = asEventId('00000000-0000-4000-8000-000000000001');
+    const FIXED_DATE = new Date('2026-08-01T12:00:00.000Z');
+
+    class StubFact implements DomainEventFact {
+        readonly type = asEventType('sample.StubHappened');
+        readonly scope = PlatformEventScope.of();
+        readonly aggregateId = asAggregateId('agg-1');
+        readonly payload = { n: 1 };
+    }
+
+    it('attaches eventId and occurredAt to the fact', () => {
+        const stamped = stampDomainEvent(new StubFact(), FIXED_ID, FIXED_DATE);
+
+        expect(stamped.eventId).toBe(FIXED_ID);
+        expect(stamped.occurredAt).toBe(FIXED_DATE);
+        expect(stamped.type).toBe('sample.StubHappened');
+        expect(stamped.payload).toStrictEqual({ n: 1 });
+    });
+
+    it('preserves the fact class prototype, so instanceof still holds after stamping', () => {
+        const stamped = stampDomainEvent(new StubFact(), FIXED_ID, FIXED_DATE);
+
+        expect(stamped).toBeInstanceOf(StubFact);
+    });
+
+    it('does not mutate the original fact object', () => {
+        const fact = new StubFact();
+        stampDomainEvent(fact, FIXED_ID, FIXED_DATE);
+
+        expect('eventId' in fact).toBe(false);
+        expect('occurredAt' in fact).toBe(false);
+    });
+
+    it('preserves a plain-object fact (no custom prototype) as a plain object', () => {
+        const plainFact: DomainEventFact = {
+            type: asEventType('sample.StubHappened'),
+            scope: PlatformEventScope.of(),
+            aggregateId: asAggregateId('agg-1'),
+            payload: { n: 1 },
+        };
+
+        const stamped = stampDomainEvent(plainFact, FIXED_ID, FIXED_DATE);
+
+        expect(Object.getPrototypeOf(stamped)).toBe(Object.prototype);
+        expect(stamped.eventId).toBe(FIXED_ID);
     });
 });
 

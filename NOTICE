@@ -58,6 +58,10 @@ MIT — dev-only, used in open-dog-show (root)
 Copyright (c) Microsoft Corporation.
 MIT — dev-only, used in open-dog-show (root)
 
+@vitest/coverage-v8 — https://github.com/vitest-dev/vitest
+Copyright (c) 2021-Present Vitest Team
+MIT — dev-only, used in open-dog-show (root)
+
 drizzle-orm — https://github.com/drizzle-team/drizzle-orm
 Copyright (c) Drizzle Team
 Apache-2.0 — dev-only, used in open-dog-show (root)

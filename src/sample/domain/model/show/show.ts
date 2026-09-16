@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { ClubId } from '../../../../Shared/index.js';
+import { DomainError, type ClubId } from '../../../../Shared/index.js';
 import type { ShowId } from '../../shared/domain-ids.js';
 
 /**
@@ -44,5 +44,20 @@ export class Show {
     /** Rehydrates a {@link Show} from storage columns — the repository-load path. */
     static rehydrate(id: ShowId, clubId: ClubId, name: string): Show {
         return new Show(id, clubId, name);
+    }
+}
+
+/**
+ * Thrown when a use case looks up a {@link Show} by id and none exists —
+ * e.g. `SaveEntryUseCase` deriving an Entry's owning `clubId` from the Show
+ * it is submitted to (ADR-0026: "the owning Club comes from the Show being
+ * entered").
+ */
+export class ShowNotFoundError extends DomainError {
+    readonly showId: ShowId;
+
+    constructor(showId: ShowId) {
+        super(`No Show found with id '${showId}'`, { showId });
+        this.showId = showId;
     }
 }

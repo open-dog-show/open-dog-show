@@ -1,11 +1,10 @@
 // SPDX-FileCopyrightText: 2026 the OpenDogShow contributors
 // SPDX-License-Identifier: AGPL-3.0-only
 
-export { Show } from './domain/model/show/show.js';
+export { Show, ShowNotFoundError } from './domain/model/show/show.js';
 export type { ShowRepository } from './domain/model/show/show-repository.js';
 export { Entry } from './domain/model/entry/entry.js';
 export type { EntryInput } from './domain/model/entry/entry.js';
-export { InvalidTransactionScopeError } from './domain/model/entry/entry.js';
 export {
     EntrySubmitted,
     ENTRY_SUBMITTED_TYPE,
@@ -21,4 +20,4 @@ export { SaveEntryUseCase } from './application/save-entry/save-entry.js';
 export { DrizzleShowRepository } from './infrastructure/persistence/postgres/drizzle-show-repository.js';
 export { DrizzleEntryRepository } from './infrastructure/persistence/postgres/drizzle-entry-repository.js';
 export { PgSampleUnitOfWork } from './infrastructure/persistence/postgres/pg-unit-of-work.js';
-export { buildSampleEventRehydrationRegistry } from './infrastructure/di/sample-event-registry.js';
+export { buildSampleEventRehydrationRegistry } from './infrastructure/messaging/sample-event-registry.js';
