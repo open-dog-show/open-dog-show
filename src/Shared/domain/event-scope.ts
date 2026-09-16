@@ -135,6 +135,16 @@ function toPlatformEventScope(
     return PlatformEventScope.of();
 }
 
+/**
+ * `kind` is an untrusted wire string (a raw `outbox.scope` column value),
+ * not a value already narrowed to `EventScope`'s closed union — so the
+ * `default` case below is reachable input validation, not an exhaustiveness
+ * gap. It deliberately does not use the kernel's shared `assertNever`:
+ * `assertNever` proves a `switch` over an already-`never`-narrowed type is
+ * unreachable at compile time (see `owner-columns.ts`'s `scopeToOwnerColumns`
+ * for that shape); here the compiler cannot narrow a bare `string`; a raw
+ * `TypeError` is the correct tool for rejecting a bad wire value.
+ */
 export function asEventScope(
     kind: string,
     clubId: string | null,

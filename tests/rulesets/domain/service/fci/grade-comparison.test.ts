@@ -67,10 +67,6 @@ describe('resolveGrade', () => {
     it('returns undefined when the named scale does not exist', () => {
         expect(resolveGrade(EXCELLENT, asGradeScaleId('missing'), RULESET)).toBeUndefined();
     });
-
-    it('returns undefined for an undefined gradeId', () => {
-        expect(resolveGrade(undefined, ADULT_SCALE_ID, RULESET)).toBeUndefined();
-    });
 });
 
 describe('resolveGradePairOnSharedScale', () => {

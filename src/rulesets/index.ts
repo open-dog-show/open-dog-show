@@ -108,18 +108,20 @@ export type { RulesetLayerEditionReference } from './domain/model/ruleset-layer-
 export {
     ClassPlacement,
     type ClassPlacementAttributes,
-    StreamCandidate,
-    AwardFeederStream,
-    type AwardFeederStreamAttributes,
-    ClassFeederStream,
-    type ClassFeederStreamAttributes,
-    type CandidateStream,
     PerSexJudgingScopeResults,
     type PerSexJudgingScopeResultsAttributes,
     HigherScopeJudgingScopeResults,
     type HigherScopeJudgingScopeKind,
     type JudgingScopeResults,
 } from './domain/service/award-policy/judging-scope-results.js';
+export {
+    StreamCandidate,
+    AwardFeederStream,
+    type AwardFeederStreamAttributes,
+    ClassFeederStream,
+    type ClassFeederStreamAttributes,
+    type CandidateStream,
+} from './domain/service/award-policy/candidate-stream.js';
 export type {
     ProposedAwardAssignment,
     AwardValidationResult,

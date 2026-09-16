@@ -39,24 +39,28 @@ export class CreateNoteHandler {
         scope: TransactionScope,
     ): Promise<Result<CreateNoteResponse, InvalidNoteNameError>> {
         const createdBy = requireActor(scope);
+        // This construct-then-save shape repeats near-identically across the
+        // 4 scope variants of every create-*.ts.hbs template — tracked in
+        // #216 (four-scope template duplication), not fixed here.
+        // create-hybrid.ts.hbs is the one variant that keeps validation
+        // inside the transaction instead — see its createInTransaction doc
+        // comment for why.
+        let note: Note;
         try {
-            return await this.unitOfWork.run<Result<CreateNoteResponse, InvalidNoteNameError>>(
-                scope,
-                async (ctx) => {
-                    const note = Note.create({
-                        id: asNoteId(command.id),
-                        createdBy,
-                        name: command.name,
-                    });
-                    await ctx.notes.add(note);
-                    return { ok: true, value: { id: note.id, name: note.name } };
-                },
-            );
+            note = Note.create({
+                id: asNoteId(command.id),
+                createdBy,
+                name: command.name,
+            });
         } catch (error) {
             if (error instanceof InvalidNoteNameError) {
                 return { ok: false, error };
             }
             throw error;
         }
+        await this.unitOfWork.run(scope, async (ctx) => {
+            await ctx.notes.add(note);
+        });
+        return { ok: true, value: { id: note.id, name: note.name } };
     }
 }

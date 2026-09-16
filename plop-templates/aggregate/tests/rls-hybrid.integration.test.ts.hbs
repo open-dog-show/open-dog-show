@@ -108,6 +108,19 @@ describe('{{pascalCase name}} RLS isolation (hybrid scope)', () => {
         });
     });
 
+    it('records the outbox event with club_id set from the fact scope, not the acting (exhibitor) scope (ADR-0027)', async () => {
+        const { rows } = await harness.superPool.query<{
+            club_id: string | null;
+            user_id: string | null;
+        }>(`SELECT club_id, user_id FROM {{snakeCase context}}.outbox WHERE aggregate_id = $1`, [
+            {{constantCase name}}_ID,
+        ]);
+
+        expect(rows).toHaveLength(1);
+        expect(rows[0]?.club_id).toBe(CLUB_A_ID);
+        expect(rows[0]?.user_id).toBeNull();
+    });
+
     it('Create{{pascalCase name}}Handler resolves the {{pascalCase parent}} owner under a real exhibitor-scoped connection', async () => {
         const handler = new Create{{pascalCase name}}Handler(unitOfWork);
 

@@ -4,7 +4,7 @@ Ubiquitous language for **OpenDogShow**, an open-source **conformation** ("beaut
 
 The domain splits into bounded contexts — see [`CONTEXT-MAP.md`](./CONTEXT-MAP.md). Terms below are grouped by their **owning context**; each term is owned by exactly one context. When code lands, each context's terms will move to `src/<context>/CONTEXT.md`.
 
-Note on shared vocabulary: **Rulesets** owns the _type/definition_ of `Class`, `Grade`, `Award`, the breed taxonomy, `Show Type`, and the entry-certificate vocabulary; other contexts own the _occurrences_ (a Grade given, an Award won). A `Champion Certificate` is **owner-asserted** data on a Dog (Entries & Registration) — never computed or confirmed by the platform.
+Note on shared vocabulary: **Rulesets** owns the _type/definition_ of `Class`, `Grade`, `Award`, the breed taxonomy, `Show Type`, and the entry-certificate vocabulary; other contexts own the _occurrences_ (a Grade given, an Award won). A `Champion Certificate` is **owner-asserted** data on a Dog (Entries & Registration) — never computed or confirmed by the platform. Rulesets also **implements** (owns the code for, under `src/rulesets/domain/`) the **Sex** and **Placement** value objects consumed by its own judging-scope/award-policy logic; their conceptual home and glossary definition stay with the contexts that own the occurrence — **Sex** under Entries & Registration, **Placement** under Judging & Results.
 
 ## Rulesets
 
@@ -63,7 +63,7 @@ An Award Type the Judge may withhold even when a qualifying Dog is present. A no
 _Avoid_: Optional Award
 
 **Award Scope Level**:
-One of four levels at which individual-dog Awards are decided in FCI competition, in ascending order: **per-sex** (within one sex of a breed, across all its eligible classes), **breed** (BOB / BOS, from per-sex title-winners of both sexes), **group** (BIG, from the BOB winners of all breeds in the group), **show** (BIS, from the BIG winners). Each Award Type belongs to exactly one scope level. The Award Policy gates which types may be proposed at each level. Collective competition awards (Best Brace/Couple, Best Breeders' Group, Best Progeny Group) exist outside this four-level hierarchy — they are governed by the **Collective Award Policy** and use a distinct **collective** scope.
+One of four levels at which individual-dog Awards are decided in FCI competition, in ascending order: **per-sex** (within one sex of a breed, across all its eligible classes), **breed** (BOB / BOS, from per-sex title-winners of both sexes), **group** (BIG, from the BOB winners of all breeds in the group), **show** (BIS, from the BIG winners). Each Award Type belongs to exactly one scope level. The Award Policy gates which types may be proposed at each level. Collective competition awards (Best Brace/Couple, Best Breeders' Group, Best Progeny Group) exist outside this four-level hierarchy — they are governed by the **Collective Award Policy** and use a distinct **collective** scope. In code the same four levels appear as the `kind` of a `JudgingScopeResults` (`PerSexJudgingScopeResults` / `HigherScopeJudgingScopeResults`'s `breed` | `group` | `show`, ADR-0017) — "Judging Scope" is the implementation name for an Award Scope Level, not a distinct concept.
 _Avoid_: Judging Round, Judging Phase
 
 **Award Policy**:
@@ -244,12 +244,16 @@ _Avoid_: Transaction, Charge
 Owns platform accounts and role grants; a generic context behind an anticorruption layer to an external identity provider.
 
 **User**:
-An authenticated platform account, created automatically on first login through the external identity provider. A returning User is recognised across logins by the identity provider's stable subject identifier — assumed unique across the platform's single configured issuer (ADR-0016) — which is distinct from the platform's own account identifier (ADR-0013). Carries a normalized display name and email sourced from the provider and refreshed on each login. Has account status: **Active** (default on creation) or **Suspended** (set by Platform Administrator); a Suspended user is rejected at login — their profile is not refreshed — until a Platform Administrator reactivates the account. Any Active User holds the Exhibitor capability by default — no Role Grant required.
+An authenticated platform account, created automatically on first login through the external identity provider. A returning User is recognised across logins by the identity provider's stable subject identifier — assumed unique across the platform's single configured issuer (ADR-0016) — which is distinct from the platform's own account identifier (ADR-0013). Carries a normalized display name and email sourced from the provider and refreshed on each login. Has account status: **Active** (default on creation) or **Suspended** (set by Platform Administrator); a Suspended user is rejected at login — their profile is not refreshed — until a Platform Administrator reactivates the account. Any Active User holds the Exhibitor capability by default — no Role Grant required. The application layer's published operation for this is `Authenticate` (`AuthenticateHandler`, ADR-0028); the domain method it drives is `User.logIn`. "Authenticate" and "login" refer to the same event — the former is IAM's published-contract name, the latter the everyday/domain term.
 _Avoid_: Account (acceptable synonym), Login
 
 **Role Grant**:
 An explicit, revocable record that a User holds a named domain role within a stated scope: Club-scoped (**Show Secretary** — within one Club) or platform-global (**Judge**, **Platform Administrator**). Created and revoked only by a Platform Administrator. The Exhibitor capability is not a Role Grant. Each downstream context's ACL adapter translates a User's Role Grants into a context-specific identity type; domain layers never inspect Role Grants directly.
 _Avoid_: Permission (use Role Grant), Role Assignment
+
+**Identity Snapshot**:
+The read-only, all-primitives view of a User and their Role Grants that Identity & Access publishes for other bounded contexts to consume (ADR-0028) — `userId`, `active`, and `roleGrants: { role, clubId }[]`. Queried in-process via `IdentityQuery.findIdentity`, so a Role Grant revocation takes effect on the next call rather than after an event-propagation delay. Each downstream context's ACL adapter translates an Identity Snapshot into that context's own identity type; it is Identity & Access's Published Language, not a User or Role Grant itself.
+_Avoid_: User Snapshot, Identity View, Auth Context
 
 ## Platform Administration
 

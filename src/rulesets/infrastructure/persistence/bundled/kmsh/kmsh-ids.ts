@@ -24,7 +24,7 @@ export const KMSH_AWARD_CAC = asAwardTypeId('cac');
  * class where the CAC was awarded, provided it received Excellent.
  * Not compulsory.
  */
-export const KMSH_AWARD_RCAC = asAwardTypeId('rcac');
+export const KMSH_AWARD_RCAC = asAwardTypeId('res-cac');
 
 /**
  * Fokkersklas / Classe des éleveurs — KMSH national class available at

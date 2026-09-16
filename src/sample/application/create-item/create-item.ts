@@ -46,25 +46,29 @@ export class CreateItemHandler {
     ): Promise<Result<CreateItemResponse, InvalidItemNameError>> {
         const clubId = requireClubScope(scope);
         const createdBy = requireActor(scope);
+        // This construct-then-save shape repeats near-identically across the
+        // 4 scope variants of every create-*.ts.hbs template — tracked in
+        // #216 (four-scope template duplication), not fixed here.
+        // create-hybrid.ts.hbs is the one variant that keeps validation
+        // inside the transaction instead — see its createInTransaction doc
+        // comment for why.
+        let item: Item;
         try {
-            return await this.unitOfWork.run<Result<CreateItemResponse, InvalidItemNameError>>(
-                scope,
-                async (ctx) => {
-                    const item = Item.create({
-                        id: asItemId(command.id),
-                        clubId,
-                        createdBy,
-                        name: command.name,
-                    });
-                    await ctx.items.add(item);
-                    return { ok: true, value: { id: item.id, name: item.name } };
-                },
-            );
+            item = Item.create({
+                id: asItemId(command.id),
+                clubId,
+                createdBy,
+                name: command.name,
+            });
         } catch (error) {
             if (error instanceof InvalidItemNameError) {
                 return { ok: false, error };
             }
             throw error;
         }
+        await this.unitOfWork.run(scope, async (ctx) => {
+            await ctx.items.add(item);
+        });
+        return { ok: true, value: { id: item.id, name: item.name } };
     }
 }

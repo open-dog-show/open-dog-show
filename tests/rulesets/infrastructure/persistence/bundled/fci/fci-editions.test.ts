@@ -32,6 +32,13 @@ import {
     FCI_AWARD_BEST_BREEDERS_GROUP,
     FCI_AWARD_BEST_PROGENY_GROUP,
     FCI_CLASS_BRED_BY_EXHIBITOR,
+    FCI_CLASS_MINOR_PUPPY,
+    FCI_CLASS_PUPPY,
+    FCI_CLASS_JUNIOR,
+    FCI_CLASS_INTERMEDIATE,
+    FCI_CLASS_OPEN,
+    FCI_CLASS_VETERAN,
+    FCI_CLASS_HONOUR,
 } from '../../../../../../src/rulesets/infrastructure/persistence/bundled/fci/index.js';
 import { asClassId } from '../../../../../../src/rulesets/domain/shared/domain-ids.js';
 import { LocalDate } from '../../../../../../src/rulesets/domain/model/effective-ruleset/value-objects/local-date.js';
@@ -176,7 +183,7 @@ describe.each([
 ])('%s — class definitions shared by both editions', (_name, edition: RulesetLayerEdition) => {
     it('Minor Puppy class is under 6 months, requires vaccination, uses puppy scale', () => {
         const cls = findOrFail(
-            edition.classDefinitions.find((c) => c.id === 'minor-puppy'),
+            edition.classDefinitions.find((c) => c.id === FCI_CLASS_MINOR_PUPPY),
             'minor-puppy',
         );
         expect(cls.fromAgeMonths).toBeUndefined();
@@ -188,7 +195,7 @@ describe.each([
 
     it('Puppy class is 6–9 months with no required certificates and uses puppy scale', () => {
         const cls = findOrFail(
-            edition.classDefinitions.find((c) => c.id === 'puppy'),
+            edition.classDefinitions.find((c) => c.id === FCI_CLASS_PUPPY),
             'puppy',
         );
         expect(cls.fromAgeMonths).toBe(6);
@@ -199,7 +206,7 @@ describe.each([
 
     it('Junior class is 9–18 months and feeds CACIB-J', () => {
         const cls = findOrFail(
-            edition.classDefinitions.find((c) => c.id === 'junior'),
+            edition.classDefinitions.find((c) => c.id === FCI_CLASS_JUNIOR),
             'junior',
         );
         expect(cls.fromAgeMonths).toBe(9);
@@ -209,7 +216,7 @@ describe.each([
 
     it('Intermediate class is 15–24 months and feeds CACIB', () => {
         const cls = findOrFail(
-            edition.classDefinitions.find((c) => c.id === 'intermediate'),
+            edition.classDefinitions.find((c) => c.id === FCI_CLASS_INTERMEDIATE),
             'intermediate',
         );
         expect(cls.fromAgeMonths).toBe(15);
@@ -219,7 +226,7 @@ describe.each([
 
     it('Open class is 15+ months with no upper bound and feeds CACIB', () => {
         const cls = findOrFail(
-            edition.classDefinitions.find((c) => c.id === 'open'),
+            edition.classDefinitions.find((c) => c.id === FCI_CLASS_OPEN),
             'open',
         );
         expect(cls.fromAgeMonths).toBe(15);
@@ -229,7 +236,7 @@ describe.each([
 
     it('Veteran class starts at 96 months (8 years) with no upper bound', () => {
         const cls = findOrFail(
-            edition.classDefinitions.find((c) => c.id === 'veteran'),
+            edition.classDefinitions.find((c) => c.id === FCI_CLASS_VETERAN),
             'veteran',
         );
         expect(cls.fromAgeMonths).toBe(96);
@@ -239,7 +246,7 @@ describe.each([
 
     it('Honour class has no age restriction', () => {
         const cls = findOrFail(
-            edition.classDefinitions.find((c) => c.id === 'honour'),
+            edition.classDefinitions.find((c) => c.id === FCI_CLASS_HONOUR),
             'honour',
         );
         expect(cls.fromAgeMonths).toBeUndefined();
