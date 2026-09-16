@@ -104,12 +104,24 @@ function markDispatched(states: readonly RowState[], seq: string) {
  * behind `RETURNING attempts` so a production query that drops it (leaving
  * the claim step unable to read back the count) fails the test instead of
  * the fake silently supplying the missing behaviour itself.
+ *
+ * `vanish` models the row vanishing between `selectNextRow` and this UPDATE
+ * — an outcome `PgPollingDispatcher.claimNextRow` treats as provably
+ * impossible under Postgres's row-locking semantics and guards against with
+ * a fail-fast throw. Real Postgres can never actually produce this (the row
+ * is locked by this same transaction), so this is the only way to drive
+ * that guard in a unit test.
  */
-function claimAttempt(sql: string, states: readonly RowState[], seq: string) {
+function claimAttempt(
+    sql: string,
+    seq: string,
+    context: { readonly states: readonly RowState[]; readonly vanish: boolean },
+) {
     if (!sql.includes('RETURNING attempts')) {
         throw new Error('fake expected `RETURNING attempts` in the claim UPDATE');
     }
-    const state = findBySeq(states, seq);
+    if (context.vanish) return { rows: [] };
+    const state = findBySeq(context.states, seq);
     if (state) state.attempts += 1;
     return { rows: state ? [{ attempts: state.attempts }] : [] };
 }
@@ -141,15 +153,20 @@ function countQuarantined(states: readonly RowState[], maxAttempts: number) {
 function routeFakeQuery(
     sql: string,
     params: readonly unknown[],
-    context: { readonly states: readonly RowState[]; readonly failRecording: boolean },
+    context: {
+        readonly states: readonly RowState[];
+        readonly failRecording: boolean;
+        readonly vanishDuringClaim: boolean;
+    },
 ) {
-    const { states, failRecording } = context;
+    const { states, failRecording, vanishDuringClaim } = context;
     if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rows: [] };
     if (sql.startsWith('SELECT seq'))
         return selectNextRowValidated(sql, states, params[0] as number);
     if (sql.startsWith('SELECT COUNT')) return countQuarantined(states, params[0] as number);
     if (sql.includes('SET dispatched_at')) return markDispatched(states, params[0] as string);
-    if (sql.includes('SET attempts')) return claimAttempt(sql, states, params[0] as string);
+    if (sql.includes('SET attempts'))
+        return claimAttempt(sql, params[0] as string, { states, vanish: vanishDuringClaim });
     if (sql.includes('SET last_error')) return recordLastError(sql, failRecording);
     return { rows: [] };
 }
@@ -172,16 +189,20 @@ function routeFakeQuery(
  *
  * `options.failRecording` makes that `SET last_error` query itself reject,
  * simulating the best-effort `last_error` recording transaction failing.
+ * `options.vanishDuringClaim` makes the claim UPDATE return no row, as if
+ * the row vanished between `selectNextRow` and this UPDATE — see
+ * {@link claimAttempt}.
  */
 function fakePool(
     states: readonly RowState[],
-    options?: { readonly failRecording?: boolean },
+    options?: { readonly failRecording?: boolean; readonly vanishDuringClaim?: boolean },
 ): pg.Pool {
     const client = {
         query: (text: string, params: readonly unknown[] = []) =>
             routeFakeQuery(text.trim(), params, {
                 states,
                 failRecording: options?.failRecording === true,
+                vanishDuringClaim: options?.vanishDuringClaim === true,
             }),
         release: () => undefined,
     };
@@ -275,6 +296,29 @@ describe('PgPollingDispatcher — OutboxDispatchFailed', () => {
         });
 
         await expect(dispatcher.poll()).rejects.not.toBeInstanceOf(OutboxDispatchFailed);
+    });
+
+    it('propagates the claim-vanish guard unwrapped, not as OutboxDispatchFailed, when the claim UPDATE returns no row (#210 grilling)', async () => {
+        const dispatcher = new PgPollingDispatcher({
+            pool: fakePool([rowState()], { vanishDuringClaim: true }),
+            schema: 'sample',
+            handler: () => Promise.resolve(),
+            registry: registryFor((fact) => fact),
+        });
+
+        let caught: unknown;
+        try {
+            await dispatcher.poll();
+        } catch (err) {
+            caught = err;
+        }
+
+        // A row vanishing here is not attributable to the handler — same
+        // "not a per-row dispatch failure" category as a claim connection
+        // fault, so it must not be wrapped as OutboxDispatchFailed either.
+        expect(caught).not.toBeInstanceOf(OutboxDispatchFailed);
+        expect(caught).toBeInstanceOf(Error);
+        expect((caught as Error).message).toContain('vanished during claim');
     });
 
     it('preserves a failure in the best-effort last_error recording as cause.recordingError, rather than swallowing it', async () => {
@@ -396,6 +440,15 @@ describe('PgPollingDispatcher — poison-pill quarantine, handler timeout, multi
         }
     });
 
+    // This also covers the acceptance criterion "a handler that never settles
+    // does not hold the row's transaction open indefinitely": `pollPromise`
+    // already rejects, and `state.attempts`/`dispatchedAt` are already
+    // asserted, *before* `resolveHandler` is ever called below — a variant
+    // that never calls it at all would exercise the exact same code path (a
+    // handler settling, or not, is invisible to the dispatcher once the
+    // timeout has already won the race) and would only additionally prove
+    // the test process itself doesn't hang, which vitest already guarantees
+    // by timing out the test (#210 grilling).
     it('treats handlerTimeoutMs as a real dispatch failure even when the handler ignores its AbortSignal and resolves later (#210)', async () => {
         vi.useFakeTimers();
         try {

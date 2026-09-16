@@ -10,7 +10,9 @@
  * (`attempts` at or above it). `attempts` is incremented at claim time —
  * before the handler ever runs — so it is always known by the time a handler
  * failure reaches here, independently of whether the best-effort
- * `last_error` recording below succeeds.
+ * `last_error` recording below succeeds. See
+ * `0001_outbox_poison_pill.sql`'s own comment for the canonical statement of
+ * why `attempts` counts claims, not only failures.
  *
  * The original failure's message is preserved on `cause`; when the
  * best-effort `last_error` recording itself fails, that failure is preserved

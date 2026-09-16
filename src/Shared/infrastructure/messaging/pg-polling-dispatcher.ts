@@ -36,6 +36,17 @@ const DEFAULT_HANDLER_TIMEOUT_MS = 30_000;
  * handler runs outside any transaction or row lock, so a handler that ignores
  * the signal only delays that row's own retry, not other rows or the claim
  * transaction.
+ *
+ * This idempotency must hold under **concurrent** overlapping calls for the
+ * same `event.eventId`, not only sequential retries after a crash: a row's
+ * lock is released as soon as it's claimed (see {@link PgPollingDispatcher}'s
+ * class doc), so two dispatcher instances can genuinely run this handler at
+ * the same time for the same event. A non-atomic "check if already
+ * processed, then write" guard is safe for sequential retries but *not* for
+ * this — two concurrent calls can both pass the check before either writes.
+ * Prefer an atomic operation (an upsert, or a unique constraint on
+ * `eventId` that a second concurrent insert fails against) over a
+ * read-then-write check.
  */
 export type EventHandler = (event: DomainEvent, signal: AbortSignal) => Promise<void>;
 
@@ -72,7 +83,8 @@ export type EventHandler = (event: DomainEvent, signal: AbortSignal) => Promise<
  *   runs — so it counts every claimed try, not just failures; a failure also
  *   records `last_error` (in its own short transaction). Rows whose
  *   `attempts` reach `maxAttempts` are skipped (quarantined) so later rows
- *   are not starved.
+ *   are not starved. See `0001_outbox_poison_pill.sql`'s own comment for the
+ *   canonical statement of this rationale, closest to the schema truth.
  * - **Handler timeout:** `handlerTimeoutMs` bounds each handler call (0 = no
  *   timeout) by racing it against a rejection armed by the timeout timer —
  *   not just aborting the signal and awaiting the handler as normal — so a
@@ -216,6 +228,13 @@ export class PgPollingDispatcher {
      * `attempts >= maxAttempts` quarantines poison pills so a
      * permanently-failing row cannot starve later rows. Must be called inside
      * the claim transaction ({@link claimNextRow}'s `runInClientTransaction`).
+     * This predicate alone (`dispatched_at IS NULL`) is what lets a second
+     * dispatcher re-select the same row once the first instance's claim
+     * transaction has committed and released the lock — see the class doc's
+     * redelivery-window bullet and {@link EventHandler}'s concurrency
+     * requirement; deliberately not closed by a lease/`claimed_at` column
+     * (would reintroduce a bounded version of the stuck-row problem #210
+     * removed, for a schema change out of that ticket's scope).
      */
     private async selectNextRow(client: pg.PoolClient): Promise<OutboxRowRaw | undefined> {
         const res = await client.query<OutboxRowRaw>(
@@ -254,9 +273,14 @@ export class PgPollingDispatcher {
                 );
                 const attempts = rows[0]?.attempts;
                 if (attempts === undefined) {
-                    // `selectNextRow` just locked this exact row inside this
-                    // same transaction — it cannot have vanished before this
-                    // UPDATE runs.
+                    // Fail-fast guard on the invariant this method depends
+                    // on, not dead code: `selectNextRow` locked this exact
+                    // row inside this same transaction, so under Postgres's
+                    // row-locking semantics it cannot vanish before this
+                    // UPDATE runs. Kept as a canary — if a future change ever
+                    // splits the SELECT and this UPDATE across separate
+                    // transactions/connections, this throws loudly here
+                    // instead of `attempts` silently going `undefined`.
                     throw new Error(`outbox row ${row.seq} vanished during claim`);
                 }
                 return { row, attempts };
@@ -293,6 +317,11 @@ export class PgPollingDispatcher {
     private async raceAgainstTimeout(
         handlerCall: Promise<void>,
         controller: AbortController,
+        // Deliberately the whole raw row, not just `event_id`/`type`: this is
+        // a private, non-crossing call already holding `row` in scope at its
+        // only call site, so narrowing the parameter would only replace one
+        // small struct with another for no real reduction in what this
+        // method depends on.
         row: OutboxRowRaw,
     ): Promise<void> {
         const timeoutRejection = new Promise<never>((_resolve, reject) => {
@@ -336,6 +365,10 @@ export class PgPollingDispatcher {
      * bullet).
      */
     private async executeAutocommit(sql: string, params: readonly unknown[]): Promise<void> {
+        // `pg`'s query overloads require a genuine (mutable) array for the
+        // values parameter — `QueryConfigValues<T>` rejects `readonly T[]`
+        // outright, a compile error, not a lint nit this cast silences.
+        // `params` itself is never mutated.
         await this.withClient((client) => client.query(sql, params as unknown[]));
     }
 
